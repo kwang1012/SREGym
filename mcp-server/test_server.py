@@ -30,7 +30,7 @@ def get_example_txt_with_str(string: str) -> Any:
 @mcp.tool()
 def surround(character: str, main_body: str) -> str:
     logger.debug("surround called")
-    return f"{character} {main_body} {character}"
+    return f"{character}{main_body}{character}"
 
 
 @mcp.prompt(name="summarize_example_text")
