@@ -11,11 +11,22 @@ class LocalizationOracle(Oracle):
         print("== Localization Evaluation ==")
         results = {}
 
-        if not isinstance(solution, list):
+        # Normalize string input to list
+        if isinstance(solution, str):
+            solution = [solution]
+        elif not isinstance(solution, list):
             results["Localization Accuracy"] = 0.0
             results["success"] = False
             results["is_subset"] = False
-            print("❌ Invalid format: expected list")
+            print("❌ Invalid format: expected string or list of strings")
+            return results
+
+        # Safety check: ensure all items are strings
+        if not all(isinstance(item, str) for item in solution):
+            results["Localization Accuracy"] = 0.0
+            results["success"] = False
+            results["is_subset"] = False
+            print("❌ Invalid content: all items must be strings")
             return results
 
         is_exact = is_exact_match(solution, self.expected)
