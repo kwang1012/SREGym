@@ -8,6 +8,7 @@ dependencies = [
     "aiosignal==1.3.2",
     "airportsdata==20250523",
     "annotated-types==0.7.0",
+    "anthropic>=0.52.0",
     "anyio==4.9.0",
     "asgiref==3.8.1",
     "astor==0.8.1",
