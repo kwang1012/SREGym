@@ -86,17 +86,22 @@ class Orchestrator:
             return "[❌] Only `submit(...)` is supported."
 
         solution = parsed["args"][0] if parsed["args"] else None
-        duration = time.time() - self.execution_start_time
 
         # === Evaluate based on current stage ===
         if self.submission_stage == "detection":
             results = self.problem.detection_oracle.evaluate(solution)
             self.results["Detection"] = results
+
             if results["Detection Accuracy"] == "Invalid Format":
                 return "[⚠️] Invalid detection format. Please try again."
-            self.submission_stage = (
-                "localization" if results.get("success") else "mitigation"
-            )
+
+            self.results["TTD"] = time.time() - self.execution_start_time
+
+            if not results.get("success", False):
+                self.submission_stage = "done"
+                return "[❌] Incorrect detection. Ending evaluation."
+
+            self.submission_stage = "localization"
             return SubmissionStatus.VALID_SUBMISSION
 
         elif self.submission_stage == "localization":
@@ -113,12 +118,15 @@ class Orchestrator:
                     isinstance(x, str) for x in solution
                 ):
                     return "[⚠️] Invalid localization list contents. Please try again."
+
+            self.results["TTL"] = time.time() - self.execution_start_time
             self.submission_stage = "mitigation"
             return SubmissionStatus.VALID_SUBMISSION
 
         elif self.submission_stage == "mitigation":
             results = self.problem.mitigation_oracle.evaluate()
             self.results["Mitigation"] = results
+            self.results["TTM"] = time.time() - self.execution_start_time
             self.submission_stage = "done"
             return SubmissionStatus.VALID_SUBMISSION
 
@@ -157,16 +165,7 @@ class Orchestrator:
         )
         self.kubectl.wait_for_namespace_deletion("openebs")
 
-        elapsed = self.execution_end_time - self.execution_start_time
-        time_keys = ["TTD", "TTL", "TTA", "TTM"]
-        key = next((k for k in time_keys if k in self.results), None)
-        overhead = elapsed - self.results.get(key, 0) if key else elapsed
-        print(f"Framework overhead: {overhead:.2f}s")
-
-        return {
-            "results": self.results,
-            "framework_overhead": overhead,
-        }
+        return {"results": self.results}
 
 
 def exit_cleanup_fault(prob):
