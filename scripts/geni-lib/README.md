@@ -87,6 +87,12 @@ GENI (Global Environment for Network Innovations) and CloudLab use two core conc
   - SSH access information
 - Sliver expiration time cannot exceed its parent slice's expiration time
 
+## Understanding RSpec Files
+
+RSpec files are used to define the resources and their configurations for a slice. We can get them two ways:
+1. We can modify the `generate_rspec.py` script to programmatically define our resources and generate the RSpec file corresponding to our resources.
+2. We can simply go to cloudlab and copy the rspec of a profile we want to use. Store the rspec files in the `scripts/geni-lib/rspecs` directory.
+
 ## Using the GENI Manager
 
 The `genictl.py` script provides an interactive CLI to manage both slices and slivers.
