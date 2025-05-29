@@ -11,6 +11,7 @@ from rich.markdown import Markdown
 from rich.panel import Panel
 
 from aiopslab.orchestrator import Orchestrator
+from aiopslab.service.shell import Shell
 
 WELCOME = """
 # SREArena
@@ -90,8 +91,18 @@ class HumanAgent:
     async def get_action(self, env_input):
         self.display_env_message(env_input)
         user_input = await self.get_user_input()
-        template = "Action:```\n{}\n```"
-        return template.format(user_input)
+
+        if not user_input.strip().startswith("submit("):
+            from aiopslab.service.shell import Shell
+
+            try:
+                output = Shell.exec(user_input.strip())
+                self.display_env_message(output)
+            except Exception as e:
+                self.display_env_message(f"[❌] Shell command failed: {e}")
+            return await self.get_action(env_input)
+
+        return f"Action:```\n{user_input}\n```"
 
     def init_problem(self, problem_id="misconfig-mitigation-1"):
         problem_desc, _, apis = self.orchestrator.init_problem(problem_id)
