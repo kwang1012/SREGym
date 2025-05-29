@@ -1,5 +1,4 @@
 import argparse
-from calendar import prcal
 import datetime
 import json
 import geni.portal as portal
@@ -159,6 +158,7 @@ def get_hardware_info(context=None, args=None):
     else:
         print("No hardware information available")
 
+
 def quick_experiment_creation(context, args):
     try:
 
@@ -168,18 +168,22 @@ def quick_experiment_creation(context, args):
         print(f"Creating a quick 3 node cluster of hardware type: {hardware_type}")
 
         hardware_info_list = collect_hardware_info_from_html()
-        slice_name = "test-"+str(random.randint(100000, 999999))
+        slice_name = "test-" + str(random.randint(100000, 999999))
         cluster_name = None
 
         for item in hardware_info_list:
             # print(f"Checking {item['hardware_name']} at {item['cluster_name']}")
             if item["hardware_name"].strip() == hardware_type.strip():
                 if item["total"] >= 3 and item["free"] >= 3:
-                    print(f"Creating a 3 node cluster of {hardware_type} at {item['cluster_name']}")
+                    print(
+                        f"Creating a 3 node cluster of {hardware_type} at {item['cluster_name']}"
+                    )
                     cluster_name = item["cluster_name"]
                     break
                 else:
-                    print(f"Not enough {hardware_type} nodes available at {item['cluster_name']}")
+                    print(
+                        f"Not enough {hardware_type} nodes available at {item['cluster_name']}"
+                    )
 
         if cluster_name is None:
             print(f"No {hardware_type} nodes available")
@@ -200,9 +204,15 @@ def quick_experiment_creation(context, args):
         node2.hardware_type = hardware_type
         node3.hardware_type = hardware_type
 
-        node1.disk_image = "urn:publicid:IDN+emulab.net+image+emulab-ops//UBUNTU22-64-STD"
-        node2.disk_image = "urn:publicid:IDN+emulab.net+image+emulab-ops//UBUNTU22-64-STD"
-        node3.disk_image = "urn:publicid:IDN+emulab.net+image+emulab-ops//UBUNTU22-64-STD"
+        node1.disk_image = (
+            "urn:publicid:IDN+emulab.net+image+emulab-ops//UBUNTU22-64-STD"
+        )
+        node2.disk_image = (
+            "urn:publicid:IDN+emulab.net+image+emulab-ops//UBUNTU22-64-STD"
+        )
+        node3.disk_image = (
+            "urn:publicid:IDN+emulab.net+image+emulab-ops//UBUNTU22-64-STD"
+        )
 
         link1 = request.Link(members=[node1, node2, node3])
 
@@ -242,7 +252,9 @@ def quick_experiment_creation(context, args):
             f.write(login_info)
             f.write("\n")
             f.write("To delete the experiment, run the following command:\n")
-            f.write(f"python3 genictl.py delete-sliver {slice_name} --site {aggregate_name}\n")
+            f.write(
+                f"python3 genictl.py delete-sliver {slice_name} --site {aggregate_name}\n"
+            )
         print(f"\nSSH info saved to {slice_name}.login.info.txt\n")
 
         print(
@@ -251,6 +263,7 @@ def quick_experiment_creation(context, args):
 
     except Exception as e:
         print(f"Error: {e}")
+
 
 def main():
     commands = [
@@ -353,7 +366,8 @@ def main():
 
     # Add quick-experiment command
     quick_exp_parser = subparsers.add_parser(
-        "quick-experiment", help="Create a quick 3-node experiment with specified hardware type"
+        "quick-experiment",
+        help="Create a quick 3-node experiment with specified hardware type",
     )
     quick_exp_parser.add_argument(
         "--hardware-type", required=True, help="Hardware type for the nodes"
@@ -439,7 +453,7 @@ def run_interactive_mode(parser, commands, sites):
                 "sliver-status",
                 "renew-sliver",
                 "sliver-spec",
-                "delete-sliver"
+                "delete-sliver",
             ]:
                 while True:
                     site = site_session.prompt(
@@ -507,7 +521,7 @@ def run_interactive_mode(parser, commands, sites):
                         break
                     print("Error: Hardware type cannot be empty")
                 args_list.extend(["--hardware-type", hardware_type])
-                
+
                 duration = input("Enter duration in hours (default 1): ").strip() or "1"
                 args_list.extend(["--duration", duration])
 
