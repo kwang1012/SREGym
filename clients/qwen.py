@@ -5,7 +5,7 @@ import os
 
 import wandb
 
-from aiopslab.orchestrator import Orchestrator
+from aiopslab.conductor import Conductor
 from clients.utils.llm import QwenClient
 from clients.utils.templates import DOCS_SHELL_ONLY
 
@@ -39,7 +39,7 @@ class Agent:
         """Wrapper to interface the agent with OpsBench.
 
         Args:
-            input (str): The input from the orchestrator/environment.
+            input (str): The input from the conductor/environment.
 
         Returns:
             str: The response from the agent.
@@ -63,13 +63,13 @@ if __name__ == "__main__":
 
     agent = Agent()
 
-    orchestrator = Orchestrator()
-    orchestrator.register_agent(agent, name="qwq-32b")
+    conductor = Conductor()
+    conductor.register_agent(agent, name="qwq-32b")
 
     pid = "misconfig_app_hotel_res-mitigation-1"
-    problem_desc, instructs, apis = orchestrator.init_problem(pid)
+    problem_desc, instructs, apis = conductor.init_problem(pid)
     agent.init_context(problem_desc, instructs, apis)
-    asyncio.run(orchestrator.start_problem())
+    asyncio.run(conductor.start_problem())
 
     if use_wandb:
         # Finish the wandb run

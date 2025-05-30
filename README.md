@@ -22,7 +22,7 @@
 
 AIOpsLab is a holistic framework to enable the design, development, and evaluation of autonomous AIOps agents that, additionally, serve the purpose of building reproducible, standardized, interoperable and scalable benchmarks. AIOpsLab can deploy microservice cloud environments, inject faults, generate workloads, and export telemetry data, while orchestrating these components and providing interfaces for interacting with and evaluating agents. 
 
-Moreover, AIOpsLab provides a built-in benchmark suite with a set of problems to evaluate AIOps agents in an interactive environment. This suite can be easily extended to meet user-specific needs. See the problem list [here](/aiopslab/orchestrator/problems/registry.py#L15).
+Moreover, AIOpsLab provides a built-in benchmark suite with a set of problems to evaluate AIOps agents in an interactive environment. This suite can be easily extended to meet user-specific needs. See the problem list [here](/aiopslab/conductor/problems/registry.py#L15).
 
 <h2 id="📦installation">📦 Installation</h2>
 
@@ -149,19 +149,19 @@ AIOpsLab makes it extremely easy to develop and evaluate your agents. You can on
             # <your agent's logic here>
         ```
 
-2. **Register your agent with AIOpsLab**: You can now register the agent with AIOpsLab's orchestrator. The orchestrator will manage the interaction between your agent and the environment:
+2. **Register your agent with AIOpsLab**: You can now register the agent with AIOpsLab's conductor. The conductor will manage the interaction between your agent and the environment:
 
     ```python
-    from aiopslab.orchestrator import Orchestrator
+    from aiopslab.conductor import Conductor
 
     agent = Agent()             # create an instance of your agent
-    orch = Orchestrator()       # get AIOpsLab's orchestrator
+    orch = Conductor()       # get AIOpsLab's conductor
     orch.register_agent(agent)  # register your agent with AIOpsLab
     ```
 
 3. **Evaluate your agent on a problem**:
 
-    1. **Initialize a problem**: AIOpsLab provides a list of problems that you can evaluate your agent on. Find the list of available problems [here](/aiopslab/orchestrator/problems/registry.py) or using `orch.problems.get_problem_ids()`. Now initialize a problem by its ID: 
+    1. **Initialize a problem**: AIOpsLab provides a list of problems that you can evaluate your agent on. Find the list of available problems [here](/aiopslab/conductor/problems/registry.py) or using `orch.problems.get_problem_ids()`. Now initialize a problem by its ID: 
 
         ```python
         problem_desc, instructs, apis = orch.init_problem("k8s_target_port-misconfig-mitigation-1")
@@ -177,7 +177,7 @@ AIOpsLab makes it extremely easy to develop and evaluate your agents. You can on
         asyncio.run(orch.start_problem())
         ```
 
-This process will create a [`Session`](/aiopslab/session.py) with the orchestrator, where the agent will solve the problem. The orchestrator will evaluate your agent's solution and provide results (stored under `data/results/`). You can use these to improve your agent.
+This process will create a [`Session`](/aiopslab/session.py) with the conductor, where the agent will solve the problem. The conductor will evaluate your agent's solution and provide results (stored under `data/results/`). You can use these to improve your agent.
 
 
 ### How to add new applications to AIOpsLab?
@@ -200,9 +200,9 @@ To add a new application to AIOpsLab with Helm, you need to:
             "namespace": "<K8S namespace where app should be deployed>"
         }
         ```
-        > *Note*: The `Helm Config` is used by the orchestrator to auto-deploy your app when a problem associated with it is started.
+        > *Note*: The `Helm Config` is used by the conductor to auto-deploy your app when a problem associated with it is started.
 
-        > *Note*: The orchestrator will auto-provide *all other* fields as context to the agent for any problem associated with this app.
+        > *Note*: The conductor will auto-provide *all other* fields as context to the agent for any problem associated with this app.
 
     Create a JSON file with this metadata and save it in the [`metadata`](/aiopslab/service/metadata) directory. For example the `social-network` app: [social-network.json](/aiopslab/service/metadata/social-network.json)
 
@@ -224,24 +224,24 @@ To add a new application to AIOpsLab with Helm, you need to:
 
 ### How to add new problems to AIOpsLab?
 
-Similar to applications, AIOpsLab provides a default [list of problems](/aiopslab/orchestrator/problems/registry.py) to evaluate agents. However, as a developer you can add new problems to AIOpsLab and design them around your applications.
+Similar to applications, AIOpsLab provides a default [list of problems](/aiopslab/conductor/problems/registry.py) to evaluate agents. However, as a developer you can add new problems to AIOpsLab and design them around your applications.
 
 Each problem in AIOpsLab has 5 components:
 1. *Application*: The application on which the problem is based.
 2. *Task*: The AIOps task that the agent needs to perform.
- Currently we support: [Detection](/aiopslab/orchestrator/tasks/detection.py), [Localization](/aiopslab/orchestrator/tasks/localization.py), [Analysis](/aiopslab/orchestrator/tasks/analysis.py), and [Mitigation](/aiopslab/orchestrator/tasks/mitigation.py).
+ Currently we support: [Detection](/aiopslab/conductor/tasks/detection.py), [Localization](/aiopslab/conductor/tasks/localization.py), [Analysis](/aiopslab/conductor/tasks/analysis.py), and [Mitigation](/aiopslab/conductor/tasks/mitigation.py).
 3. *Fault*: The fault being introduced in the application.
 4. *Workload*: The workload that is generated for the application.
 5. *Evaluator*: The evaluator that checks the agent's performance.
 
 To add a new problem to AIOpsLab, create a new Python file 
-in the [`problems`](/aiopslab/orchestrator/problems) directory, as follows:
+in the [`problems`](/aiopslab/conductor/problems) directory, as follows:
 
 1. **Setup**. Import your chosen application (say `MyApp`) and task (say `LocalizationTask`):
 
     ```python
     from aiopslab.service.apps.myapp import MyApp
-    from aiopslab.orchestrator.tasks.localization import LocalizationTask
+    from aiopslab.conductor.tasks.localization import LocalizationTask
     ```
 
 2. **Define**. To define a problem, create a class that inherits from your chosen `Task`, and defines 3 methods: `start_workload`, `inject_fault`, and `eval`:
@@ -261,10 +261,10 @@ in the [`problems`](/aiopslab/orchestrator/problems) directory, as follows:
             # <your evaluation logic here>
     ```
 
-3. **Register**. Finally, add your problem to the orchestrator's registry [here](/aiopslab/orchestrator/problems/registry.py).
+3. **Register**. Finally, add your problem to the conductor's registry [here](/aiopslab/conductor/problems/registry.py).
 
 
-See a full example of a problem [here](/aiopslab/orchestrator/problems/k8s_target_port_misconfig/target_port.py). 
+See a full example of a problem [here](/aiopslab/conductor/problems/k8s_target_port_misconfig/target_port.py). 
 <details>
   <summary>Click to show the description of the problem in detail</summary>
 
@@ -300,9 +300,9 @@ See a full example of a problem [here](/aiopslab/orchestrator/problems/k8s_targe
         return self.results
     ```
 
-    > *Note*: When an agent starts a problem, the orchestrator creates a [`Session`](/aiopslab/session.py) object that stores the agent's interaction. The `trace` parameter is this session's recorded trace.
+    > *Note*: When an agent starts a problem, the conductor creates a [`Session`](/aiopslab/session.py) object that stores the agent's interaction. The `trace` parameter is this session's recorded trace.
 
-    > Relevant Code: [aiopslab/orchestrator/evaluators/](/aiopslab/orchestrator/evaluators/)
+    > Relevant Code: [aiopslab/conductor/evaluators/](/aiopslab/conductor/evaluators/)
 
 </details>
 
@@ -327,10 +327,10 @@ See a full example of a problem [here](/aiopslab/orchestrator/problems/k8s_targe
 </details>
 
 <details>
-  <summary>Orchestrator</summary>
+  <summary>Conductor</summary>
   <pre>
-  orchestrator
-  ├── orchestrator.py - the main orchestration engine
+  conductor
+  ├── conductor.py - the main orchestration engine
   ├── parser.py - parser for agent responses
   ├── evaluators - eval metrics in the system
   │   ├── prompts.py - prompts for LLM-as-a-Judge

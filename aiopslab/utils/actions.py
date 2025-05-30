@@ -59,7 +59,7 @@ def get_actions(task: str, subtype: str | None = None) -> dict:
         dict: A dictionary of actions for the given task.
     """
     class_name = task.title() + "Actions"
-    module = importlib.import_module("aiopslab.orchestrator.actions." + task)
+    module = importlib.import_module("aiopslab.conductor.actions." + task)
     class_obj = getattr(module, class_name)
 
     actions = {

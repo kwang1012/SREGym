@@ -4,8 +4,8 @@ import time
 
 import wandb
 
-from aiopslab.orchestrator import Orchestrator
-from aiopslab.orchestrator.problems.registry import ProblemRegistry
+from aiopslab.conductor import Conductor
+from aiopslab.conductor.problems.registry import ProblemRegistry
 from clients.utils.llm import vLLMClient
 from clients.utils.templates import DOCS_SHELL_ONLY
 
@@ -39,7 +39,7 @@ class Agent:
         """Wrapper to interface the agent with OpsBench.
 
         Args:
-            input (str): The input from the orchestrator/environment.
+            input (str): The input from the conductor/environment.
 
         Returns:
             str: The response from the agent.
@@ -67,15 +67,15 @@ if __name__ == "__main__":
     for pid in pids:
         agent = Agent()  # Initialize the agent
 
-        orchestrator = Orchestrator()
-        orchestrator.register_agent(agent, name="Qwen2.5-Coder-3B-Instruct")
+        conductor = Conductor()
+        conductor.register_agent(agent, name="Qwen2.5-Coder-3B-Instruct")
         try:
             print(f"*" * 30)
             print(f"Began processing pid {pid}.")
             print(f"*" * 30)
-            problem_desc, instructs, apis = orchestrator.init_problem(pid)
+            problem_desc, instructs, apis = conductor.init_problem(pid)
             agent.init_context(problem_desc, instructs, apis)
-            asyncio.run(orchestrator.start_problem())
+            asyncio.run(conductor.start_problem())
             print(f"*" * 30)
             print(f"Successfully processed pid {pid}.")
             print(f"*" * 30)

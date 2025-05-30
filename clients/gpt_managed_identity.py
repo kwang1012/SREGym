@@ -10,7 +10,7 @@ Paper: https://arxiv.org/abs/2303.08774
 import asyncio
 import sys
 
-from aiopslab.orchestrator import Orchestrator
+from aiopslab.conductor import Conductor
 from clients.utils.llm import GPTClient
 from clients.utils.templates import DOCS_SHELL_ONLY
 
@@ -25,9 +25,7 @@ class Agent:
 
         self.shell_api = self._filter_dict(apis, lambda k, _: "exec_shell" in k)
         self.submit_api = self._filter_dict(apis, lambda k, _: "submit" in k)
-        stringify_apis = lambda apis: "\n\n".join(
-            [f"{k}\n{v}" for k, v in apis.items()]
-        )
+        stringify_apis = lambda apis: "\n\n".join([f"{k}\n{v}" for k, v in apis.items()])
 
         self.system_message = DOCS_SHELL_ONLY.format(
             prob_desc=problem_desc,
@@ -44,7 +42,7 @@ class Agent:
         """Wrapper to interface the agent with OpsBench.
 
         Args:
-            input (str): The input from the orchestrator/environment.
+            input (str): The input from the conductor/environment.
 
         Returns:
             str: The response from the agent.
@@ -66,10 +64,10 @@ if __name__ == "__main__":
 
     agent = Agent(azure_config_file=sys.argv[1])
 
-    orchestrator = Orchestrator()
-    orchestrator.register_agent(agent, name="gpt-w-shell")
+    conductor = Conductor()
+    conductor.register_agent(agent, name="gpt-w-shell")
 
     pid = "misconfig_app_hotel_res-mitigation-1"
-    problem_desc, instructs, apis = orchestrator.init_problem(pid)
+    problem_desc, instructs, apis = conductor.init_problem(pid)
     agent.init_context(problem_desc, instructs, apis)
-    asyncio.run(orchestrator.start_problem())
+    asyncio.run(conductor.start_problem())

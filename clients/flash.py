@@ -9,8 +9,8 @@ from typing import Any, Dict, List, Tuple
 import tiktoken
 from pydantic import BaseModel
 
-from aiopslab.orchestrator import Orchestrator
-from aiopslab.orchestrator.problems.registry import ProblemRegistry
+from aiopslab.conductor import Conductor
+from aiopslab.conductor.problems.registry import ProblemRegistry
 from clients.utils.llm import GPTClient
 
 logging.basicConfig(level=logging.INFO)
@@ -36,9 +36,7 @@ def trim_history_to_token_limit(history, max_tokens=90000, model="gpt-4"):
 
     if last_msg_tokens > max_tokens:
         # If even the last message is too big, truncate its content
-        truncated_content = enc.decode(
-            enc.encode(last_msg["content"])[: max_tokens - 4]
-        )
+        truncated_content = enc.decode(enc.encode(last_msg["content"])[: max_tokens - 4])
         return [{"role": last_msg["role"], "content": truncated_content}]
 
     trimmed.insert(0, last_msg)
@@ -64,9 +62,7 @@ class FlashAgent:
     def init_context(self, problem_desc: str, instructions: str, apis: dict):
         self.shell_api = self._filter_dict(apis, lambda k, _: "exec_shell" in k)
         self.submit_api = self._filter_dict(apis, lambda k, _: "submit" in k)
-        self.telemetry_apis = self._filter_dict(
-            apis, lambda k, _: "exec_shell" not in k and "submit" not in k
-        )
+        self.telemetry_apis = self._filter_dict(apis, lambda k, _: "exec_shell" not in k and "submit" not in k)
 
         self.system_message = f"""
         Problem Description: {problem_desc}
@@ -94,23 +90,13 @@ class FlashAgent:
 
     async def get_action(self, input_text: str) -> str:
         """Determine the next action based on the input, hindsight, and reasoning."""
-        trimmed_for_hindsight = trim_history_to_token_limit(
-            self.history, max_tokens=50000
-        )
-        hindsight = await self.diagnose_with_hindsight(
-            input_text, trimmed_for_hindsight
-        )
+        trimmed_for_hindsight = trim_history_to_token_limit(self.history, max_tokens=50000)
+        hindsight = await self.diagnose_with_hindsight(input_text, trimmed_for_hindsight)
         if hindsight:
             hightsight = hindsight[:1000]
 
-        combined_input = (
-            f"{input_text}\n\nHindsight from Flash agent:\n{hindsight}"
-            if hindsight
-            else input_text
-        )
-        trimmed_history = trim_history_to_token_limit(
-            self.history + [{"role": "user", "content": combined_input}]
-        )
+        combined_input = f"{input_text}\n\nHindsight from Flash agent:\n{hindsight}" if hindsight else input_text
+        trimmed_history = trim_history_to_token_limit(self.history + [{"role": "user", "content": combined_input}])
         response = self.llm.run(trimmed_history)
         self.history = trimmed_history + [{"role": "assistant", "content": response[0]}]
 
@@ -172,15 +158,15 @@ if __name__ == "__main__":
 
     for pid in problems:
         flash_agent = FlashAgent()
-        orchestrator = Orchestrator()
+        conductor = Conductor()
 
-        orchestrator.register_agent(flash_agent, name="flash")
+        conductor.register_agent(flash_agent, name="flash")
 
         try:
-            problem_desc, instructs, apis = orchestrator.init_problem(pid)
+            problem_desc, instructs, apis = conductor.init_problem(pid)
             flash_agent.init_context(problem_desc, instructs, apis)
 
-            full_output = asyncio.run(orchestrator.start_problem())
+            full_output = asyncio.run(conductor.start_problem())
             results = full_output.get("results", {})
 
             filename = os.path.join("results", f"flash_{pid}.json")

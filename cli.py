@@ -10,7 +10,7 @@ from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
 
-from aiopslab.orchestrator import Orchestrator
+from aiopslab.conductor import Conductor
 from aiopslab.service.shell import Shell
 
 WELCOME = """
@@ -38,11 +38,11 @@ At each turn think step-by-step and respond with your action.
 
 
 class HumanAgent:
-    def __init__(self, orchestrator):
+    def __init__(self, conductor):
         self.session = PromptSession()
         self.console = Console(force_terminal=True, color_system="auto")
-        self.orchestrator = orchestrator
-        self.pids = self.orchestrator.problems.get_problem_ids()
+        self.conductor = conductor
+        self.pids = self.conductor.problems.get_problem_ids()
         self.completer = WordCompleter(self.pids, ignore_case=True, match_middle=True)
 
     def display_welcome_message(self):
@@ -52,13 +52,9 @@ class HumanAgent:
     def display_context(self, problem_desc, apis):
         self.shell_api = self._filter_dict(apis, lambda k, _: "exec_shell" in k)
         self.submit_api = self._filter_dict(apis, lambda k, _: "submit" in k)
-        self.telemetry_apis = self._filter_dict(
-            apis, lambda k, _: "exec_shell" not in k and "submit" not in k
-        )
+        self.telemetry_apis = self._filter_dict(apis, lambda k, _: "exec_shell" not in k and "submit" not in k)
 
-        stringify_apis = lambda apis: "\n\n".join(
-            [f"{k}\n{v}" for k, v in apis.items()]
-        )
+        stringify_apis = lambda apis: "\n\n".join([f"{k}\n{v}" for k, v in apis.items()])
 
         self.task_message = TASK_MESSAGE.format(
             prob_desc=problem_desc,
@@ -93,8 +89,6 @@ class HumanAgent:
         user_input = await self.get_user_input()
 
         if not user_input.strip().startswith("submit("):
-            from aiopslab.service.shell import Shell
-
             try:
                 output = Shell.exec(user_input.strip())
                 self.display_env_message(output)
@@ -105,7 +99,7 @@ class HumanAgent:
         return f"Action:```\n{user_input}\n```"
 
     def init_problem(self, problem_id="misconfig-mitigation-1"):
-        problem_desc, _, apis = self.orchestrator.init_problem(problem_id)
+        problem_desc, _, apis = self.conductor.init_problem(problem_id)
         self.display_context(problem_desc, apis)
 
     async def get_user_input(self, completer=None):
@@ -117,9 +111,7 @@ class HumanAgent:
             try:
                 input = await loop.run_in_executor(
                     None,
-                    lambda: self.session.prompt(
-                        prompt_text, style=style, completer=completer
-                    ),
+                    lambda: self.session.prompt(prompt_text, style=style, completer=completer),
                 )
 
                 if input.lower() == "exit":
@@ -134,14 +126,14 @@ class HumanAgent:
 
 
 async def main():
-    orchestrator = Orchestrator()
-    agent = HumanAgent(orchestrator)
-    orchestrator.register_agent(agent, name="human")
+    conductor = Conductor()
+    agent = HumanAgent(conductor)
+    conductor.register_agent(agent, name="human")
 
     agent.display_welcome_message()
     await agent.set_problem()
 
-    results = await orchestrator.start_problem()
+    results = await conductor.start_problem()
     print(results)
 
 
