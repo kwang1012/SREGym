@@ -1,4 +1,4 @@
-"""Naive ReAct client for AIOpsLab.
+"""Naive ReAct client for SREArena.
 
 Yao, S., Zhao, J., Yu, D., Du, N., Shafran, I., Narasimhan, K., & Cao, Y. (2022).
 React: Synergizing reasoning and acting in language models. arXiv preprint arXiv:2210.03629.
@@ -12,10 +12,10 @@ import json
 
 import tiktoken
 
-from aiopslab.conductor import Conductor
-from aiopslab.conductor.problems.registry import ProblemRegistry
 from clients.utils.llm import GPTClient
 from clients.utils.templates import DOCS
+from srearena.conductor import Conductor
+from srearena.conductor.problems.registry import ProblemRegistry
 
 RESP_INSTR = """DO NOT REPEAT ACTIONS! Respond with:
 Thought: <your thought on the previous output>

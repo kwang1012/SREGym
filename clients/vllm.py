@@ -4,10 +4,10 @@ import time
 
 import wandb
 
-from aiopslab.conductor import Conductor
-from aiopslab.conductor.problems.registry import ProblemRegistry
 from clients.utils.llm import vLLMClient
 from clients.utils.templates import DOCS_SHELL_ONLY
+from srearena.conductor import Conductor
+from srearena.conductor.problems.registry import ProblemRegistry
 
 
 class Agent:
@@ -59,7 +59,7 @@ if __name__ == "__main__":
 
     if use_wandb:
         # Initialize wandb run
-        wandb.init(project="AIOpsLab", entity="AIOpsLab")
+        wandb.init(project="SREArena", entity="SREArena")
 
     registry = ProblemRegistry()
     pids = list(registry.PROBLEM_REGISTRY.keys())

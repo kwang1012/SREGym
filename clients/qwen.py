@@ -1,13 +1,13 @@
-"""Naive Qwen client (with shell access) for AIOpsLab."""
+"""Naive Qwen client (with shell access) for SREArena."""
 
 import asyncio
 import os
 
 import wandb
 
-from aiopslab.conductor import Conductor
 from clients.utils.llm import QwenClient
 from clients.utils.templates import DOCS_SHELL_ONLY
+from srearena.conductor import Conductor
 
 
 class Agent:
@@ -59,7 +59,7 @@ if __name__ == "__main__":
 
     if use_wandb:
         # Initialize wandb running
-        wandb.init(project="AIOpsLab", entity="AIOpsLab")
+        wandb.init(project="SREArena", entity="SREArena")
 
     agent = Agent()
 

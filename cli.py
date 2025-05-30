@@ -10,8 +10,8 @@ from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
 
-from aiopslab.conductor import Conductor
-from aiopslab.service.shell import Shell
+from srearena.conductor import Conductor
+from srearena.service.shell import Shell
 
 WELCOME = """
 # SREArena

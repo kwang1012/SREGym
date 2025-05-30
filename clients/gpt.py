@@ -1,4 +1,4 @@
-"""Naive GPT4 client (with shell access) for AIOpsLab.
+"""Naive GPT4 client (with shell access) for SREArena.
 
 Achiam, Josh, Steven Adler, Sandhini Agarwal, Lama Ahmad, Ilge Akkaya, Florencia Leoni Aleman, Diogo Almeida et al.
 "Gpt-4 technical report." arXiv preprint arXiv:2303.08774 (2023).
@@ -15,10 +15,10 @@ import wandb
 from dotenv import load_dotenv
 from parse_result import DOCS_SHELL_ONLY
 
-from aiopslab.conductor import Conductor
-from aiopslab.conductor.problems.registry import ProblemRegistry
 from clients.utils.llm import GPTClient
 from clients.utils.templates import DOCS_SHELL_ONLY
+from srearena.conductor import Conductor
+from srearena.conductor.problems.registry import ProblemRegistry
 
 # Load environment variables from the .env file
 load_dotenv()
@@ -112,7 +112,7 @@ if __name__ == "__main__":
 
     if use_wandb:
         # Initialize wandb running
-        wandb.init(project="AIOpsLab", entity="AIOpsLab")
+        wandb.init(project="SREArena", entity="SREArena")
 
     problems = ProblemRegistry().PROBLEM_REGISTRY
     for pid in problems:

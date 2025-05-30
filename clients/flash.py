@@ -9,9 +9,9 @@ from typing import Any, Dict, List, Tuple
 import tiktoken
 from pydantic import BaseModel
 
-from aiopslab.conductor import Conductor
-from aiopslab.conductor.problems.registry import ProblemRegistry
 from clients.utils.llm import GPTClient
+from srearena.conductor import Conductor
+from srearena.conductor.problems.registry import ProblemRegistry
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

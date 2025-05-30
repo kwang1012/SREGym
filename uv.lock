@@ -69,7 +69,7 @@ wheels = [
 ]
 
 [[package]]
-name = "aiopslab"
+name = "srearena"
 version = "0.0.1"
 source = { editable = "." }
 dependencies = [

@@ -1,4 +1,4 @@
-"""Naive DeepSeek-R1 client (with shell access) for AIOpsLab.
+"""Naive DeepSeek-R1 client (with shell access) for SREArena.
 
 "DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning" arXiv preprint arXiv:2501.12948 (2025).
 
@@ -11,9 +11,9 @@ import os
 import wandb
 from dotenv import load_dotenv
 
-from aiopslab.conductor import Conductor
 from clients.utils.llm import DeepSeekClient
 from clients.utils.templates import DOCS_SHELL_ONLY
+from srearena.conductor import Conductor
 
 load_dotenv()
 
@@ -70,7 +70,7 @@ if __name__ == "__main__":
 
     if use_wandb:
         # Initialize wandb running
-        wandb.init(project="AIOpsLab", entity="AIOpsLab")
+        wandb.init(project="SREArena", entity="SREArena")
 
     agent = Agent()
 

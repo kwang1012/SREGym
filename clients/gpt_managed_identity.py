@@ -1,4 +1,4 @@
-"""Naive GPT client (with shell access) for AIOpsLab. Uses Azure Managed Identity for authentication.
+"""Naive GPT client (with shell access) for SREArena. Uses Azure Managed Identity for authentication.
 
 Achiam, Josh, Steven Adler, Sandhini Agarwal, Lama Ahmad, Ilge Akkaya, Florencia Leoni Aleman, Diogo Almeida et al.
 "Gpt-4 technical report." arXiv preprint arXiv:2303.08774 (2023).
@@ -10,9 +10,9 @@ Paper: https://arxiv.org/abs/2303.08774
 import asyncio
 import sys
 
-from aiopslab.conductor import Conductor
 from clients.utils.llm import GPTClient
 from clients.utils.templates import DOCS_SHELL_ONLY
+from srearena.conductor import Conductor
 
 
 class Agent:
