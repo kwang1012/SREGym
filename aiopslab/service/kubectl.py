@@ -1,6 +1,3 @@
-# Copyright (c) Microsoft Corporation.
-# Licensed under the MIT License.
-
 """Interface to K8S controller service."""
 
 import json
@@ -48,9 +45,7 @@ class KubeCtl:
 
     def get_pod_name(self, namespace, label_selector):
         """Get the name of the first pod in a namespace that matches a given label selector."""
-        pod_info = self.core_v1_api.list_namespaced_pod(
-            namespace, label_selector=label_selector
-        )
+        pod_info = self.core_v1_api.list_namespaced_pod(namespace, label_selector=label_selector)
         return pod_info.items[0].metadata.name
 
     def get_pod_logs(self, pod_name, namespace):
@@ -72,9 +67,7 @@ class KubeCtl:
         """Wait for all pods in a namespace to be in a Ready state before proceeding."""
 
         console = Console()
-        console.log(
-            f"[bold green]Waiting for all pods in namespace '{namespace}' to be ready..."
-        )
+        console.log(f"[bold green]Waiting for all pods in namespace '{namespace}' to be ready...")
 
         with console.status("[bold green]Waiting for pods to be ready...") as status:
             wait = 0
@@ -87,14 +80,11 @@ class KubeCtl:
                         ready_pods = [
                             pod
                             for pod in pod_list.items
-                            if pod.status.container_statuses
-                            and all(cs.ready for cs in pod.status.container_statuses)
+                            if pod.status.container_statuses and all(cs.ready for cs in pod.status.container_statuses)
                         ]
 
                         if len(ready_pods) == len(pod_list.items):
-                            console.log(
-                                f"[bold green]All pods in namespace '{namespace}' are ready."
-                            )
+                            console.log(f"[bold green]All pods in namespace '{namespace}' are ready.")
                             return
 
                 except Exception as e:
@@ -120,30 +110,22 @@ class KubeCtl:
                 try:
                     self.core_v1_api.read_namespace(name=namespace)
                 except Exception as e:
-                    console.log(
-                        f"[bold green]Namespace '{namespace}' has been deleted."
-                    )
+                    console.log(f"[bold green]Namespace '{namespace}' has been deleted.")
                     return
 
                 time.sleep(sleep)
                 wait += sleep
 
-            raise Exception(
-                f"[red]Timeout: Namespace '{namespace}' was not deleted within {max_wait} seconds."
-            )
+            raise Exception(f"[red]Timeout: Namespace '{namespace}' was not deleted within {max_wait} seconds.")
 
     def update_deployment(self, name: str, namespace: str, deployment):
         """Update the deployment configuration."""
-        return self.apps_v1_api.replace_namespaced_deployment(
-            name, namespace, deployment
-        )
+        return self.apps_v1_api.replace_namespaced_deployment(name, namespace, deployment)
 
     def patch_service(self, name, namespace, body):
         """Patch a Kubernetes service in a specified namespace."""
         try:
-            api_response = self.core_v1_api.patch_namespaced_service(
-                name, namespace, body
-            )
+            api_response = self.core_v1_api.patch_namespaced_service(name, namespace, body)
             return api_response
         except ApiException as e:
             print(f"Exception when patching service: {e}\n")
@@ -179,21 +161,15 @@ class KubeCtl:
     def create_or_update_configmap(self, name: str, namespace: str, data: dict):
         """Create a configmap if it doesn't exist, or update it if it does."""
         try:
-            existing_configmap = self.core_v1_api.read_namespaced_config_map(
-                name, namespace
-            )
+            existing_configmap = self.core_v1_api.read_namespaced_config_map(name, namespace)
             # ConfigMap exists, update it
             existing_configmap.data = data
-            self.core_v1_api.replace_namespaced_config_map(
-                name, namespace, existing_configmap
-            )
+            self.core_v1_api.replace_namespaced_config_map(name, namespace, existing_configmap)
             print(f"ConfigMap '{name}' updated in namespace '{namespace}'")
         except ApiException as e:
             if e.status == 404:
                 # ConfigMap doesn't exist, create it
-                body = client.V1ConfigMap(
-                    metadata=client.V1ObjectMeta(name=name), data=data
-                )
+                body = client.V1ConfigMap(metadata=client.V1ObjectMeta(name=name), data=data)
                 self.core_v1_api.create_namespaced_config_map(namespace, body)
                 print(f"ConfigMap '{name}' created in namespace '{namespace}'")
             else:
@@ -208,9 +184,7 @@ class KubeCtl:
             data=data,
         )
         try:
-            return self.core_v1_api.replace_namespaced_config_map(
-                name, namespace, config_map
-            )
+            return self.core_v1_api.replace_namespaced_config_map(name, namespace, config_map)
         except ApiException as e:
             print(f"Exception when updating configmap: {e}\n")
             return
@@ -223,14 +197,10 @@ class KubeCtl:
     def delete_configs(self, namespace: str, config_path: str):
         """Delete Kubernetes configurations from a specified path in a namespace."""
         try:
-            exists_resource = self.exec_command(
-                f"kubectl get all -n {namespace} -o name"
-            )
+            exists_resource = self.exec_command(f"kubectl get all -n {namespace} -o name")
             if exists_resource:
                 print(f"Deleting K8S configs in namespace: {namespace}")
-                command = (
-                    f"kubectl delete -Rf {config_path} -n {namespace} --timeout=10s"
-                )
+                command = f"kubectl delete -Rf {config_path} -n {namespace} --timeout=10s"
                 self.exec_command(command)
             else:
                 print(f"No resources found in: {namespace}. Skipping deletion.")
@@ -269,9 +239,7 @@ class KubeCtl:
         if input_data is not None:
             input_data = input_data.encode("utf-8")
         try:
-            out = subprocess.run(
-                command, shell=True, check=True, capture_output=True, input=input_data
-            )
+            out = subprocess.run(command, shell=True, check=True, capture_output=True, input=input_data)
             return out.stdout.decode("utf-8")
         except subprocess.CalledProcessError as e:
             return e.stderr.decode("utf-8")

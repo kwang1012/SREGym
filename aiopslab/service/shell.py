@@ -1,6 +1,3 @@
-# Copyright (c) Microsoft Corporation.
-# Licensed under the MIT License.
-
 """Interface to run shell commands in the service cluster."""
 
 import os
@@ -78,9 +75,7 @@ class Shell:
                 return output_message
 
         except Exception as e:
-            raise RuntimeError(
-                f"Failed to execute command via SSH: {command}\nError: {str(e)}"
-            )
+            raise RuntimeError(f"Failed to execute command via SSH: {command}\nError: {str(e)}")
 
         finally:
             ssh_client.close()

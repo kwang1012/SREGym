@@ -1,7 +1,3 @@
-# Copyright (c) Microsoft Corporation.
-# Licensed under the MIT License.
-
-
 import os
 import shutil
 import zipfile
@@ -21,9 +17,7 @@ def get_dates_and_timestamps(start, end):
     while current_dt <= end_dt:
         dates.append(current_dt.strftime("%Y-%m-%d"))
         start_of_day = current_dt.replace(hour=0, minute=0, second=0, microsecond=0)
-        end_of_day = current_dt.replace(
-            hour=23, minute=59, second=59, microsecond=999999
-        )
+        end_of_day = current_dt.replace(hour=23, minute=59, second=59, microsecond=999999)
         timestamps.append([start_of_day.timestamp(), end_of_day.timestamp()])
         current_dt += timedelta(days=1)
     timestamps[0][0] = start

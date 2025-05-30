@@ -1,6 +1,3 @@
-# Copyright (c) Microsoft Corporation.
-# Licensed under the MIT License.
-
 """Interface to the wrk workload generator."""
 
 import time
@@ -12,9 +9,7 @@ from aiopslab.paths import BASE_DIR
 
 
 class Wrk:
-    def __init__(
-        self, rate, dist="norm", connections=2, duration=6, threads=2, latency=True
-    ):
+    def __init__(self, rate, dist="norm", connections=2, duration=6, threads=2, latency=True):
         self.rate = rate
         self.dist = dist
         self.connections = connections
@@ -45,9 +40,7 @@ class Wrk:
 
         try:
             print(f"Creating ConfigMap '{name}'...")
-            api_instance.create_namespaced_config_map(
-                namespace=namespace, body=configmap_body
-            )
+            api_instance.create_namespaced_config_map(namespace=namespace, body=configmap_body)
             print(f"ConfigMap '{name}' created successfully.")
         except client.exceptions.ApiException as e:
             print(f"Error creating ConfigMap '{name}': {e}")
@@ -96,9 +89,7 @@ class Wrk:
 
         api_instance = client.BatchV1Api()
         try:
-            existing_job = api_instance.read_namespaced_job(
-                name=job_name, namespace=namespace
-            )
+            existing_job = api_instance.read_namespaced_job(name=job_name, namespace=namespace)
             if existing_job:
                 print(f"Job '{job_name}' already exists. Deleting it...")
                 api_instance.delete_namespaced_job(
@@ -113,9 +104,7 @@ class Wrk:
                 return
 
         try:
-            response = api_instance.create_namespaced_job(
-                namespace=namespace, body=job_template
-            )
+            response = api_instance.create_namespaced_job(namespace=namespace, body=job_template)
             print(f"Job created: {response.metadata.name}")
         except client.exceptions.ApiException as e:
             print(f"Error creating job: {e}")
@@ -123,9 +112,7 @@ class Wrk:
 
         try:
             while True:
-                job_status = api_instance.read_namespaced_job_status(
-                    name=job_name, namespace=namespace
-                )
+                job_status = api_instance.read_namespaced_job_status(name=job_name, namespace=namespace)
                 if job_status.status.ready:
                     print("Job completed successfully.")
                     break
@@ -140,9 +127,7 @@ class Wrk:
         namespace = "default"
         configmap_name = "wrk2-payload-script"
 
-        self.create_configmap(
-            name=configmap_name, namespace=namespace, payload_script_path=payload_script
-        )
+        self.create_configmap(name=configmap_name, namespace=namespace, payload_script_path=payload_script)
 
         self.create_wrk_job(
             job_name="wrk2-job",

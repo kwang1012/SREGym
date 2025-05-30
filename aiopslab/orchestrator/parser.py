@@ -1,6 +1,3 @@
-# Copyright (c) Microsoft Corporation.
-# Licensed under the MIT License.
-
 """Parser for various APIs that an Agent may invoke."""
 
 import ast
@@ -25,9 +22,7 @@ class ResponseParser:
         code_block = self.extract_codeblock(response)
         context = self.extract_context(response)
         api_name = self.parse_api_name(code_block)
-        args, kwargs = self.parse_args(
-            code_block, is_shell_command=api_name == "exec_shell"
-        )
+        args, kwargs = self.parse_args(code_block, is_shell_command=api_name == "exec_shell")
         return {
             "api_name": api_name,
             "args": args,
@@ -116,9 +111,7 @@ class ResponseParser:
                 elif args_str.startswith("'") and args_str.endswith("'"):
                     arg_str = args_str.strip("'")
                 else:
-                    raise ResponseParsingError(
-                        "Error when parsing response: commands must be quoted strings"
-                    )
+                    raise ResponseParsingError("Error when parsing response: commands must be quoted strings")
 
                 arg_str = arg_str.replace('\\"', '"').replace("\\'", "'")
                 return [arg_str], {}
@@ -160,10 +153,7 @@ class ResponseParser:
         elif isinstance(node, ast.List):
             return [self.eval_ast_node(elt) for elt in node.elts]
         elif isinstance(node, ast.Dict):
-            return {
-                self.eval_ast_node(key): self.eval_ast_node(value)
-                for key, value in zip(node.keys, node.values)
-            }
+            return {self.eval_ast_node(key): self.eval_ast_node(value) for key, value in zip(node.keys, node.values)}
         elif isinstance(node, ast.Name):
             if node.id == "True":
                 return True

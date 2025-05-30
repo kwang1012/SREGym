@@ -1,8 +1,4 @@
-# Copyright (c) Microsoft Corporation.
-# Licensed under the MIT License.
-
 """An common abstraction for a cached LLM inference setup. Currently supports OpenAI's gpt-4-turbo and other models."""
-
 
 import json
 import os
@@ -102,9 +98,7 @@ class DeepSeekClient:
             if cache_result is not None:
                 return cache_result
 
-        client = OpenAI(
-            api_key=os.getenv("DEEPSEEK_API_KEY"), base_url="https://api.deepseek.com"
-        )
+        client = OpenAI(api_key=os.getenv("DEEPSEEK_API_KEY"), base_url="https://api.deepseek.com")
         try:
             response = client.chat.completions.create(
                 messages=payload,  # type: ignore
@@ -168,10 +162,7 @@ class QwenClient:
                 print(chunk.usage)
             else:
                 delta = chunk.choices[0].delta
-                if (
-                    hasattr(delta, "reasoning_content")
-                    and delta.reasoning_content != None
-                ):
+                if hasattr(delta, "reasoning_content") and delta.reasoning_content != None:
                     reasoning_content += delta.reasoning_content
                 else:
                     if delta.content != "" and is_answering is False:

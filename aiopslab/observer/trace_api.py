@@ -1,6 +1,3 @@
-# Copyright (c) Microsoft Corporation.
-# Licensed under the MIT License.
-
 import json
 import os
 import select
@@ -106,9 +103,7 @@ class TraceAPI:
         """Starts kubectl port-forward command to access Jaeger service or pod."""
         for attempt in range(3):
             if self.is_port_in_use(16686):
-                print(
-                    f"Port 16686 is already in use. Attempt {attempt + 1} of 3. Retrying in 3 seconds..."
-                )
+                print(f"Port 16686 is already in use. Attempt {attempt + 1} of 3. Retrying in 3 seconds...")
                 time.sleep(3)
                 continue
 
@@ -117,9 +112,7 @@ class TraceAPI:
                 pod_name = self.get_jaeger_pod_name()
                 command = f"kubectl port-forward pod/{pod_name} 16686:16686 -n {self.namespace}"
             else:
-                command = (
-                    f"kubectl port-forward svc/jaeger 16686:16686 -n {self.namespace}"
-                )
+                command = f"kubectl port-forward svc/jaeger 16686:16686 -n {self.namespace}"
 
             print("Starting port-forward with command:", command)
             self.port_forward_process = subprocess.Popen(
@@ -130,12 +123,8 @@ class TraceAPI:
                 text=True,
             )
 
-            thread_out = threading.Thread(
-                target=self.print_output, args=(self.port_forward_process.stdout,)
-            )
-            thread_err = threading.Thread(
-                target=self.print_output, args=(self.port_forward_process.stderr,)
-            )
+            thread_out = threading.Thread(target=self.print_output, args=(self.port_forward_process.stdout,))
+            thread_err = threading.Thread(target=self.print_output, args=(self.port_forward_process.stderr,))
             thread_out.start()
             thread_err.start()
 
@@ -183,18 +172,14 @@ class TraceAPI:
         for thread in self.output_threads:
             thread.join(timeout=5)
             if thread.is_alive():
-                print(
-                    f"Thread {thread.name} could not be joined and may need to be stopped forcefully."
-                )
+                print(f"Thread {thread.name} could not be joined and may need to be stopped forcefully.")
         self.output_threads.clear()
         print("Cleanup completed.")
 
     def get_services(self) -> list:
         """Fetch a list of services from the tracing API."""
         url = f"{self.base_url}/api/services"
-        headers = (
-            {"Accept": "application/json"} if self.namespace == "astronomy-shop" else {}
-        )
+        headers = {"Accept": "application/json"} if self.namespace == "astronomy-shop" else {}
 
         try:
             response = requests.get(url, headers=headers)
@@ -220,9 +205,7 @@ class TraceAPI:
         if limit is not None:
             url += f"&limit={limit}"
 
-        headers = (
-            {"Accept": "application/json"} if self.namespace == "astronomy-shop" else {}
-        )
+        headers = {"Accept": "application/json"} if self.namespace == "astronomy-shop" else {}
         try:
             response = requests.get(url, headers=headers)
             response.raise_for_status()
@@ -231,9 +214,7 @@ class TraceAPI:
             print(f"Failed to get traces for {service_name}: {e}")
             return []
 
-    def extract_traces(
-        self, start_time: datetime, end_time: datetime, limit: int = None
-    ) -> list:
+    def extract_traces(self, start_time: datetime, end_time: datetime, limit: int = None) -> list:
         """
         Extract traces for all services between start_time and end_time.
         """
@@ -256,9 +237,7 @@ class TraceAPI:
             )
             for trace in traces:
                 for span in trace["spans"]:
-                    span["serviceName"] = trace["processes"][span["processID"]][
-                        "serviceName"
-                    ]
+                    span["serviceName"] = trace["processes"][span["processID"]]["serviceName"]
                 all_traces.append(trace)  # Collect the trace with service name included
         self.cleanup()
         print("Cleanup completed.")
@@ -290,9 +269,7 @@ class TraceAPI:
                             break
                 parent_span_list.append(parent_span)
 
-                service_name_list.append(
-                    span["serviceName"]
-                )  # Use the correct service name from the span
+                service_name_list.append(span["serviceName"])  # Use the correct service name from the span
                 operation_name_list.append(span["operationName"])
                 start_time_list.append(span["startTime"])
                 duration_list.append(span["duration"])
@@ -302,10 +279,7 @@ class TraceAPI:
                 for tag in span.get("tags", []):
                     if tag["key"] == "error" and tag["value"] == True:
                         has_error = True
-                    if (
-                        tag["key"] == "http.status_code"
-                        or tag["key"] == "response_class"
-                    ):
+                    if tag["key"] == "http.status_code" or tag["key"] == "response_class":
                         response = tag["value"]
                 error_list.append(has_error)
                 response_list.append(response)

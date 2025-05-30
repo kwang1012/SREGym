@@ -1,6 +1,3 @@
-# Copyright (c) Microsoft Corporation.
-# Licensed under the MIT License.
-
 """Interface to the social network application from DeathStarBench"""
 
 from aiopslab.paths import SOCIAL_NETWORK_METADATA, TARGET_MICROSERVICES
@@ -14,9 +11,7 @@ class SocialNetwork(Application):
         super().__init__(SOCIAL_NETWORK_METADATA)
         self.load_app_json()
         self.kubectl = KubeCtl()
-        self.local_tls_path = (
-            TARGET_MICROSERVICES / "socialNetwork/helm-chart/socialnetwork"
-        )
+        self.local_tls_path = TARGET_MICROSERVICES / "socialNetwork/helm-chart/socialnetwork"
         self.create_namespace()
         self.create_tls_secret()
 
@@ -54,9 +49,7 @@ class SocialNetwork(Application):
             self.helm_configs["extra_args"].append(
                 "--set media-frontend.container.image=jacksonarthurclark/media-frontend"
             )
-            self.helm_configs["extra_args"].append(
-                "--set media-frontend.container.imageVersion=latest"
-            )
+            self.helm_configs["extra_args"].append("--set media-frontend.container.imageVersion=latest")
 
         Helm.install(**self.helm_configs)
         Helm.assert_if_deployed(self.helm_configs["namespace"])

@@ -1,6 +1,3 @@
-# Copyright (c) Microsoft Corporation.
-# Licensed under the MIT License.
-
 import json
 import os
 import time
@@ -63,9 +60,7 @@ class LogAPI:
             data = self.log_extract_(start_time=start_time, end_time=current_end_time)
             if len(data) != 0:
                 # Export
-                data.to_csv(
-                    f"{path}/log-{start_time}_{current_end_time}.csv", index=False
-                )
+                data.to_csv(f"{path}/log-{start_time}_{current_end_time}.csv", index=False)
                 csv_list.append(f"{path}/log-{start_time}_{current_end_time}.csv")
             start_time = current_end_time
             time.sleep(1)
@@ -85,14 +80,10 @@ class LogAPI:
 
         if isinstance(start_time, int):
             # start_time = datetime.fromtimestamp(start_time)
-            start_time = datetime.fromtimestamp(start_time, tz=timezone.utc).strftime(
-                "%Y-%m-%dT%H:%M:%SZ"
-            )
+            start_time = datetime.fromtimestamp(start_time, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         if isinstance(end_time, int):
             # end_time = datetime.fromtimestamp(end_time)
-            end_time = datetime.fromtimestamp(end_time, tz=timezone.utc).strftime(
-                "%Y-%m-%dT%H:%M:%SZ"
-            )
+            end_time = datetime.fromtimestamp(end_time, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         # print(start_time, end_time)
         query = {
             "size": quert_size,
@@ -179,9 +170,7 @@ class LogAPI:
                 for index in indices:
                     response = self.elastic.count(index=index)
                     index_date_str = index.split("-")[-1]  # get the date
-                    index_date = datetime.strptime(
-                        index_date_str, "%Y.%m.%d.%H"
-                    )  # transform to datetime
+                    index_date = datetime.strptime(index_date_str, "%Y.%m.%d.%H")  # transform to datetime
 
                     # if within two weeks
                     if index_date >= datetime.now() - timedelta(days=14):
@@ -201,9 +190,7 @@ class LogAPI:
             print("Connection Timeout:", e)
         return data
 
-    def query(
-        self, start_time: Union[int, datetime, str], end_time: Union[int, datetime, str]
-    ):
+    def query(self, start_time: Union[int, datetime, str], end_time: Union[int, datetime, str]):
         if isinstance(start_time, str):
             start_time = int(start_time)
         if isinstance(end_time, str):
@@ -219,13 +206,7 @@ class LogAPI:
         query_size = 2500
         # Elasticsearch query
         query = {
-            "query": {
-                "bool": {
-                    "must": [
-                        {"range": {"@timestamp": {"gte": start_time, "lte": end_time}}}
-                    ]
-                }
-            },
+            "query": {"bool": {"must": [{"range": {"@timestamp": {"gte": start_time, "lte": end_time}}}]}},
             "sort": {"@timestamp": {"order": "asc"}},
             "size": query_size,
         }
@@ -257,14 +238,10 @@ def message_extract(json_str):
     try:
         if "severity" in json_str:
             data = json.loads(json_str)
-            message = "".join(
-                ["severity:", data["severity"], ",", "message:", data["message"]]
-            )
+            message = "".join(["severity:", data["severity"], ",", "message:", data["message"]])
         elif "level" in json_str:
             data = json.loads(json_str)
-            message = "".join(
-                ["level:", data["level"], ",", "message:", data["message"]]
-            )
+            message = "".join(["level:", data["level"], ",", "message:", data["message"]])
     except:
         pass
     return message
@@ -412,9 +389,7 @@ class TimeSelect(Enum):
 
 
 if __name__ == "__main__":
-    logger = LogAPI(
-        monitor_config["api"], monitor_config["username"], monitor_config["password"]
-    )
+    logger = LogAPI(monitor_config["api"], monitor_config["username"], monitor_config["password"])
     # end_time = datetime.now(timezone.utc)
     end_time = datetime.now()
     start_time = end_time - timedelta(minutes=5)

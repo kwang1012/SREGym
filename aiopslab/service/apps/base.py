@@ -1,6 +1,3 @@
-# Copyright (c) Microsoft Corporation.
-# Licensed under the MIT License.
-
 import json
 
 from aiopslab.paths import TARGET_MICROSERVICES

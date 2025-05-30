@@ -1,6 +1,3 @@
-# Copyright (c) Microsoft Corporation.
-# Licensed under the MIT License.
-
 """Interface for helm operations"""
 
 import subprocess
@@ -158,9 +155,7 @@ class Helm:
             command.append("--set")
             command.append(f"{key}={value}")
 
-        process = subprocess.Popen(
-            command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output, error = process.communicate()
 
         if error:
@@ -180,9 +175,7 @@ class Helm:
         """
         print(f"== Helm Repo Add: {name} ==")
         command = f"helm repo add {name} {url}"
-        process = subprocess.Popen(
-            command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
+        process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output, error = process.communicate()
 
         if error:

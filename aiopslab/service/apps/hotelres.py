@@ -1,6 +1,3 @@
-# Copyright (c) Microsoft Corporation.
-# Licensed under the MIT License.
-
 import time
 
 from aiopslab.paths import FAULT_SCRIPTS, HOTEL_RES_METADATA
@@ -102,9 +99,7 @@ class HotelReservation(Application):
     def _remove_pv_finalizers(self, pv_name: str):
         """Remove finalizers from the PersistentVolume to prevent it from being stuck in a 'Terminating' state."""
         # Patch the PersistentVolume to remove finalizers if it is stuck
-        patch_command = (
-            f'kubectl patch pv {pv_name} -p \'{{"metadata":{{"finalizers":null}}}}\''
-        )
+        patch_command = f'kubectl patch pv {pv_name} -p \'{{"metadata":{{"finalizers":null}}}}\''
         _ = self.kubectl.exec_command(patch_command)
 
     # helper methods

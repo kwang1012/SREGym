@@ -1,6 +1,3 @@
-# Copyright (c) Microsoft Corporation.
-# Licensed under the MIT License.
-
 import json
 import os
 import time
@@ -41,9 +38,7 @@ class Prometheus:
                 chart_path = self.helm_configs["chart_path"]
                 self.helm_configs["chart_path"] = str(BASE_DIR / chart_path)
 
-        self.pvc_config_file = os.path.join(
-            BASE_DIR, metadata.get("PersistentVolumeClaimConfig")
-        )
+        self.pvc_config_file = os.path.join(BASE_DIR, metadata.get("PersistentVolumeClaimConfig"))
 
     def get_service_json(self) -> dict:
         """Get metric service metadata in JSON format."""
@@ -93,16 +88,12 @@ class Prometheus:
     def _apply_pvc(self):
         """Apply the PersistentVolumeClaim configuration."""
         print(f"Applying PersistentVolumeClaim from {self.pvc_config_file}")
-        KubeCtl().exec_command(
-            f"kubectl apply -f {self.pvc_config_file} -n {self.namespace}"
-        )
+        KubeCtl().exec_command(f"kubectl apply -f {self.pvc_config_file} -n {self.namespace}")
 
     def _delete_pvc(self):
         """Delete the PersistentVolume and associated PersistentVolumeClaim."""
         pvc_name = self._get_pvc_name_from_file(self.pvc_config_file)
-        result = KubeCtl().exec_command(
-            f"kubectl get pvc {pvc_name} --ignore-not-found"
-        )
+        result = KubeCtl().exec_command(f"kubectl get pvc {pvc_name} --ignore-not-found")
 
         if result:
             print(f"Deleting PersistentVolumeClaim {pvc_name}")
@@ -130,9 +121,7 @@ class Prometheus:
 
     def _is_prometheus_running(self) -> bool:
         """Check if Prometheus is already running in the cluster."""
-        command = (
-            f"kubectl get pods -n {self.namespace} -l app.kubernetes.io/name=prometheus"
-        )
+        command = f"kubectl get pods -n {self.namespace} -l app.kubernetes.io/name=prometheus"
         try:
             result = KubeCtl().exec_command(command)
             if "Running" in result:

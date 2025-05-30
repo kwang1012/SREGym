@@ -1,6 +1,3 @@
-# Copyright (c) Microsoft Corporation.
-# Licensed under the MIT License.
-
 import os
 import subprocess
 import threading
@@ -71,9 +68,7 @@ class SymptomFaultInjector(FaultInjector):
                 "action": "pod-failure",
                 "mode": "one",
                 "duration": duration,
-                "selector": {
-                    "labelSelectors": {"io.kompose.service": ", ".join(microservices)}
-                },
+                "selector": {"labelSelectors": {"io.kompose.service": ", ".join(microservices)}},
             },
         }
 
@@ -117,9 +112,7 @@ class SymptomFaultInjector(FaultInjector):
                 "mode": "one",
                 "duration": "200s",
                 "selector": {"labelSelectors": {"io.kompose.service": microservice}},
-                "containerNames": (
-                    containers if isinstance(containers, list) else [containers]
-                ),
+                "containerNames": (containers if isinstance(containers, list) else [containers]),
             },
         }
 
@@ -152,9 +145,7 @@ class SymptomFaultInjector(FaultInjector):
                 "action": "delay",
                 "mode": "one",
                 "duration": duration,
-                "selector": {
-                    "labelSelectors": {"io.kompose.service": ", ".join(microservices)}
-                },
+                "selector": {"labelSelectors": {"io.kompose.service": ", ".join(microservices)}},
                 "delay": {"latency": latency, "correlation": "100", "jitter": jitter},
             },
         }
@@ -180,9 +171,7 @@ class SymptomFaultInjector(FaultInjector):
                 "action": "pod-kill",
                 "mode": "one",
                 "duration": duration,
-                "selector": {
-                    "labelSelectors": {"io.kompose.service": ", ".join(microservices)}
-                },
+                "selector": {"labelSelectors": {"io.kompose.service": ", ".join(microservices)}},
             },
         }
 
@@ -204,9 +193,7 @@ class SymptomFaultInjector(FaultInjector):
             "metadata": {"name": "kernel-chaos", "namespace": self.namespace},
             "spec": {
                 "mode": "one",
-                "selector": {
-                    "labelSelectors": {"io.kompose.service": ", ".join(microservices)}
-                },
+                "selector": {"labelSelectors": {"io.kompose.service": ", ".join(microservices)}},
                 "failKernRequest": {
                     "callchain": [{"funcname": "__x64_sys_mount"}],
                     "failtype": 0,

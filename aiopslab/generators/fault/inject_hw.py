@@ -1,8 +1,6 @@
-# Copyright (c) Microsoft Corporation.
-# Licensed under the MIT License.
-
 """Inject faults at the hardware layer."""
 
+# TODO: Replace with khaos
 import json
 
 import yaml

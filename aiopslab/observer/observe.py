@@ -1,6 +1,3 @@
-# Copyright (c) Microsoft Corporation.
-# Licensed under the MIT License.
-
 import os
 import shutil
 import threading
@@ -22,9 +19,7 @@ def collect_traces(start_time, end_time):
 
 
 def collect_logs(start_time, end_time):
-    logger = LogAPI(
-        monitor_config["api"], monitor_config["username"], monitor_config["password"]
-    )
+    logger = LogAPI(monitor_config["api"], monitor_config["username"], monitor_config["password"])
     save_path = root_path / "log_output"
     os.makedirs(save_path, exist_ok=True)
     logger.log_extract(
@@ -35,13 +30,9 @@ def collect_logs(start_time, end_time):
 
 
 def collect_metrics(start_time, end_time):
-    prom = PrometheusAPI(
-        namespace=monitor_config["namespace"], url=monitor_config["prometheusApi"]
-    )
+    prom = PrometheusAPI(namespace=monitor_config["namespace"], url=monitor_config["prometheusApi"])
     save_path = root_path / "metrics_output"
-    prom.export_all_metrics(
-        start_time=start_time, end_time=end_time, save_path=str(save_path), step=10
-    )
+    prom.export_all_metrics(start_time=start_time, end_time=end_time, save_path=str(save_path), step=10)
 
 
 def organize_collected_data():
@@ -90,9 +81,7 @@ if __name__ == "__main__":
 
     trace_thread = threading.Thread(target=collect_traces, args=(start_time, end_time))
     log_thread = threading.Thread(target=collect_logs, args=(start_time, end_time))
-    metric_thread = threading.Thread(
-        target=collect_metrics, args=(start_time, end_time)
-    )
+    metric_thread = threading.Thread(target=collect_metrics, args=(start_time, end_time))
 
     trace_thread.start()
     log_thread.start()

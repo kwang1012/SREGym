@@ -1,8 +1,6 @@
-# Copyright (c) Microsoft Corporation.
-# Licensed under the MIT License.
-
 """Inject faults at the OS layer."""
 
+# TODO: replace with khaos
 import json
 import subprocess
 

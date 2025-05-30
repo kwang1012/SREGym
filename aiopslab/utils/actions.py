@@ -1,6 +1,3 @@
-# Copyright (c) Microsoft Corporation.
-# Licensed under the MIT License.
-
 import importlib
 
 
@@ -68,8 +65,7 @@ def get_actions(task: str, subtype: str | None = None) -> dict:
     actions = {
         method: getattr(class_obj, method).__doc__.strip()
         for method in dir(class_obj)
-        if callable(getattr(class_obj, method))
-        and getattr(getattr(class_obj, method), "is_action", False)
+        if callable(getattr(class_obj, method)) and getattr(getattr(class_obj, method), "is_action", False)
     }
 
     if subtype:

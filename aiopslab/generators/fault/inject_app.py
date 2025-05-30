@@ -1,6 +1,3 @@
-# Copyright (c) Microsoft Corporation.
-# Licensed under the MIT License.
-
 """Inject faults at the application layer: Code, MongoDB, Redis, etc."""
 
 import time
@@ -32,19 +29,14 @@ class ApplicationFaultInjector(FaultInjector):
             if service in microservices:
                 pods = self.kubectl.list_pods(self.namespace)
                 # print(pods)
-                target_mongo_pods = [
-                    pod.metadata.name
-                    for pod in pods.items
-                    if service in pod.metadata.name
-                ]
+                target_mongo_pods = [pod.metadata.name for pod in pods.items if service in pod.metadata.name]
                 print(f"Target MongoDB Pods: {target_mongo_pods}")
 
                 # Find the corresponding service pod
                 target_service_pods = [
                     pod.metadata.name
                     for pod in pods.items
-                    if self.mongo_service_pod_map[service] in pod.metadata.name
-                    and "mongodb-" not in pod.metadata.name
+                    if self.mongo_service_pod_map[service] in pod.metadata.name and "mongodb-" not in pod.metadata.name
                 ]
                 print(f"Target Service Pods: {target_service_pods}")
 
@@ -65,18 +57,12 @@ class ApplicationFaultInjector(FaultInjector):
             print(f"Microservices to recover: {microservices}")
             if service in microservices:
                 pods = self.kubectl.list_pods(self.namespace)
-                target_mongo_pods = [
-                    pod.metadata.name
-                    for pod in pods.items
-                    if service in pod.metadata.name
-                ]
+                target_mongo_pods = [pod.metadata.name for pod in pods.items if service in pod.metadata.name]
                 print(f"Target MongoDB Pods for recovery: {target_mongo_pods}")
 
                 # Find the corresponding service pod
                 target_service_pods = [
-                    pod.metadata.name
-                    for pod in pods.items
-                    if self.mongo_service_pod_map[service] in pod.metadata.name
+                    pod.metadata.name for pod in pods.items if self.mongo_service_pod_map[service] in pod.metadata.name
                 ]
                 for pod in target_mongo_pods:
                     if service == "mongodb-rate":
@@ -95,11 +81,7 @@ class ApplicationFaultInjector(FaultInjector):
         for service in target_services:
             if service in microservices:
                 pods = self.kubectl.list_pods(self.namespace)
-                target_mongo_pods = [
-                    pod.metadata.name
-                    for pod in pods.items
-                    if service in pod.metadata.name
-                ]
+                target_mongo_pods = [pod.metadata.name for pod in pods.items if service in pod.metadata.name]
                 print(f"Target MongoDB Pods: {target_mongo_pods}")
 
                 target_service_pods = [
@@ -108,7 +90,9 @@ class ApplicationFaultInjector(FaultInjector):
                     if pod.metadata.name.startswith(self.mongo_service_pod_map[service])
                 ]
                 for pod in target_mongo_pods:
-                    revoke_command = f"kubectl exec -it {pod} -n {self.namespace} -- /bin/bash /scripts/remove-admin-mongo.sh"
+                    revoke_command = (
+                        f"kubectl exec -it {pod} -n {self.namespace} -- /bin/bash /scripts/remove-admin-mongo.sh"
+                    )
                     result = self.kubectl.exec_command(revoke_command)
                     print(f"Injection result for {service}: {result}")
 
@@ -119,11 +103,7 @@ class ApplicationFaultInjector(FaultInjector):
         for service in target_services:
             if service in microservices:
                 pods = self.kubectl.list_pods(self.namespace)
-                target_mongo_pods = [
-                    pod.metadata.name
-                    for pod in pods.items
-                    if service in pod.metadata.name
-                ]
+                target_mongo_pods = [pod.metadata.name for pod in pods.items if service in pod.metadata.name]
                 print(f"Target MongoDB Pods: {target_mongo_pods}")
 
                 target_service_pods = [

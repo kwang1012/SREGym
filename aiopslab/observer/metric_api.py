@@ -1,6 +1,3 @@
-# Copyright (c) Microsoft Corporation.
-# Licensed under the MIT License.
-
 import os
 import select
 import socket
@@ -127,9 +124,7 @@ def network_kpi_name_format(metric):
             response_flag = metric["response_flags"]
             kpi_name = ".".join([kpi_name, response_flag])
         else:
-            kpi_name = ".".join(
-                [kpi_name, protocol, response_code, grpc_response_status]
-            )
+            kpi_name = ".".join([kpi_name, protocol, response_code, grpc_response_status])
     return kpi_name
 
 
@@ -144,9 +139,7 @@ class PrometheusAPI:
         self.start_port_forward()
         self.client = PrometheusConnect(url, disable_ssl=True)
         self.namespace = namespace
-        self.pod_list, self.service_list = self.initialize_pod_and_service_lists(
-            namespace
-        )
+        self.pod_list, self.service_list = self.initialize_pod_and_service_lists(namespace)
 
     def is_port_in_use(self, port):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -181,15 +174,11 @@ class PrometheusAPI:
 
         for attempt in range(3):
             if self.is_port_in_use(self.port):
-                print(
-                    f"Port {self.port} is already in use. Attempt {attempt + 1} of 3. Retrying in 3 seconds..."
-                )
+                print(f"Port {self.port} is already in use. Attempt {attempt + 1} of 3. Retrying in 3 seconds...")
                 time.sleep(3)
                 continue
 
-            command = (
-                f"kubectl port-forward svc/prometheus-server {self.port}:80 -n observe"
-            )
+            command = f"kubectl port-forward svc/prometheus-server {self.port}:80 -n observe"
             self.port_forward_process = subprocess.Popen(
                 command,
                 shell=True,
@@ -198,12 +187,8 @@ class PrometheusAPI:
                 text=True,
             )
 
-            thread_out = threading.Thread(
-                target=self.print_output, args=(self.port_forward_process.stdout,)
-            )
-            thread_err = threading.Thread(
-                target=self.print_output, args=(self.port_forward_process.stderr,)
-            )
+            thread_out = threading.Thread(target=self.print_output, args=(self.port_forward_process.stdout,))
+            thread_err = threading.Thread(target=self.print_output, args=(self.port_forward_process.stderr,))
             thread_out.start()
             thread_err.start()
             self.output_threads.extend([thread_out, thread_err])
@@ -277,19 +262,13 @@ class PrometheusAPI:
             "container_memory_max_usage_bytes",
         ]:
             if metric_name in network_metrics:
-                query = (
-                    f"irate({metric_name}{{pod='{pod}', interface='{interface}'}}[5m])"
-                )
+                query = f"irate({metric_name}{{pod='{pod}', interface='{interface}'}}[5m])"
             # prometheus query
             else:
-                query = (
-                    f"rate({metric_name}{{pod=~'{pod}', namespace='{namespace}'}}[5m])"
-                )
+                query = f"rate({metric_name}{{pod=~'{pod}', namespace='{namespace}'}}[5m])"
         else:
             query = f"{metric_name}{{pod=~'{pod}', namespace='{namespace}'}}"
-        data_raw = self.client.custom_query_range(
-            query, start_time, end_time, step=step
-        )
+        data_raw = self.client.custom_query_range(query, start_time, end_time, step=step)
 
         if len(data_raw) == 0:
             return {"error": f"No data found for metric {metric_name} and pod {pod}"}
@@ -422,9 +401,7 @@ class PrometheusAPI:
     def get_all_metrics(self):
         """Get all of the metrics"""
         all_metrics = self.client.all_metrics()
-        all_metrics = list(
-            filter(lambda x: True if x in normal_metrics else False, all_metrics)
-        )
+        all_metrics = list(filter(lambda x: True if x in normal_metrics else False, all_metrics))
         return all_metrics
 
 
@@ -438,6 +415,4 @@ if __name__ == "__main__":
     # Define the save path for metrics
     save_path = root_path / "metrics_output"
 
-    prom.export_all_metrics(
-        start_time=start_time, end_time=end_time, save_path=str(save_path), step=10
-    )
+    prom.export_all_metrics(start_time=start_time, end_time=end_time, save_path=str(save_path), step=10)

@@ -1,6 +1,3 @@
-# Copyright (c) Microsoft Corporation.
-# Licensed under the MIT License.
-
 """Utility functions for handling status and errors."""
 
 from enum import Enum

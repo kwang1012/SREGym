@@ -1,6 +1,3 @@
-# Copyright (c) Microsoft Corporation.
-# Licensed under the MIT License.
-
 """Abstracts the configuration file for AIOpsLab."""
 
 import yaml

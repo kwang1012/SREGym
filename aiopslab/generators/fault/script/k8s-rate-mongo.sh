@@ -1,6 +1,4 @@
 #!/bin/bash
-# Copyright (c) Microsoft Corporation.
-# Licensed under the MIT License.
 
 
 ADMIN_USER="admin"

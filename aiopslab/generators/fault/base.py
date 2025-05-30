@@ -1,6 +1,3 @@
-# Copyright (c) Microsoft Corporation.
-# Licensed under the MIT License.
-
 """Interface for fault injector classes.
 
 NOTE: Each layer of injection like ApplicationFaultInjector, OSFaultInjector HardwareFaultInjector, etc.
@@ -39,9 +36,7 @@ class FaultInjector:
 
         self._inject(microservices, fault_type)
 
-    def _inject(
-        self, fault_type: str, microservices: list[str] = None, duration: str = None
-    ):
+    def _inject(self, fault_type: str, microservices: list[str] = None, duration: str = None):
         if duration:
             self._invoke_method("inject", fault_type, microservices, duration)
         elif microservices:
