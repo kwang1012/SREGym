@@ -7,8 +7,7 @@ import time
 from typing import Any
 
 from aiopslab.generators.fault.inject_virtual import VirtualizationFaultInjector
-from aiopslab.generators.workload.wrk import Wrk
-from aiopslab.generators.workload.wrk2 import Wrk2WorkloadGenerator
+from aiopslab.generators.workload.wrk2 import Wrk2, Wrk2WorkloadManager
 from aiopslab.orchestrator.evaluators.quantitative import is_exact_match, is_subset
 from aiopslab.orchestrator.tasks import *
 from aiopslab.paths import TARGET_MICROSERVICES
@@ -32,8 +31,8 @@ class AssignNonExistentNodeSocialNetBaseTask:
         print("== Start Workload ==")
         frontend_url = get_frontend_url(self.app)
 
-        wrk = Wrk(rate=10, dist="exp", connections=2, duration=10, threads=2)
-        wrk2 = Wrk2WorkloadGenerator(
+        wrk = Wrk2(rate=10, dist="exp", connections=2, duration=10, threads=2)
+        wrk2 = Wrk2WorkloadManager(
             wrk=wrk,
             payload_script=self.payload_script,
             url=f"{frontend_url}/wrk2-api/post/compose",
