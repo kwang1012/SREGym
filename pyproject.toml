@@ -207,12 +207,12 @@ dependencies = [
 ]
 
 [tool.black]
-line-length = 88
+line-length = 120
 target-version = ["py312"]
 
 [tool.isort]
 profile = "black"
-line_length = 88
+line_length = 120
 
 [build-system]
 requires = ["setuptools>=80.8.0"]
