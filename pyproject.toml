@@ -82,7 +82,6 @@ dependencies = [
     "jsonschema-specifications==2025.4.1",
     "kiwisolver==1.4.8",
     "kubernetes==30.1.0",
-    "langchain-litellm>=0.2.1",
     "langgraph>=0.4.7",
     "langsmith>=0.3.43",
     "lark==1.2.2",
