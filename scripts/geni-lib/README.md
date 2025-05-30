@@ -175,7 +175,9 @@ python3 genictl.py -i
    ```bash
    > quick-experiment
    Enter hardware type: c220g5
-   Enter duration in hours (default 1): 1
+   Enter duration in hours (default 1): 2
+   Enter number of nodes (default 3): 5
+   Enter OS type (default UBUNTU22-64-STD): UBUNTU20-64-STD
    ```
 
 ## Quick Test

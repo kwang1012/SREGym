@@ -1,25 +1,25 @@
 import argparse
 import datetime
 import json
-import geni.portal as portal
-
 import random
 import warnings
 
+import geni.portal as portal
 import geni.util
 from geni.aggregate.cloudlab import Clemson, Utah, Wisconsin
 from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.enums import EditingMode
 from prompt_toolkit.key_binding import KeyBindings
-from utils import parse_sliver_info, collect_hardware_info_from_html
+
+from utils import collect_hardware_info_from_html, parse_sliver_info
 
 warnings.filterwarnings("ignore")
 
 # List of available OS types
 OS_TYPES = [
     "UBUNTU22-64-STD",
-    "UBUNTU20-64-STD", 
+    "UBUNTU20-64-STD",
     "UBUNTU18-64-STD",
     "UBUNTU16-64-STD",
     "DEBIAN11-64-STD",
@@ -27,8 +27,9 @@ OS_TYPES = [
     "FEDORA36-64-STD",
     "CENTOS7-64-STD",
     "CENTOS8-64-STD",
-    "RHEL8-64-STD"
+    "RHEL8-64-STD",
 ]
+
 
 def validate_hours(value):
     float_value = float(value)
@@ -175,11 +176,13 @@ def quick_experiment_creation(context, args):
     try:
         hardware_type = args.hardware_type
         duration = args.duration
-        node_count = args.node_count if hasattr(args, 'node_count') else 3
-        os_type = args.os_type if hasattr(args, 'os_type') else "UBUNTU22-64-STD"
+        node_count = args.node_count if hasattr(args, "node_count") else 3
+        os_type = args.os_type if hasattr(args, "os_type") else "UBUNTU22-64-STD"
         os_urn = f"urn:publicid:IDN+emulab.net+image+emulab-ops//{os_type}"
 
-        print(f"Creating a quick {node_count} node cluster of hardware type: {hardware_type}")
+        print(
+            f"Creating a quick {node_count} node cluster of hardware type: {hardware_type}"
+        )
 
         hardware_info_list = collect_hardware_info_from_html()
         slice_name = "test-" + str(random.randint(100000, 999999))
@@ -209,7 +212,7 @@ def quick_experiment_creation(context, args):
 
         # Create a cluster of the desired hardware type with specified number of nodes
         request = portal.context.makeRequestRSpec()
-        
+
         nodes = []
         # Create the control node
         nodes.append(request.RawPC("control"))
@@ -297,8 +300,8 @@ def main():
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Commands")
-    
-    #create slice parser
+
+    # create slice parser
     create_slice_parser = subparsers.add_parser(
         "create-slice", help="Create a new slice"
     )
@@ -310,7 +313,7 @@ def main():
         "--description", default="CloudLab experiment", help="Slice description"
     )
 
-    #create sliver parser
+    # create sliver parser
     create_sliver_parser = subparsers.add_parser(
         "create-sliver", help="Create a new sliver"
     )
@@ -323,7 +326,7 @@ def main():
         help="CloudLab site",
     )
 
-    #sliver status parser
+    # sliver status parser
     status_parser = subparsers.add_parser("sliver-status", help="Get sliver status")
     status_parser.add_argument("slice_name", help="Name of the slice")
     status_parser.add_argument(
@@ -339,7 +342,7 @@ def main():
         "--hours", type=validate_hours, default=1, help="Hours to extend"
     )
 
-    #renew sliver parser
+    # renew sliver parser
     renew_sliver_parser = subparsers.add_parser("renew-sliver", help="Renew a sliver")
     renew_sliver_parser.add_argument("slice_name", help="Name of the slice")
     renew_sliver_parser.add_argument(
@@ -352,7 +355,7 @@ def main():
         help="CloudLab site",
     )
 
-    #list sliver spec parser
+    # list sliver spec parser
     list_spec_parser = subparsers.add_parser(
         "sliver-spec", help="List sliver specifications"
     )
@@ -364,7 +367,7 @@ def main():
         help="CloudLab site",
     )
 
-    #delete sliver parser
+    # delete sliver parser
     delete_parser = subparsers.add_parser("delete-sliver", help="Delete a sliver")
     delete_parser.add_argument("slice_name", help="Name of the slice")
     delete_parser.add_argument(
@@ -374,15 +377,15 @@ def main():
         help="CloudLab site",
     )
 
-    #list slices parser
+    # list slices parser
     list_slices_parser = subparsers.add_parser("list-slices", help="List all slices")
 
-    #get hardware info parser
+    # get hardware info parser
     subparsers.add_parser(
         "get-hardware-info", help="Get available hardware information from CloudLab"
     )
 
-    #quick experiment parser
+    # quick experiment parser
     quick_exp_parser = subparsers.add_parser(
         "quick-experiment",
         help="Create a quick 3-node experiment with specified hardware type",
@@ -394,16 +397,19 @@ def main():
     quick_exp_parser.add_argument(
         "--duration", type=validate_hours, default=1, help="Duration in hours"
     )
-    
+
     quick_exp_parser.add_argument(
-        "--node-count", type=int, default=3, help="Number of nodes to create (default: 3)"
+        "--node-count",
+        type=int,
+        default=3,
+        help="Number of nodes to create (default: 3)",
     )
-    
+
     quick_exp_parser.add_argument(
-        "--os-type", 
+        "--os-type",
         default="UBUNTU22-64-STD",
         choices=OS_TYPES,
-        help="OS image (default: UBUNTU22-64-STD)"
+        help="OS image (default: UBUNTU22-64-STD)",
     )
 
     # Add interactive mode flag
@@ -561,14 +567,19 @@ def run_interactive_mode(parser, commands, sites):
 
                 duration = input("Enter duration in hours (default 1): ").strip() or "1"
                 args_list.extend(["--duration", duration])
-                
+
                 node_count = input("Enter number of nodes (default 3): ").strip() or "3"
                 args_list.extend(["--node-count", node_count])
-                
+
                 print("Available OS types:")
                 for os_type in OS_TYPES:
                     print(f"  - {os_type}")
-                os_response = os_session.prompt("Enter OS type (default UBUNTU22-64-STD): ").strip() or "UBUNTU22-64-STD"
+                os_response = (
+                    os_session.prompt(
+                        "Enter OS type (default UBUNTU22-64-STD): "
+                    ).strip()
+                    or "UBUNTU22-64-STD"
+                )
                 if os_response:
                     args_list.extend(["--os-type", os_response])
 

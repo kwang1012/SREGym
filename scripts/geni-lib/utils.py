@@ -1,8 +1,9 @@
-import xml.etree.ElementTree as ET
-import requests
-import json
-from bs4 import BeautifulSoup
 import html
+import json
+import xml.etree.ElementTree as ET
+
+import requests
+from bs4 import BeautifulSoup
 
 
 def parse_sliver_info(xml_text):

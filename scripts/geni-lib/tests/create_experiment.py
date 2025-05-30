@@ -1,11 +1,12 @@
 # Create a 3-node cloudlab experiment with 3 c220g5 nodes for 1 hour
 
 import datetime
+import json
+import random
+
+import geni.portal as portal
 import geni.util
 from geni.aggregate.cloudlab import Clemson, Utah, Wisconsin
-import geni.portal as portal
-import random
-import json
 
 context = geni.util.loadContext()
 aggregate = Wisconsin  # c220g5 nodes are only available at Wisconsin
