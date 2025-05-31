@@ -80,8 +80,6 @@ class BasicToolNode:
         logger.info(f"BasicToolNode: {message}")
         outputs = []
         for tool_call in message.tool_calls:
-            # choosing the right ctx by tools called
-            # assuming we have different mcp servers for different tools
             logger.info(f"invoking tool: {tool_call["name"]}, tool_call: {tool_call}")
             tool_result = asyncio.run(
                 self.tools_by_name[tool_call["name"]].ainvoke(tool_call["args"])
