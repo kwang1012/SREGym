@@ -67,7 +67,14 @@ with open(f"{SLICE_NAME}.login.info.txt", "a") as f:
     f.write(f"Slice name: {SLICE_NAME}\n")
     f.write(f"Cluster name: {AGGREGATE.name}\n")
     f.write(f"Duration: {DURATION} hours\n")
+    f.write(f"Hardware type: {HARDWARE_TYPE}\n")
+    f.write(f"OS type: {OS_TYPE}\n")
     f.write(login_info)
+    f.write("\n")
+    f.write(f"To delete the experiment, run the following command:\n")
+    f.write(
+        f"python3 genictl.py delete-sliver {SLICE_NAME} --site wisconsin\n"
+    )
 print(f"\nSSH info saved to {SLICE_NAME}.login.info.txt\n")
 
 print(
