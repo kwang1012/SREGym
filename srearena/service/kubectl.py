@@ -67,7 +67,7 @@ class KubeCtl:
         """Wait for all pods in a namespace to be in a Ready state before proceeding."""
 
         console = Console()
-        console.log(f"[bold green]Waiting for all pods in namespace '{namespace}' to be ready...")
+        console.log(f"[bold yellow]Waiting for all pods in namespace '{namespace}' to be ready...")
 
         with console.status("[bold green]Waiting for pods to be ready...") as status:
             wait = 0
@@ -101,9 +101,9 @@ class KubeCtl:
         """Wait for a namespace to be fully deleted before proceeding."""
 
         console = Console()
-        console.log(f"[bold green]Waiting for namespace '{namespace}' to be deleted...")
+        console.log(f"[bold yellow]Waiting for namespace '{namespace}' to be deleted...")
 
-        with console.status("[bold green]Waiting for namespace deletion...") as status:
+        with console.status("[bold yellow]Waiting for namespace deletion...") as status:
             wait = 0
 
             while wait < max_wait:
