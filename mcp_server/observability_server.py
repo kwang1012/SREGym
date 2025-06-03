@@ -36,6 +36,8 @@ def get_services():
         response = observability_client.make_request("GET", url)
         logger.info(f"[ob_mcp] get_services status code: {response.status_code}")
         logger.info(f"[ob_mcp] get_services result: {response}")
+        logger.info(f"[ob_mcp] result: {response.json()}")
+        # FIXME: if response.json()["data"] is empty, forge an empty response
         return response.json()["data"]
     except Exception as e:
         err_str = f"[ob_mcp] Error querying get_services: {str(e)}"
@@ -52,6 +54,7 @@ def get_operations(service: str):
         response = observability_client.make_request("GET", url, params=params)
         logger.info(f"[ob_mcp] get_operations: {response.status_code}")
         return response.json()["data"]
+        # FIXME: if response.json()["data"] is empty, forge an empty response
     except Exception as e:
         logger.error(f"[ob_mcp] Error querying get_operations: {str(e)}")
         return None
@@ -75,6 +78,7 @@ def get_traces(service: str, last_n_minutes: int):
         response = observability_client.make_request("GET", url, params=params)
         logger.info(f"[ob_mcp] get_traces: {response.status_code}")
         return response.json()["data"]
+        # FIXME: if response.json()["data"] is empty, forge an empty response
     except Exception as e:
         logger.error(f"[ob_mcp] Error querying get_traces: {str(e)}")
         return None
