@@ -1,7 +1,7 @@
 import argparse
 import logging
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, Coroutine
 
 import httpx
 import mcp.types as types
@@ -37,8 +37,9 @@ def get_services():
         logger.info(f"[ob_mcp] get_services result: {response}")
         return response.json()["data"]
     except Exception as e:
-        logger.error(f"[ob_mcp] Error querying get_services: {str(e)}")
-        return None
+        err_str = f"[ob_mcp] Error querying get_services: {str(e)}"
+        logger.error(err_str)
+        return err_str
 
 
 @mcp.tool(name="get_operations")
@@ -93,6 +94,7 @@ def create_starlette_app(mcp_server: Server, *, debug: bool = False) -> Starlett
                 write_stream,
                 mcp_server.create_initialization_options(),
             )
+            # FIXME: here's what's wrong. this None cannot be callable.
 
     return Starlette(
         debug=debug,
