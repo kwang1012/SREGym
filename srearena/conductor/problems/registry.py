@@ -24,6 +24,7 @@ from srearena.conductor.problems.scale_pod import ScalePodSocialNet
 from srearena.conductor.problems.storage_user_unregistered import MongoDBUserUnregistered
 from srearena.conductor.problems.target_port import K8STargetPortMisconfig
 from srearena.conductor.problems.wrong_bin_usage import WrongBinUsage
+from srearena.conductor.problems.trainticket_f1_async_message_order import TrainTicketF1AsyncMessageOrderProblem
 
 
 class ProblemRegistry:
@@ -59,6 +60,7 @@ class ProblemRegistry:
             "astronomy_shop_recommendation_service_cache_failure": RecommendationServiceCacheFailure,
             "redeploy_without_PV": RedeployWithoutPV,
             "wrong_bin_usage": WrongBinUsage,
+            "trainticket_f1_async_message_order": TrainTicketF1AsyncMessageOrderProblem,
             # K8S operator misoperation -> Refactor later, not sure if they're working
             # They will also need to be updated to the new problem format.
             # "operator_overload_replicas-detection-1": K8SOperatorOverloadReplicasDetection,
