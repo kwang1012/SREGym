@@ -79,7 +79,7 @@ class HumanAgent:
                 self.console.print("Invalid command. Please use `start <problem_id>`")
                 return
 
-            self.init_problem(problem_id.strip())
+            self.conductor.problem_id = problem_id.strip()
 
         else:
             self.console.print("Invalid command. Please use `start <problem_id>`")
@@ -97,10 +97,6 @@ class HumanAgent:
             return await self.get_action(env_input)
 
         return f"Action:```\n{user_input}\n```"
-
-    def init_problem(self, problem_id="misconfig-mitigation-1"):
-        problem_desc, _, apis = self.conductor.init_problem(problem_id)
-        self.display_context(problem_desc, apis)
 
     async def get_user_input(self, completer=None):
         loop = asyncio.get_running_loop()

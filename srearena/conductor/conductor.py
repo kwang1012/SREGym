@@ -34,55 +34,14 @@ class Conductor:
         self.agent = agent
         self.agent_name = name
 
-    def _get_matching_noop_id(self, problem_id: str) -> str | None:
-        app_name = self.problem.app.__class__.__name__.lower()
-
-        if "hotel" in app_name:
-            return "noop_hotel_reservation"
-        elif "social" in app_name:
-            return "noop_social_network"
-        elif "astronomy" in app_name or "shop" in app_name:
-            return "noop_astronomy_shop"
-        else:
-            print(f"[WARN] No matching noop problem found for app: {app_name}")
-            return None
-
-    async def _run_single_problem(self, problem_id: str, is_noop: bool = False):
-        self.problem = self.problems.get_problem_instance(problem_id)
-        self.problem_id = problem_id
-        self.submission_stage = "detection"
-        self.results = {}
-
-        self.execution_start_time = time.time()
-
-        print(f"[Session Start] Problem ID: {problem_id}")
-        print("Setting up OpenEBS...")
-        self.kubectl.exec_command("kubectl apply -f https://openebs.github.io/charts/openebs-operator.yaml")
-        self.kubectl.exec_command(
-            'kubectl patch storageclass openebs-hostpath -p \'{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}\''
-        )
-        self.kubectl.wait_for_ready("openebs")
-        print("OpenEBS setup completed.")
-
-        self.prometheus.deploy()
-        self.problem.app.delete()
-        self.problem.app.deploy()
-
-        with CriticalSection():
-            self.problem.inject_fault()
-            atexit.register(exit_cleanup_fault, prob=self.problem)
-
-        self.problem.app.start_workload()
-
-        # === Run agent loop ===
-        instr = "Please take the next action"
+    async def run_problem(self):
         try:
+            instr = "Please take the next action"
             while self.submission_stage != "done":
                 action = await self.ask_agent(instr)
                 self.sprint.agent(action)
                 env_response = await self.ask_env(action)
                 self.sprint.service(env_response)
-
         except Exception as e:
             with CriticalSection():
                 self.problem.recover_fault()
@@ -103,10 +62,12 @@ class Conductor:
 
         return self.results
 
-    def init_problem(self, problem_id: str):
+    def init_problem(self, problem_id: str, is_noop: bool = False):
         self.execution_start_time = time.time()
         self.problem_id = problem_id
         self.problem = self.problems.get_problem_instance(problem_id)
+        self.submission_stage = "detection"
+        self.results = {}
 
         print(f"[Session Start] Problem ID: {problem_id}")
         print("Setting up OpenEBS...")
@@ -128,7 +89,7 @@ class Conductor:
         self.problem.app.start_workload()
 
         return (
-            "Problem loaded.",
+            f"Problem {problem_id} initialized.",
             "Use submit(...) when ready.",
             {"submit(...)": "Submit your solution"},
         )
@@ -217,19 +178,20 @@ class Conductor:
             return "[✅] Problem completed."
 
     async def start_problem(self):
-        # === Run main problem ===
-        faulty_results = await self._run_single_problem(self.problem_id, is_noop=False)
+        # === Main problem run ===
+        self.init_problem(self.problem_id, is_noop=False)
+        faulty_results = await self.run_problem()
 
-        # === Get and run noop problem ===
-        noop_id = self._get_matching_noop_id(self.problem_id)
+        # === NOOP problem run ===
+        noop_id = self.problems.get_matching_noop_id(self.problem.app)
         if noop_id is not None:
             print(f"\n[INFO] Running NOOP problem: {noop_id}")
-            noop_results = await self._run_single_problem(noop_id, is_noop=True)
+            self.init_problem(noop_id, is_noop=True)
+            noop_results = await self.run_problem()
         else:
             print(f"[WARN] No matching NOOP found for {self.problem_id}. Skipping NOOP.")
             noop_results = {}
 
-        # === Return both results ===
         return {
             "results": {
                 "faulty": faulty_results,
