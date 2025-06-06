@@ -70,7 +70,7 @@ class Conductor:
 
         with CriticalSection():
             self.problem.inject_fault()
-            atexit.register(exit_cleanup_fault, prob=self.problem)
+            atexit.register(exit_cleanup_fault, prob=self.problem, prometheus=self.prometheus, kubectl=self.kubectl)
 
         if inspect.iscoroutinefunction(self.problem.start_workload):
             asyncio.create_task(self.problem.start_workload())
@@ -126,7 +126,7 @@ class Conductor:
 
         with CriticalSection():
             self.problem.inject_fault()
-            atexit.register(exit_cleanup_fault, prob=self.problem)
+            atexit.register(exit_cleanup_fault, prob=self.problem, prometheus=self.prometheus, kubectl=self.kubectl)
 
         if inspect.iscoroutinefunction(self.problem.start_workload):
             asyncio.create_task(self.problem.start_workload())
@@ -244,7 +244,11 @@ class Conductor:
         }
 
 
-def exit_cleanup_fault(prob):
+def exit_cleanup_fault(prob, prometheus, kubectl):
     print("Recovering fault before exit...")
     prob.recover_fault()
-    # TODO: Clean up everything else too
+    prob.app.cleanup()
+    prometheus.teardown()
+    kubectl.exec_command("kubectl delete sc openebs-hostpath openebs-device --ignore-not-found")
+    kubectl.exec_command("kubectl delete -f https://openebs.github.io/charts/openebs-operator.yaml")
+    kubectl.wait_for_namespace_deletion("openebs")
