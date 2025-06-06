@@ -116,7 +116,7 @@ class StateManager:
     def create_cluster_record(
         self,
         slice_name: str,
-        aggregate_name: str,        
+        aggregate_name: str,
         os_type: str,
         node_count: int,
         hardware_type: Optional[str] = None,
@@ -241,7 +241,10 @@ class StateManager:
         try:
             with self._get_db_connection() as conn:
                 if soft_delete:
-                    cursor = conn.execute("UPDATE clusters SET status = ? WHERE slice_name = ?", (CLUSTER_STATUS.STATUS_TERMINATED, slice_name))
+                    cursor = conn.execute(
+                        "UPDATE clusters SET status = ? WHERE slice_name = ?",
+                        (CLUSTER_STATUS.STATUS_TERMINATED, slice_name),
+                    )
                 else:
                     cursor = conn.execute("DELETE FROM clusters WHERE slice_name = ?", (slice_name,))
                 conn.commit()
@@ -323,7 +326,7 @@ class StateManager:
             CLUSTER_STATUS.STATUS_AUTO_PROVISIONING,
             # CLUSTER_STATUS.STATUS_USER_PROVISIONING,
             CLUSTER_STATUS.STATUS_UNCLAIMED_READY,
-            #CLUSTER_STATUS.STATUS_PENDING_CLEANUP,
+            # CLUSTER_STATUS.STATUS_PENDING_CLEANUP,
         )
 
         try:
@@ -339,8 +342,8 @@ class StateManager:
         try:
             with self._get_db_connection() as conn:
                 cursor = conn.execute(
-                    "SELECT COUNT(*) FROM clusters WHERE claimed_by_user_id = ? AND status = ?",
-                    (user_id, CLUSTER_STATUS.STATUS_CLAIMED),
+                    "SELECT COUNT(*) FROM clusters WHERE claimed_by_user_id = ? AND (status = ? OR status = ?)",
+                    (user_id, CLUSTER_STATUS.STATUS_CLAIMED, CLUSTER_STATUS.STATUS_USER_PROVISIONING),
                 )
                 count = cursor.fetchone()[0]
                 return count if count is not None else 0

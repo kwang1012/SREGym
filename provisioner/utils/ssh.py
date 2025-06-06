@@ -53,14 +53,18 @@ class SSHManager:
                     logger.debug(
                         f"Attempting SSH connection to {self.username}@{self.hostname}:{self.port} using private key {self.private_key_path} (attempt {attempt}/{self.max_retries})"
                     )
-                    client.connect(self.hostname, port=self.port, username=self.username, pkey=key, timeout=self.timeout)
+                    client.connect(
+                        self.hostname, port=self.port, username=self.username, pkey=key, timeout=self.timeout
+                    )
                 else:
                     raise SSHUtilError("SSH connection requires either a private key.")
                 logger.info(f"Successfully connected to {self.username}@{self.hostname}:{self.port}")
                 return client
             except (paramiko.AuthenticationException, paramiko.SSHException, Exception) as e:
                 if attempt < self.max_retries:
-                    logger.warning(f"SSH connection attempt {attempt} failed: {e}. Retrying in {self.retry_delay} seconds...")
+                    logger.warning(
+                        f"SSH connection attempt {attempt} failed: {e}. Retrying in {self.retry_delay} seconds..."
+                    )
                     time.sleep(self.retry_delay)
                 else:
                     msg = f"SSH connection failed after {self.max_retries} attempts for {self.username}@{self.hostname}: {e}"

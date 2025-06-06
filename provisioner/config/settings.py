@@ -11,33 +11,42 @@ load_dotenv(override=True)
 class DefaultSettings:
     DEFAULT_HARDWARE_TYPE = "c220g5"
     DEFAULT_OS_TYPE = "UBUNTU22-64-STD"
-    DEFAULT_NODE_COUNT = 3 # 3
-    DEFAULT_DURATION_HOURS = .25 # 16
+    DEFAULT_NODE_COUNT = 3  # 3
+    DEFAULT_DURATION_HOURS = 16 # 16
     DEFAULT_DESCRIPTION = "Cloudlab Experiment"
 
-    MIN_AVAILABLE_CLUSTERS = 2 # 2
-    MAX_TOTAL_CLUSTERS = 2 # 8
-    MAX_CLUSTERS_PER_USER = 1 # 2
-    UNCLAIMED_CLUSTER_TIMEOUT_HOURS = .25 # 16
-    CLAIMED_CLUSTER_DEFAULT_DURATION_HOURS = .25 # 7 * 24
-    CLAIMED_CLUSTER_INACTIVITY_TIMEOUT_HOURS = 1
+    MIN_AVAILABLE_CLUSTERS = 2  # 2
+    MAX_TOTAL_CLUSTERS = 8  # 8
+    MAX_CLUSTERS_PER_USER = 2  # 2
+    UNCLAIMED_CLUSTER_TIMEOUT_HOURS = 16  # 16
+    CLAIMED_CLUSTER_DEFAULT_DURATION_HOURS = 7 * 24 # 7 * 24
+    CLAIMED_CLUSTER_INACTIVITY_TIMEOUT_HOURS = 48
+    CLAIMED_CLUSTER_EXTENSION_CHECK_HOURS = 24  # 24
 
     DATABASE_PATH = "database.sqlite3"
 
-    DEFAULT_SSH_TIME_OUT_SECONDS = 20  # 60
+    DEFAULT_SSH_TIME_OUT_SECONDS = 30  # 30
 
+    # Use absolute path for logs
     LOG_PATH = "logs/"
 
     #### Provisioner Credentials ####
     PROVISIONER_DEFAULT_SSH_USERNAME = "srearena"
-    PROVISIONER_SSH_PRIVATE_KEY_PATH = os.getenv("PROVISIONER_SSH_PRIVATE_KEY_PATH",None)
-    CLOUDLAB_CONTEXT_PATH = os.getenv("CLOUDLAB_CONTEXT_PATH",None)
-
+    PROVISIONER_SSH_PRIVATE_KEY_PATH = os.getenv("PROVISIONER_SSH_PRIVATE_KEY_PATH")
 
     #### Daemon Settings ####
-    SCHEDULER_INTERVAL_MINUTES = 10
+    SCHEDULER_INTERVAL_MINUTES = 5
 
 
+CLOUD_LAB_CONTEXT_JSON = {
+    "framework": "emulab-ch2",
+    "cert-path": os.getenv("CLOUDLAB_CERT_PATH"),
+    "key-path": os.getenv("CLOUDLAB_KEY_PATH"),
+    "user-name": "srearena",
+    "user-urn": "urn:publicid:IDN+emulab.net+user+srearena",
+    "user-pubkeypath": os.getenv("PROVISIONER_SSH_PUBLIC_KEY_PATH"),
+    "project": os.getenv("CLOUD_PROJECT_NAME"),
+}
 
 # Aggregates mapping
 AGGREGATES_MAP = {
@@ -75,4 +84,5 @@ DELETE_EXPERIMENT_ERRORS = [
     "resource is busy; try again later",  # -> retry
     "No such slice here",  # -> no need to retry,
     "get_credentials encountered an error requesting the slice credential: No such Slice",  # -> no need to retry, already expired
+    "expired on",  # -> no need to retry, already expired
 ]

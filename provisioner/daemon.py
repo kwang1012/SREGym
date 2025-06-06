@@ -6,12 +6,13 @@ from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
 from provisioner.config.settings import DefaultSettings
-from provisioner.utils.logger import logger
+from provisioner.utils.logger import logger, log_file
 from provisioner.state_manager import StateManager, CLUSTER_STATUS, SREARENA_STATUS
-from provisioner.provisioner import CloudlabProvisioner
+from provisioner.cloudlab_provisioner import CloudlabProvisioner
 from provisioner.utils.ssh import SSHManager
 from provisioner.utils.email_sender import EmailSender
 import subprocess
+
 # Global stop event for graceful shutdown
 stop_event = threading.Event()
 
@@ -20,7 +21,7 @@ class ProvisionerDaemon:
     def __init__(self):
         logger.info("Initializing Provisioner Daemon...")
         self.state_manager = StateManager(db_path=DefaultSettings.DATABASE_PATH)
-        self.cloudlab = CloudlabProvisioner(context_path=DefaultSettings.CLOUDLAB_CONTEXT_PATH)
+        self.cloudlab = CloudlabProvisioner()
 
         self.scheduler = BlockingScheduler()
         logger.info("Provisioner Daemon initialized.")
@@ -183,7 +184,9 @@ class ProvisionerDaemon:
                     if not isinstance(last_extended_at, datetime.datetime):
                         last_extended_at = datetime.datetime.fromisoformat(str(last_extended_at))
                     # If last extension was less than 24 hours ago, skip
-                    if now - last_extended_at < datetime.timedelta(hours=24):
+                    if now - last_extended_at < datetime.timedelta(
+                        hours=DefaultSettings.CLAIMED_CLUSTER_EXTENSION_CHECK_HOURS
+                    ):
                         continue
 
                 logger.info(f"Performing daily extension for claimed cluster {cluster['slice_name']}.")
@@ -197,18 +200,18 @@ class ProvisionerDaemon:
                             cluster["slice_name"], cloudlab_expires_at=new_cloudlab_expires_at, last_extended_at=now
                         )
                         logger.info(f"Successfully extended {cluster['slice_name']} to {new_cloudlab_expires_at}.")
-                        # TODO: Notify user of successful extension
+
                     else:
                         logger.error(
                             f"Failed to extend claimed cluster {cluster['slice_name']}. User should be notified."
                         )
-                        # TODO: Notify user of extension failure
+
                         try:
                             email_sender = EmailSender()
                             if email_sender.is_email_set():
                                 email_sender.send_cluster_extension_failure_notice(
-                                to_addresses=[cluster["user_id"]],
-                                cluster_name=cluster["slice_name"],
+                                    to_addresses=[cluster["claimed_by_user_id"]],
+                                    cluster_name=cluster["slice_name"],
                                     error_message="Failed to extend cluster",
                                     current_expiry=cluster["cloudlab_expires_at"],
                                 )
@@ -216,13 +219,13 @@ class ProvisionerDaemon:
                             logger.error(f"Error sending cluster extension failure notice: {e}", exc_info=True)
                 except Exception as e:
                     logger.error(f"Error extending claimed cluster {cluster['slice_name']}: {e}", exc_info=True)
-                    # TODO: Notify user of extension failure
+
                     try:
                         email_sender = EmailSender()
                         if email_sender.is_email_set():
                             email_sender.send_cluster_extension_failure_notice(
-                            to_addresses=[cluster["user_id"]],
-                            cluster_name=cluster["slice_name"],
+                                to_addresses=[cluster["claimed_by_user_id"]],
+                                cluster_name=cluster["slice_name"],
                                 error_message="Failed to extend cluster",
                                 current_expiry=cluster["cloudlab_expires_at"],
                             )
@@ -232,8 +235,7 @@ class ProvisionerDaemon:
             logger.error(f"Critical error in claimed cluster extension check: {e}", exc_info=True)
 
     def _get_key_fingerprint(self, key_path: str) -> str:
-        result = subprocess.run(['ssh-keygen', '-lf', key_path], 
-                                 capture_output=True, text=True)
+        result = subprocess.run(["ssh-keygen", "-lf", key_path], capture_output=True, text=True)
         output = result.stdout.strip()
         fingerprint = output.split()[1]  # Get the SHA256:xxxxxxxx part
         return fingerprint
@@ -242,61 +244,65 @@ class ProvisionerDaemon:
         logger.info(f"Attempting to get actual last SSH time for {hostname}.")
         try:
             provisioner_fingerprint = self._get_key_fingerprint(self.cloudlab.user_pubkeypath)
-            
+
             ssh_manager = self._get_ssh_manager(hostname)
-            
+
             # Command to get SSH activity from remote auth.log with sudo
-            cmd = "sudo cat /var/log/auth.log | grep sshd | grep 'Accepted publickey for' | awk '{print $1,$2,$3,$9,$16}'"
+            cmd = (
+                "sudo cat /var/log/auth.log | grep sshd | grep 'Accepted publickey for' | awk '{print $1,$2,$3,$9,$16}'"
+            )
             stdout, stderr, exit_code = ssh_manager.execute_ssh_command(cmd)
-            
+
             if exit_code != 0 or not stdout:
                 logger.warning(f"No SSH activity found for {hostname}. Exit code: {exit_code}, Error: {stderr}")
                 return None
-                
+
             # Parse the timestamps from the log entries
             provisioner_timestamps = []
             non_provisioner_timestamps = []
-            
+
             for line in stdout.splitlines():
                 try:
                     parts = line.split()
                     if len(parts) >= 3:
                         # Combine month, day, and time
-                        timestamp_str = ' '.join(parts[:3])
-                        timestamp = datetime.datetime.strptime(timestamp_str, '%b %d %H:%M:%S')
+                        timestamp_str = " ".join(parts[:3])
+                        timestamp = datetime.datetime.strptime(timestamp_str, "%b %d %H:%M:%S")
                         # Add current year since log entries don't include it
                         timestamp = timestamp.replace(year=datetime.datetime.now().year)
-                        
+
                         # Check if this is a provisioner SSH
                         if provisioner_fingerprint in line:
                             provisioner_timestamps.append(timestamp)
                         else:
                             non_provisioner_timestamps.append(timestamp)
-                            
+
                 except Exception as e:
                     logger.warning(f"Failed to parse timestamp from line: {line}, error: {e}")
                     continue
-            
+
             # Since we just SSH'd in with provisioner key, the the latest provisioner time is the current time
             current_time = provisioner_timestamps[-1]
-            
+
             if not provisioner_timestamps:
                 logger.warning(f"No provisioner SSH activity found for {hostname}")
                 return None
-                
+
             # Case 1: If we have non-provisioner SSH activity
             if non_provisioner_timestamps:
                 last_non_provisioner = max(non_provisioner_timestamps)
                 time_diff = current_time - last_non_provisioner
                 logger.info(f"Last non-provisioner SSH was {time_diff.total_seconds()/3600:.2f} hours ago")
                 return time_diff
-            
+
             # Case 2: If no non-provisioner SSH activity, use first provisioner time
             else:
                 time_diff = current_time - provisioner_timestamps[0]
-                logger.info(f"No non-provisioner SSH found. First provisioner SSH was {time_diff.total_seconds()/3600:.2f} hours ago")
+                logger.info(
+                    f"No non-provisioner SSH found. First provisioner SSH was {time_diff.total_seconds()/3600:.2f} hours ago"
+                )
                 return time_diff
-            
+
         except Exception as e:
             logger.error(f"Error getting SSH time for {hostname}: {e}", exc_info=True)
             return None
@@ -312,7 +318,15 @@ class ProvisionerDaemon:
                     logger.debug(f"Cluster {slice_name} has evaluation override. Skipping inactivity check.")
                     continue
 
-                user_inactivity_duration = self._get_user_inactivity_duration(cluster["control_node_hostname"])
+                # Get latest duration from all nodes
+                node_durations = []
+                for node in cluster["login_info"]:
+                    hostname = node[2]
+                    node_durations.append(self._get_user_inactivity_duration(hostname))
+
+                # Get the latest duration
+                user_inactivity_duration = min(node_durations)
+
                 if user_inactivity_duration is None:
                     logger.warning(f"No user inactivity duration found for {slice_name}. Skipping inactivity check.")
                     continue
@@ -329,19 +343,24 @@ class ProvisionerDaemon:
                         claimed_by_user_id=None,
                         user_ssh_key_installed=False,
                     )
-                    # TODO: Notify user of auto-relinquishment
+
                     try:
                         email_sender = EmailSender()
                         if email_sender.is_email_set():
                             email_sender.send_inactive_cluster_deletion_notice(
-                                to_addresses=[cluster["user_id"]],
+                                to_addresses=[cluster["claimed_by_user_id"]],
                                 cluster_name=cluster["slice_name"],
                                 last_activity=now - user_inactivity_duration,
+                            )
+                            logger.info(
+                                f"Sent inactive cluster deletion notice to {cluster['claimed_by_user_id']} for cluster {slice_name}"
                             )
                     except Exception as e:
                         logger.error(f"Error sending inactive cluster deletion notice: {e}", exc_info=True)
                 else:
-                    logger.debug(f"Cluster {slice_name} last activity at {now - user_inactivity_duration} is within inactivity window.")
+                    logger.debug(
+                        f"Cluster {slice_name} last activity at {now - user_inactivity_duration} is within inactivity window."
+                    )
         except Exception as e:
             logger.error(f"Critical error in claimed cluster inactivity check: {e}", exc_info=True)
 
@@ -441,3 +460,8 @@ class ProvisionerDaemon:
             _scheduler_instance.shutdown(wait=False)
         else:
             logger.info("Scheduler not running or not initialized for signal handler.")
+
+
+if __name__ == "__main__":
+    daemon = ProvisionerDaemon()
+    daemon.start()
