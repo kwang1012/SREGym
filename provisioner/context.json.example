@@ -1,9 +1,0 @@
-{
-    "framework": "emulab-ch2",
-    "cert-path": <path-to-cloudlab-cert>,
-    "key-path": <path-to-cloudlab-key>,
-    "user-name": srearena,
-    "user-urn": "urn:publicid:IDN+emulab.net+user+srearena",
-    "user-pubkeypath": <path-to-cloudlab-pubkey>,
-    "project": <cloudlab-project>
-}
