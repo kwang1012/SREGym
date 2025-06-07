@@ -105,6 +105,10 @@ For Gmail, you'll need to create an app password. Follow this [guide](https://be
 chmod +x setup_daemon.sh
 sudo ./setup_daemon.sh
 ```
+3. To stop the daemon, run:
+```bash
+sudo systemctl stop provisioner.service
+```
 
 ### Configuring the Provisioner
 

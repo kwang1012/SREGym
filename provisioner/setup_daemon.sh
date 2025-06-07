@@ -45,10 +45,6 @@ chmod 644 /etc/systemd/system/provisioner.service
 echo "Reloading systemd..."
 systemctl daemon-reload
 
-# Enable the service to start on boot
-echo "Enabling service..."
-systemctl enable provisioner.service
-
 # Stop if already running
 echo "Stopping service..."
 systemctl stop provisioner.service
