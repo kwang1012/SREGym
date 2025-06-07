@@ -1,9 +1,11 @@
-import paramiko
 import os
-from typing import Tuple, Optional
+import time
+from typing import Optional, Tuple
+
+import paramiko
+
 from provisioner.config.settings import DefaultSettings
 from provisioner.utils.logger import logger
-import time
 
 
 class SSHUtilError(Exception):

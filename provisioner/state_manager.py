@@ -1,8 +1,9 @@
+import datetime
 import json
 import sqlite3
-import datetime
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Any, Dict, List, Optional
+
 from provisioner.utils.logger import logger
 
 

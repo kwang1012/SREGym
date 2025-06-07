@@ -2,18 +2,19 @@ import datetime
 import json
 import random
 import warnings
-from typing import Optional
-import geni.util
+
 import geni.portal as portal
-from provisioner.utils.logger import logger
-from provisioner.utils.parser import collect_and_parse_hardware_info, parse_sliver_info
+import geni.util
+
 from provisioner.config.settings import (
     AGGREGATES_MAP,
+    CLOUD_LAB_CONTEXT_JSON,
+    DELETE_EXPERIMENT_ERRORS,
     PRIORITY_HARDWARE_TYPES,
     DefaultSettings,
-    DELETE_EXPERIMENT_ERRORS,
-    CLOUD_LAB_CONTEXT_JSON,
 )
+from provisioner.utils.logger import logger
+from provisioner.utils.parser import collect_and_parse_hardware_info, parse_sliver_info
 
 warnings.filterwarnings("ignore", category=UserWarning)
 

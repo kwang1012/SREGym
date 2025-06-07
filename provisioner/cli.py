@@ -1,17 +1,15 @@
-# provisioner/cli.py
-
-import time
-import click
-import os
-import sys
-import re
-from pathlib import Path
 import datetime
-import tempfile
 import logging
-from provisioner.config.settings import DefaultSettings
-from provisioner.state_manager import StateManager, CLUSTER_STATUS, SREARENA_STATUS
+import os
+import re
+import time
+from pathlib import Path
+
+import click
+
 from provisioner.cloudlab_provisioner import CloudlabProvisioner
+from provisioner.config.settings import DefaultSettings
+from provisioner.state_manager import CLUSTER_STATUS, SREARENA_STATUS, StateManager
 from provisioner.utils.ssh import SSHManager, SSHUtilError
 
 logger = logging.getLogger(__name__)

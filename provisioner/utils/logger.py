@@ -1,7 +1,8 @@
 import logging
-from logging.handlers import TimedRotatingFileHandler
 import os
 from datetime import datetime
+from logging.handlers import TimedRotatingFileHandler
+
 from provisioner.config.settings import DefaultSettings
 
 # Configure the root logger

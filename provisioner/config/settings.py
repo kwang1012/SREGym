@@ -1,8 +1,7 @@
 import os
-from pathlib import Path
+
 from dotenv import load_dotenv
 from geni.aggregate.cloudlab import Clemson, Utah, Wisconsin
-from dotenv import load_dotenv
 
 load_dotenv(override=True)
 
@@ -12,14 +11,14 @@ class DefaultSettings:
     DEFAULT_HARDWARE_TYPE = "c220g5"
     DEFAULT_OS_TYPE = "UBUNTU22-64-STD"
     DEFAULT_NODE_COUNT = 3  # 3
-    DEFAULT_DURATION_HOURS = 16 # 16
+    DEFAULT_DURATION_HOURS = 16  # 16
     DEFAULT_DESCRIPTION = "Cloudlab Experiment"
 
     MIN_AVAILABLE_CLUSTERS = 2  # 2
     MAX_TOTAL_CLUSTERS = 8  # 8
     MAX_CLUSTERS_PER_USER = 2  # 2
     UNCLAIMED_CLUSTER_TIMEOUT_HOURS = 16  # 16
-    CLAIMED_CLUSTER_DEFAULT_DURATION_HOURS = 7 * 24 # 7 * 24
+    CLAIMED_CLUSTER_DEFAULT_DURATION_HOURS = 7 * 24  # 7 * 24
     CLAIMED_CLUSTER_INACTIVITY_TIMEOUT_HOURS = 48
     CLAIMED_CLUSTER_EXTENSION_CHECK_HOURS = 24  # 24
 
@@ -27,7 +26,6 @@ class DefaultSettings:
 
     DEFAULT_SSH_TIME_OUT_SECONDS = 30  # 30
 
-    # Use absolute path for logs
     LOG_PATH = "logs/"
 
     #### Provisioner Credentials ####
