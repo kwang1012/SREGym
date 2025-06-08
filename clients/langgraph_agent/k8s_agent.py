@@ -3,13 +3,11 @@ import json
 import logging
 from typing import Annotated
 
-from azure.mgmt.core.exceptions import TypedErrorInfo
-from langchain_core.messages import ToolMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.tools import tool
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.constants import END
 from langgraph.graph import START, StateGraph
-from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
 from llm_backend.init_backend import get_llm_backend_for_tools
 from tools.jaeger_tools import *
@@ -18,13 +16,19 @@ from typing_extensions import TypedDict
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 from tools.basic_tool_node import BasicToolNode
+from tools.text_editing.file_nav import goto_line, open_file
 
 
 class State(TypedDict):
     # Messages have the type "list". The `add_messages` function
     # in the annotation defines how this state key should be updated
     # (in this case, it appends messages to the list, rather than overwriting them)
+    def add_messages(messages: list, message: ToolMessage | AIMessage | HumanMessage):
+        pass
+
     messages: Annotated[list, add_messages]
+    curr_file: Annotated[str, open_file]
+    curr_line: Annotated[int, goto_line]
 
 
 class XAgent:
@@ -99,7 +103,7 @@ class XAgent:
             "agent",
             self.route_tools,
             # The following dictionary lets you tell the graph to interpret the condition's outputs as a specific node
-            # It defaults to the identity function, but if you
+            # It text_editing to the identity function, but if you
             # want to use a node named something else apart from "tools",
             # You can update the value of the dictionary to something else
             # e.g., "tools": "my_tools"
