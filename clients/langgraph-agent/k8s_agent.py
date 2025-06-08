@@ -112,7 +112,9 @@ class XAgent:
         memory = MemorySaver()
         self.graph = self.graph_builder.compile(checkpointer=memory)
 
-    def graph_step(self):
+    def graph_step(self, user_input: str):
+        if not self.graph:
+            raise ValueError("Agent graph is None. Have you built the agent?")
         config = {"configurable": {"thread_id": "1"}}
         for event in self.graph.stream(
             {"messages": [{"role": "user", "content": user_input}]},
@@ -131,6 +133,7 @@ class XAgent:
 if __name__ == "__main__":
     llm = get_llm_backend_for_tools()
     xagent = XAgent(llm)
+    xagent.build_agent()
     # a short chatbot loop to demonstrate the workflow.
     while True:
         user_input = input("User: ")
