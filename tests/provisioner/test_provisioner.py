@@ -1,7 +1,7 @@
 """
 Test suite for the CloudLab provisioner functionality.
 
-This module contains integration tests that verify the core functionality of the CloudLab
+This module contains integration tests that test the core functionality of the CloudLab
 provisioner, including cluster provisioning, user management, and automatic cleanup.
 
 NOTE: These tests are live and will provision real CloudLab clusters.
@@ -174,15 +174,15 @@ def cleanup_cloudlab_clusters(state_manager: StateManager):
 #
 # Test Suite
 #
-# The following tests verify the core functionality of the CloudLab provisioner:
-# 1. test_auto_provisioning - Verifies automatic cluster provisioning when lower than MIN_AVAILABLE_CLUSTERS
+# The following tests test the core functionality of the CloudLab provisioner:
+# 1. test_auto_provisioning - Tests automatic cluster provisioning when lower than MIN_AVAILABLE_CLUSTERS
 # 2. test_user_claim_and_relinquish - Tests user cluster claim and release workflow
 # 3. test_max_clusters_per_user - Ensures users can't exceed their cluster limit
-# 4. test_unclaimed_cluster_timeout - Verifies automatic cleanup of unused clusters
+# 4. test_unclaimed_cluster_timeout - Tests automatic cleanup of unused clusters
 # 5. test_max_total_clusters_limit - Tests system-wide cluster limit enforcement
-# 6. test_claimed_cluster_inactivity_timeout - Verifies cleanup of inactive claimed clusters
+# 6. test_claimed_cluster_inactivity_timeout - Tests cleanup of inactive claimed clusters
 # 7. test_eval_override_for_inactivity - Tests evaluation mode claimed cluster protection
-# 8. test_claimed_cluster_extension - Verifies automatic claimed cluster reservation extension
+# 8. test_claimed_cluster_extension - Tests automatic claimed cluster reservation extension
 #
 
 
@@ -190,7 +190,7 @@ def test_auto_provisioning(state_manager, daemon):
     """
     Tests that the provisioner creates the minimum number of available clusters on startup.
 
-    This test verifies that:
+    This test checks that:
     1. Initially there are no available clusters
     2. After running checks, the minimum number of clusters are provisioned
     3. The provisioned clusters are in the correct state
@@ -216,7 +216,7 @@ def test_user_claim_and_relinquish(state_manager, daemon):
     """
     Tests the complete workflow of a user claiming and relinquishing a cluster.
 
-    This test verifies that:
+    This test checks that:
     1. A cluster can be auto-provisioned
     2. A user can register and claim the cluster
     3. The user can relinquish the cluster
@@ -276,7 +276,7 @@ def test_max_clusters_per_user(state_manager, daemon):
     """
     Tests that users cannot exceed their maximum allowed cluster limit.
 
-    This test verifies that:
+    This test checks that:
     1. A user can claim their first cluster
     2. The user is prevented from claiming additional clusters (MAX_CLUSTERS_PER_USER = 1)
     3. The system maintains the correct cluster count
@@ -328,7 +328,7 @@ def test_unclaimed_cluster_timeout(state_manager, daemon):
     """
     Tests that unclaimed clusters are automatically terminated after the timeout period.
 
-    This test verifies that:
+    This test checks that:
     1. A cluster can be provisioned
     2. The cluster is terminated after the unclaimed timeout period
     3. The cluster state is properly updated to terminated
@@ -371,7 +371,7 @@ def test_max_total_clusters_limit(state_manager, daemon):
     """
     Tests that the system enforces a maximum total number of clusters.
 
-    This test verifies that:
+    This test checks that:
     1. Users can claim clusters up to the system-wide limit
     2. Additional claims are rejected when the limit is reached
     3. The total cluster count remains at the maximum limit
@@ -395,7 +395,7 @@ def test_max_total_clusters_limit(state_manager, daemon):
         else:
             stdout, stderr, exit_code = run_cli_command(["claim", "--email", f"testuser{i}@example.com"])
             assert "Maximum total clusters" in stdout, "Error message should mention maximum clusters limit"
-            logger.success(f"Successfully verified that claim {i} was blocked due to MAX_TOTAL_CLUSTERS limit")
+            logger.success(f"Successfully tested that claim {i} was blocked due to MAX_TOTAL_CLUSTERS limit")
 
     # The total count should still be MAX_TOTAL_CLUSTERS
     assert (
@@ -408,7 +408,7 @@ def test_claimed_cluster_inactivity_timeout(state_manager, daemon):
     """
     Tests that claimed clusters are terminated after a period of inactivity.
 
-    This test verifies that:
+    This test checks that:
     1. A user can claim a cluster
     2. The cluster is terminated after the inactivity timeout period
     3. The cluster state is properly updated to terminated
@@ -458,7 +458,7 @@ def test_eval_override_for_inactivity(state_manager, daemon):
     """
     Tests that clusters with evaluation override are protected from inactivity termination.
 
-    This test verifies that:
+    This test checks that:
     1. A user can claim a cluster with evaluation override
     2. The cluster remains active after the inactivity timeout period
     3. The cluster state remains as claimed
@@ -509,7 +509,7 @@ def test_claimed_cluster_extension(state_manager, daemon):
     """
     Tests that claimed clusters are automatically extended before expiration.
 
-    This test verifies that:
+    This test checks that:
     1. A user can claim a cluster
     2. The cluster's reservation is automatically extended
     3. The extension time is properly recorded and updated

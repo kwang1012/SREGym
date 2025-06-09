@@ -161,11 +161,11 @@ python3 pytest test_provisioner.py::test_name
 
 The test suite includes the following tests:
 
-1. test_auto_provisioning - Verifies automatic cluster provisioning when lower than MIN_AVAILABLE_CLUSTERS
+1. test_auto_provisioning - Tests automatic cluster provisioning when lower than MIN_AVAILABLE_CLUSTERS
 2. test_user_claim_and_relinquish - Tests user cluster claim and release workflow
 3. test_max_clusters_per_user - Ensures users can't exceed their cluster limit
-4. test_unclaimed_cluster_timeout - Verifies automatic cleanup of unused clusters
+4. test_unclaimed_cluster_timeout - Tests automatic cleanup of unused clusters
 5. test_max_total_clusters_limit - Tests system-wide cluster limit enforcement
-6. test_claimed_cluster_inactivity_timeout - Verifies cleanup of inactive claimed clusters
+6. test_claimed_cluster_inactivity_timeout - Tests cleanup of inactive claimed clusters
 7. test_eval_override_for_inactivity - Tests evaluation mode claimed cluster protection
-8. test_claimed_cluster_extension - Verifies automatic claimed cluster reservation extension
+8. test_claimed_cluster_extension - Tests automatic claimed cluster reservation extension
