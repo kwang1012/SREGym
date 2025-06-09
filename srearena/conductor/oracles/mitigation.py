@@ -34,6 +34,5 @@ class MitigationOracle(Oracle):
             if not all_normal:
                 break
 
-        results["Mitigation Success"] = all_normal
         results["success"] = all_normal
         return results

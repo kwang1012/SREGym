@@ -13,12 +13,13 @@ class DetectionOracle(Oracle):
 
         if isinstance(solution, str):
             is_correct = is_exact_match(solution.strip().lower(), self.expected.lower())
-            results["Detection Accuracy"] = "Correct" if is_correct else "Incorrect"
+            results["accuracy"] = 100.0 if is_correct else 0.0
             results["success"] = is_correct
             print(f"{'✅' if is_correct else '❌'} Detection: {solution}")
         else:
-            results["Detection Accuracy"] = "Invalid Format"
+            results["accuracy"] = 0.0
             results["success"] = False
+            results["reason"] = "Invalid Format"
             print("❌ Invalid detection format")
 
         return results

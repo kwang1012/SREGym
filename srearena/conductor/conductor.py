@@ -117,7 +117,7 @@ class Conductor:
             results = self.problem.detection_oracle.evaluate(solution)
             self.results["Detection"] = results
 
-            if results["Detection Accuracy"] == "Invalid Format":
+            if results.get("reason", "") == "Invalid Format":
                 return "[⚠️] Invalid detection format. Please try again."
 
             self.results["TTD"] = time.time() - self.execution_start_time
@@ -144,11 +144,7 @@ class Conductor:
             results = self.problem.localization_oracle.evaluate(solution)
             self.results["Localization"] = results
 
-            if (
-                "Localization Accuracy" not in results
-                or results.get("Localization Accuracy") == 0.0
-                and not results.get("is_subset", False)
-            ):
+            if "accuracy" not in results or results.get("accuracy") == 0.0 and not results.get("is_subset", False):
                 if not isinstance(solution, (str, list)):
                     return "[⚠️] Invalid localization format. Please try again."
                 if isinstance(solution, list) and not all(isinstance(x, str) for x in solution):
