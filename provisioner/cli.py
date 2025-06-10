@@ -422,10 +422,6 @@ def claim(ctx, email, eval_override):
                     sm.update_cluster_record(slice_name, status=CLUSTER_STATUS.STATUS_TERMINATING)
                 return
 
-            # (Placeholder) SRE Arena Setup for user-provisioned cluster
-            # For now, assume success or not attempted. Daemon handles SRE for auto-provisioned.
-            sre_arena_status_val = SREARENA_STATUS.SRE_ARENA_NOT_ATTEMPTED  # Or SUCCESS if you run it here
-
             sm.update_cluster_record(
                 slice_name,
                 status=CLUSTER_STATUS.STATUS_CLAIMED,
@@ -434,7 +430,7 @@ def claim(ctx, email, eval_override):
                 control_node_hostname=hostname,
                 login_info=experiment_info["login_info"],
                 user_ssh_key_installed=user_ssh_key_installed_flag,
-                sre_arena_setup_status=sre_arena_status_val,
+                sre_arena_setup_status=SREARENA_STATUS.SRE_ARENA_NOT_ATTEMPTED,
                 cloudlab_expires_at=expires_at,
                 claimed_at=now,
             )

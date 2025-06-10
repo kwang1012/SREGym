@@ -1106,7 +1106,7 @@ wheels = [
 [[package]]
 name = "geni-lib-xlab"
 version = "1.0.0"
-source = { path = "scripts/geni-lib/mod/geni_lib_xlab-1.0.0.tar.gz" }
+source = { path = "scripts/geni_lib/mod/geni_lib_xlab-1.0.0.tar.gz" }
 dependencies = [
     { name = "cryptography" },
     { name = "lxml" },
@@ -3685,6 +3685,7 @@ sdist = { url = "https://files.pythonhosted.org/packages/3f/f4/4a80cd6ef364b2e8b
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e7/9c/0e6afc12c269578be5c0c1c9f4b49a8d32770a080260c333ac04cc1c832d/soupsieve-2.7-py3-none-any.whl", hash = "sha256:6e60cc5c1ffaf1cebcc12e8188320b72071e922c2e897f737cadce79ad5d30c4", size = 36677, upload-time = "2025-04-20T18:50:07.196Z" },
 ]
+
 [[package]]
 name = "sqlalchemy"
 version = "2.0.41"
@@ -3991,7 +3992,7 @@ requires-dist = [
     { name = "fonttools", specifier = "==4.58.0" },
     { name = "frozenlist", specifier = "==1.6.0" },
     { name = "fsspec", specifier = "==2025.5.1" },
-    { name = "geni-lib-xlab", path = "scripts/geni-lib/mod/geni_lib_xlab-1.0.0.tar.gz" },
+    { name = "geni-lib-xlab", path = "scripts/geni_lib/mod/geni_lib_xlab-1.0.0.tar.gz" },
     { name = "gguf", specifier = "==0.10.0" },
     { name = "gitdb", specifier = "==4.0.12" },
     { name = "gitpython", specifier = "==3.1.44" },
