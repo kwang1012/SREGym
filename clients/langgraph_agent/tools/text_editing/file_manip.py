@@ -20,18 +20,29 @@ def update_file_vars_in_state(
     message: str | ToolMessage | AIMessage | HumanMessage,
     tool_call_id: Annotated[str, InjectedToolCallId] = "",
 ) -> State:
+    logger.info("updating state with message: %s", message)
     new_state = state
+
     match message:
         case str():
             logger.info("Not updating state as message is a string")
             new_state["messages"] = new_state["messages"] + [ToolMessage(content=message, tool_call_id=tool_call_id)]
         case ToolMessage():
-            if message.tool_call.function.name == "open_file":
-                new_state["curr_file"] = message.tool_call.arguments["path"]
-                new_state["curr_line"] = message.tool_call.arguments["line_number"]
+            tool_call_msg = ""
+            for i in range(len(new_state["messages"]) - 1, -1, -1):
+                if hasattr(new_state["messages"][i], "tool_calls") and len(new_state["messages"][i].tool_calls) > 0:
+                    tool_call_msg = new_state["messages"][i]
+                    logger.info("Found last tool call message: %s", tool_call_msg)
+                    break
+            tool_name = tool_call_msg.tool_calls[0]["name"]
+            tool_args = tool_call_msg.tool_calls[0]["args"]
+            logger.info("Found tool args: %s", tool_args)
+            if tool_name == "open_file":
+                new_state["curr_file"] = tool_args["path"]
+                new_state["curr_line"] = tool_args["line_number"]
                 new_state["messages"] = new_state["messages"] + [message]
             elif message.tool_call.function.name == "goto_line":
-                new_state["curr_line"] = message.tool_call.arguments["line_number"]
+                new_state["curr_line"] = tool_args["line_number"]
                 new_state["messages"] = new_state["messages"] + [message]
         case _:
             logger.info("Not found open_file or goto_line in message: %s", message)
