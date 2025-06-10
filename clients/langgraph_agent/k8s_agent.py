@@ -5,7 +5,7 @@ from langgraph.prebuilt import ToolNode
 from llm_backend.init_backend import get_llm_backend_for_tools
 from tools.basic_tool_node import BasicToolNode
 from tools.jaeger_tools import *
-from tools.text_editing.file_manip import open_file
+from tools.text_editing.file_manip import goto_line, open_file
 
 from clients.langgraph_agent.state import State
 
@@ -31,7 +31,7 @@ class XAgent:
             get_services,
             get_operations,
         ]
-        self.file_editing_tools = [open_file]
+        self.file_editing_tools = [open_file, goto_line]
         self.llm = llm
 
     @property
@@ -52,7 +52,7 @@ class XAgent:
         if hasattr(ai_message, "tool_calls") and len(ai_message.tool_calls) > 0:
             tool_name = ai_message.tool_calls[0]["name"]
             match tool_name:
-                case "open_file":
+                case "open_file" | "goto_line":
                     logger.info("invoking tool node: file tool")
                     return "file_editing_tool_node"
                 case "get_traces" | "get_services" | "get_operations":
@@ -127,7 +127,7 @@ class XAgent:
         if not self.graph:
             raise ValueError("Agent graph is None. Have you built the agent?")
         config = {"configurable": {"thread_id": "1"}}
-        logger.info(f"memory list: {self.graph.checkpointer.list(config)}")
+        print(list(self.graph.get_state_history(config)))
         for event in self.graph.stream(
             {"messages": [{"role": "user", "content": user_input}], "curr_file": "", "curr_line": 0},
             config=config,
