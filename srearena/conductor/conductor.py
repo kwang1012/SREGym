@@ -12,6 +12,7 @@ from srearena.utils.critical_section import CriticalSection
 from srearena.utils.sigint_aware_section import SigintAwareSection
 from srearena.utils.status import SessionPrint, SubmissionStatus
 
+from json.decoder import JSONDecodeError
 
 class Conductor:
     def __init__(self):
@@ -210,14 +211,21 @@ class Conductor:
     def exit_cleanup_and_recover_fault(self):
         if self.problem:
             print("Recovering fault before exit...")
-            self.problem.recover_fault()
+            try:
+                self.problem.recover_fault()
+            except (JSONDecodeError):
+                print("Service has not been set up. Skipping fault recovery.")
+            
             self.problem.app.cleanup()
+
 
         self.prometheus.teardown()
 
         self.kubectl.exec_command("kubectl delete sc openebs-hostpath openebs-device --ignore-not-found")
         self.kubectl.exec_command("kubectl delete -f https://openebs.github.io/charts/openebs-operator.yaml")
         self.kubectl.wait_for_namespace_deletion("openebs")
+        
+        print("\nCleanup complete!")
 
 def exit_cleanup_fault(conductor):
     conductor.exit_cleanup_and_recover_fault()
