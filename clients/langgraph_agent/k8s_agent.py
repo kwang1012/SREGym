@@ -8,6 +8,7 @@ from tools.jaeger_tools import *
 from tools.text_editing.file_manip import create, goto_line, open_file
 
 from clients.langgraph_agent.state import State
+from clients.langgraph_agent.tools.text_editing.file_manip import edit, insert
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -31,7 +32,7 @@ class XAgent:
             get_services,
             get_operations,
         ]
-        self.file_editing_tools = [open_file, goto_line, create]
+        self.file_editing_tools = [open_file, goto_line, create, edit, insert]
         self.llm = llm
 
     @property
