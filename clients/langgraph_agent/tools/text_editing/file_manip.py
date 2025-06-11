@@ -44,10 +44,18 @@ def update_file_vars_in_state(
             if tool_name == "open_file":
                 new_state["curr_file"] = tool_args["path"]
                 new_state["curr_line"] = tool_args["line_number"]
-                new_state["messages"] = new_state["messages"] + [message]
             elif message.tool_call.function.name == "goto_line":
                 new_state["curr_line"] = tool_args["line_number"]
-                new_state["messages"] = new_state["messages"] + [message]
+            elif message.tool_call.function.name == "create":
+                new_state["curr_file"] = tool_args["path"]
+            elif message.tool_call.function.name == "edit":
+                # Explicitly pointing out as this tool does not modify agent state
+                pass
+            elif message.tool_call.function.name == "insert":
+                # Explicitly pointing out as this tool does not modify agent state
+                pass
+
+            new_state["messages"] = new_state["messages"] + [message]
         case _:
             logger.info("Not found open_file or goto_line in message: %s", message)
             logger.info("Not updating state")
