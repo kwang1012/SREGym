@@ -10,8 +10,8 @@ from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
 
-from srearena.conductor import Conductor
-from srearena.service.shell import Shell
+from srearena.conductor import Conductor, exit_cleanup_fault
+from srearena.service.shell import Shell 
 
 WELCOME = """
 # SREArena
@@ -120,7 +120,6 @@ class HumanAgent:
     def _filter_dict(self, dictionary, filter_func):
         return {k: v for k, v in dictionary.items() if filter_func(k, v)}
 
-
 async def main():
     conductor = Conductor()
     agent = HumanAgent(conductor)
@@ -131,7 +130,6 @@ async def main():
 
     results = await conductor.start_problem()
     print(results)
-
 
 if __name__ == "__main__":
     asyncio.run(main())

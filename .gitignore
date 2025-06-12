@@ -366,3 +366,14 @@ scripts/ansible/inventory.yml
 
 # Ignore geni-lib login info
 *.login.info.txt
+*.experiment.info.json
+
+# Ignore geni-lib context file
+context.json
+
+# Ignore sqlite3 database
+*.sqlite3
+
+# Ignore provisioner ssh keys
+provisioner_ssh_key
+provisioner_ssh_key.pub

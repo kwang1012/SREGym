@@ -2,6 +2,7 @@ import asyncio
 import atexit
 import os
 import time
+from json.decoder import JSONDecodeError
 
 from srearena.conductor.oracles.detection import DetectionOracle
 from srearena.conductor.parser import ResponseParser
@@ -9,6 +10,7 @@ from srearena.conductor.problems.registry import ProblemRegistry
 from srearena.service.kubectl import KubeCtl
 from srearena.service.telemetry.prometheus import Prometheus
 from srearena.utils.critical_section import CriticalSection
+from srearena.utils.sigint_aware_section import SigintAwareSection
 from srearena.utils.status import SessionPrint, SubmissionStatus
 
 
@@ -46,7 +48,7 @@ class Conductor:
         except Exception as e:
             with CriticalSection():
                 self.problem.recover_fault()
-                atexit.unregister(exit_cleanup_fault)
+                atexit.unregister(self.exit_cleanup_and_recover_fault)
             raise e
 
         return self.results
@@ -173,7 +175,27 @@ class Conductor:
         self.results.update(fault_results)
         return self.results
 
+    def exit_cleanup_and_recover_fault(self):
+        if self.problem:
+            print("Recovering fault before exit...")
+            try:
+                self.problem.recover_fault()
+            except JSONDecodeError:
+                # CTRL+C before service is set up results in a JSONDecodeError
+                print("Service has not been set up. Skipping fault recovery.")
+            except RuntimeError:
+                # When waiting for namespace deletion, console.status() is called and results in a RuntimeError
+                pass
 
-def exit_cleanup_fault(prob):
-    print("Recovering fault before exit...")
-    prob.recover_fault()
+            self.problem.app.cleanup()
+
+        self.prometheus.teardown()
+
+        self.kubectl.exec_command("kubectl delete sc openebs-hostpath openebs-device --ignore-not-found")
+        self.kubectl.exec_command("kubectl delete -f https://openebs.github.io/charts/openebs-operator.yaml")
+
+        print("\nCleanup complete!")
+
+
+def exit_cleanup_fault(conductor):
+    conductor.exit_cleanup_and_recover_fault()

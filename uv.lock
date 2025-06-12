@@ -135,6 +135,18 @@ wheels = [
 ]
 
 [[package]]
+name = "apscheduler"
+version = "3.11.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "tzlocal" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/4e/00/6d6814ddc19be2df62c8c898c4df6b5b1914f3bd024b780028caa392d186/apscheduler-3.11.0.tar.gz", hash = "sha256:4c622d250b0955a65d5d0eb91c33e6d43fd879834bf541e0a18661ae60460133", size = 107347, upload-time = "2024-11-24T19:39:26.463Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d0/ae/9a053dd9229c0fde6b1f1f33f609ccff1ee79ddda364c756a924c6d8563b/APScheduler-3.11.0-py3-none-any.whl", hash = "sha256:fc134ca32e50f5eadcc4938e3a4545ab19131435e851abb40b34d63d5141c6da", size = 64004, upload-time = "2024-11-24T19:39:24.442Z" },
+]
+
+[[package]]
 name = "asgiref"
 version = "3.8.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1094,7 +1106,7 @@ wheels = [
 [[package]]
 name = "geni-lib-xlab"
 version = "1.0.0"
-source = { path = "scripts/geni-lib/mod/geni_lib_xlab-1.0.0.tar.gz" }
+source = { path = "scripts/geni_lib/mod/geni_lib_xlab-1.0.0.tar.gz" }
 dependencies = [
     { name = "cryptography" },
     { name = "lxml" },
@@ -3715,6 +3727,7 @@ dependencies = [
     { name = "annotated-types" },
     { name = "anthropic" },
     { name = "anyio" },
+    { name = "apscheduler" },
     { name = "asgiref" },
     { name = "astor" },
     { name = "attrs" },
@@ -3927,6 +3940,7 @@ requires-dist = [
     { name = "annotated-types", specifier = "==0.7.0" },
     { name = "anthropic", specifier = ">=0.52.0" },
     { name = "anyio", specifier = "==4.9.0" },
+    { name = "apscheduler", specifier = ">=3.11.0" },
     { name = "asgiref", specifier = "==3.8.1" },
     { name = "astor", specifier = "==0.8.1" },
     { name = "attrs", specifier = "==25.3.0" },
@@ -3978,7 +3992,7 @@ requires-dist = [
     { name = "fonttools", specifier = "==4.58.0" },
     { name = "frozenlist", specifier = "==1.6.0" },
     { name = "fsspec", specifier = "==2025.5.1" },
-    { name = "geni-lib-xlab", path = "scripts/geni-lib/mod/geni_lib_xlab-1.0.0.tar.gz" },
+    { name = "geni-lib-xlab", path = "scripts/geni_lib/mod/geni_lib_xlab-1.0.0.tar.gz" },
     { name = "gguf", specifier = "==0.10.0" },
     { name = "gitdb", specifier = "==4.0.12" },
     { name = "gitpython", specifier = "==3.1.44" },

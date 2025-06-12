@@ -102,7 +102,8 @@ class HotelReservation(Application):
             print(f"Deleted PersistentVolume {pv}: {delete_result.strip()}")
         time.sleep(5)
 
-        self.wrk.stop()
+        if hasattr(self, "wrk"):
+            self.wrk.stop()
 
     def _remove_pv_finalizers(self, pv_name: str):
         """Remove finalizers from the PersistentVolume to prevent it from being stuck in a 'Terminating' state."""

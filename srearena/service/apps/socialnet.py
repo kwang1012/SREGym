@@ -66,7 +66,8 @@ class SocialNetwork(Application):
         """Delete the entire namespace for the social network application."""
         Helm.uninstall(**self.helm_configs)
 
-        self.wrk.stop()
+        if hasattr(self, "wrk"):
+            self.wrk.stop()
         # self.kubectl.delete_namespace(self.namespace)
         # time.sleep(15)
 
