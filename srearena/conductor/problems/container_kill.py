@@ -21,6 +21,7 @@ class ChaosMeshContainerKill(Problem):
         self.symptom_injector = SymptomFaultInjector(namespace=self.namespace)
         self.experiment_name = "container-kill-mesh"  # Hardcoding the known experiment name
         self.chaos_type = "podchaos"  # Hardcoding the type of chaos
+        super().__init__(app=self.app, namespace=self.app.namespace)
         # === Attach evaluation oracles ===
         self.localization_oracle = LocalizationOracle(problem=self, expected=[self.faulty_service])
 

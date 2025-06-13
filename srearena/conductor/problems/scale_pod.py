@@ -23,8 +23,8 @@ class ScalePodSocialNet(Problem):
         # Choose a very front service to test - this will directly cause an exception
         # TODO: We should create more problems with this using different faulty services
         # self.faulty_service = "nginx-thrift"
+        super().__init__(app=self.app, namespace=self.app.namespace)
         # === Attach evaluation oracles ===
-
         self.localization_oracle = LocalizationOracle(problem=self, expected=[self.faulty_service])
 
         self.app.create_workload()

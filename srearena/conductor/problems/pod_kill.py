@@ -20,6 +20,7 @@ class ChaosMeshPodKill(Problem):
             TARGET_MICROSERVICES / "hotelReservation/wrk2/scripts/hotel-reservation/mixed-workload_type_1.lua"
         )
         self.injector = SymptomFaultInjector(namespace=self.namespace)
+        super().__init__(app=self.app, namespace=self.app.namespace)
         # === Attach evaluation oracles ===
         self.localization_oracle = LocalizationOracle(problem=self, expected=[self.faulty_service])
 

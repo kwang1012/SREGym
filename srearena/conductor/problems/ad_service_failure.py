@@ -15,8 +15,8 @@ class AdServiceFailure(Problem):
         self.namespace = self.app.namespace
         self.injector = OtelFaultInjector(namespace=self.namespace)
         self.faulty_service = "ad"
+        super().__init__(app=self.app, namespace=self.app.namespace)
         # === Attach evaluation oracles ===
-
         self.localization_oracle = LocalizationOracle(problem=self, expected=[self.faulty_service])
 
     @mark_fault_injected

@@ -17,6 +17,7 @@ class MisconfigAppHotelRes(Problem):
         self.kubectl = KubeCtl()
         self.namespace = self.app.namespace
         self.faulty_service = "geo"
+        super().__init__(app=self.app, namespace=self.app.namespace)
         # === Attach evaluation oracles ===
         self.localization_oracle = LocalizationOracle(problem=self, expected=[self.faulty_service])
 

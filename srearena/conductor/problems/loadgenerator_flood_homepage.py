@@ -16,6 +16,7 @@ class LoadGeneratorFloodHomepage(Problem):
         self.injector = OtelFaultInjector(namespace=self.namespace)
         self.faulty_service = "frontend"  # This fault technically gets injected into the load generator, but the loadgenerator just spams the frontend
         # We can discuss more and see if we think we should change it, but loadgenerator isn't a "real" service.
+        super().__init__(app=self.app, namespace=self.app.namespace)
         # === Attach evaluation oracles ===
         self.localization_oracle = LocalizationOracle(problem=self, expected=[self.faulty_service])
 

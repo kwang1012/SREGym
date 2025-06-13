@@ -23,6 +23,7 @@ class MongoDBRevokeAuth(Problem):
         self.app.payload_script = (
             TARGET_MICROSERVICES / "hotelReservation/wrk2/scripts/hotel-reservation/mixed-workload_type_1.lua"
         )
+        super().__init__(app=self.app, namespace=self.app.namespace)
         # === Attach evaluation oracles ===
         self.localization_oracle = LocalizationOracle(problem=self, expected=[faulty_service])
 

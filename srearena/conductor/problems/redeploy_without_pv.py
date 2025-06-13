@@ -34,6 +34,7 @@ class RedeployWithoutPV(Problem):
             "mongodb-user",
         ]
         self.injector = VirtualizationFaultInjector(namespace=self.namespace)
+        super().__init__(app=self.app, namespace=self.app.namespace)
         # === Attach evaluation oracles ===
         self.localization_oracle = LocalizationOracle(problem=self, expected=self.faulty_service)
 
