@@ -129,7 +129,7 @@ def goto_line(
     tool_call_id: Annotated[str, InjectedToolCallId],
     line_number: Optional[int] = None,
 ) -> Command:
-    if state["curr_file"] is None:
+    if state["curr_file"] == "":
         msg_txt = "Error: No file is open, use open_file to open a file first"
         return Command(
             update=update_file_vars_in_state(state, msg_txt, tool_call_id),

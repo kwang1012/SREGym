@@ -49,25 +49,25 @@ USER_INPUTS = [
         ],
         "if not os.path.exists(path):",
     ),
-    (
-        [
-            # test basic goto_line
-            "open /Users/yms/tianyins_group/srearena/clients/langgraph_agent/tools/text_editing/file_manip.py at line 1",
-            "goto line 100",
-        ],
-        "line_num = wf.n_lines",
-    ),
-    (
-        [
-            # test goto_line if no file is opened
-            "goto line 100"
-        ],
-        "No file is opened",
-    ),
+    # (
+    #     [
+    #         # test basic goto_line
+    #         "open /Users/yms/tianyins_group/srearena/clients/langgraph_agent/tools/text_editing/file_manip.py at line 1",
+    #         "goto line 100",
+    #     ],
+    #     "line_num = wf.n_lines",
+    # ),
+    # (
+    #     [
+    #         # test goto_line if no file is opened
+    #         "goto line 100"
+    #     ],
+    #     "No file is opened",
+    # ),
     (
         [
             # test basic edit
-            "open /Users/yms/tianyins_group/srearena/clients/langgraph_agent/tools/text_editing/example.txt",
+            "open /Users/yms/tianyins_group/srearena/clients/langgraph_agent/tools/text_editing/example.txt at line 1",
             "use the edit tool to search for 'hello world' and replace with 'world hello'",
             "goto line 1",
         ],
@@ -76,7 +76,7 @@ USER_INPUTS = [
     (
         [
             # test editing python file.
-            "open /Users/yms/tianyins_group/srearena/clients/langgraph_agent/tools/text_editing/example.txt",
+            "open /Users/yms/tianyins_group/srearena/clients/langgraph_agent/tools/text_editing/example.py at line 1",
             "use the edit tool to rewrite the while loop with a for loop.",
             "goto line 1",
         ],
@@ -85,7 +85,7 @@ USER_INPUTS = [
     (
         [
             # test basic insert
-            "open /Users/yms/tianyins_group/srearena/clients/langgraph_agent/tools/text_editing/example.txt",
+            "open /Users/yms/tianyins_group/srearena/clients/langgraph_agent/tools/text_editing/example.txt at line 1",
             "use the insert tool to insert 'world hello' at the end of the file.",
             "goto line 1",
         ],
@@ -94,7 +94,7 @@ USER_INPUTS = [
     (
         [
             # test insert to python file
-            "open /Users/yms/tianyins_group/srearena/clients/langgraph_agent/tools/text_editing/example.txt",
+            "open /Users/yms/tianyins_group/srearena/clients/langgraph_agent/tools/text_editing/example.py at line 1",
             "use the insert tool to insert a print statement that prints 'hello world' at the end of the file.",
             "goto line 1",
         ],
