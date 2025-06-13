@@ -159,7 +159,7 @@ class Conductor:
         print("[Injecting fault now...]")
         with CriticalSection():
             self.problem.inject_fault()
-            atexit.register(exit_cleanup_fault, prob=self.problem)
+            atexit.register(self.exit_cleanup_and_recover_fault)
 
         # Phase 3: Faulty system
         self.submission_stage = "detection"
@@ -169,7 +169,7 @@ class Conductor:
         self.execution_end_time = time.time()
         with CriticalSection():
             self.problem.recover_fault()
-            atexit.unregister(exit_cleanup_fault)
+            atexit.unregister(self.exit_cleanup_and_recover_fault)
 
         self.problem.app.cleanup()
         self.prometheus.teardown()
