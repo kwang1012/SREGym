@@ -1,5 +1,6 @@
 from srearena.conductor.oracles.base import Oracle
 
+
 class DNSResolutionMitigationOracle(Oracle):
 
     importance = 1.0
@@ -17,7 +18,7 @@ class DNSResolutionMitigationOracle(Oracle):
 
         # Parse selector to label query
         selector_dict = eval(selector_output)
-        label_selector = ','.join(f"{k}={v}" for k, v in selector_dict.items())
+        label_selector = ",".join(f"{k}={v}" for k, v in selector_dict.items())
 
         # Get pod names using the selector
         command = f"kubectl get pods -n {namespace} -l {label_selector} -o jsonpath='{{.items[*].metadata.name}}'"
@@ -35,7 +36,9 @@ class DNSResolutionMitigationOracle(Oracle):
 
             for svc in service_names:
                 try:
-                    command = f"kubectl exec -n {namespace} {target_pod} -- getent hosts {svc}.{namespace}.svc.cluster.local"
+                    command = (
+                        f"kubectl exec -n {namespace} {target_pod} -- getent hosts {svc}.{namespace}.svc.cluster.local"
+                    )
                     output = kubectl.exec_command(command)
                     is_success = "exit code" not in output
 
@@ -50,8 +53,10 @@ class DNSResolutionMitigationOracle(Oracle):
                     failing.append(svc)
 
         if failing:
-            print(f"[❌] Faulty Service: {faulty_service} | Failed DNS Resolutions from target pod {target_pod}: {', '.join(failing)}")
+            print(
+                f"[❌] Faulty Service: {faulty_service} | Failed DNS Resolutions from target pod {target_pod}: {', '.join(failing)}"
+            )
             return {"success": False}
 
         print(f"[✅] All service names resolved inside target pod {target_pod}")
-        return {"success": True} 
+        return {"success": True}

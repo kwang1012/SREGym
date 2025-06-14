@@ -3,6 +3,7 @@
 import time
 
 import yaml
+
 from srearena.generators.fault.base import FaultInjector
 from srearena.paths import TARGET_MICROSERVICES
 from srearena.service.apps.base import Application
@@ -308,8 +309,8 @@ class VirtualizationFaultInjector(FaultInjector):
             # Get configmap as structured data
             cm_yaml = self.kubectl.exec_command("kubectl -n kube-system get cm coredns -o yaml")
             cm_data = yaml.safe_load(cm_yaml)
-            corefile = cm_data['data']['Corefile']
-            
+            corefile = cm_data["data"]["Corefile"]
+
             start_line_id = f"template ANY ANY {fqdn} {{"
             if start_line_id in corefile:
                 print("NXDOMAIN template already present; recovering from previous injection")
@@ -318,12 +319,12 @@ class VirtualizationFaultInjector(FaultInjector):
                 # Re-fetch after recovery
                 cm_yaml = self.kubectl.exec_command("kubectl -n kube-system get cm coredns -o yaml")
                 cm_data = yaml.safe_load(cm_yaml)
-                corefile = cm_data['data']['Corefile']
-            
+                corefile = cm_data["data"]["Corefile"]
+
             # Create the NXDOMAIN template block
             template_block = (
                 f"    template ANY ANY {fqdn} {{\n"
-                f"        match \"^{fqdn}\\.$\"\n"
+                f'        match "^{fqdn}\\.$"\n'
                 f"        rcode NXDOMAIN\n"
                 f"        fallthrough\n"
                 f"    }}\n"
@@ -334,36 +335,30 @@ class VirtualizationFaultInjector(FaultInjector):
             if kubernetes_pos == -1:
                 print("Could not locate 'kubernetes' plugin in Corefile")
                 return
-            
+
             # Find the start of the line containing "kubernetes"
-            line_start = corefile.rfind('\n', 0, kubernetes_pos)
+            line_start = corefile.rfind("\n", 0, kubernetes_pos)
             if line_start == -1:
                 line_start = 0
             else:
                 line_start += 1
-            
-            # Insert template block before the kubernetes line
-            new_corefile = (
-                corefile[:line_start] + 
-                template_block + 
-                corefile[line_start:]
-            )
 
-            cm_data['data']['Corefile'] = new_corefile
-            
-            #Apply using temporary file
+            # Insert template block before the kubernetes line
+            new_corefile = corefile[:line_start] + template_block + corefile[line_start:]
+
+            cm_data["data"]["Corefile"] = new_corefile
+
+            # Apply using temporary file
             tmp_file_path = self._write_yaml_to_file("coredns", cm_data)
 
             self.kubectl.exec_command(f"kubectl apply -f {tmp_file_path}")
 
             # Restart CoreDNS
             self.kubectl.exec_command("kubectl -n kube-system rollout restart deployment coredns")
-            self.kubectl.exec_command(
-                "kubectl -n kube-system rollout status deployment coredns --timeout=30s"
-            )
-            
+            self.kubectl.exec_command("kubectl -n kube-system rollout status deployment coredns --timeout=30s")
+
             print(f"Injected Service DNS Resolution Failure fault for service: {service}")
-            
+
     def recover_service_dns_resolution_failure(self, microservices: list[str]):
         for service in microservices:
             fqdn = f"{service}.{self.namespace}.svc.cluster.local"
@@ -371,39 +366,39 @@ class VirtualizationFaultInjector(FaultInjector):
             # Get configmap as structured data
             cm_yaml = self.kubectl.exec_command("kubectl -n kube-system get cm coredns -o yaml")
             cm_data = yaml.safe_load(cm_yaml)
-            corefile = cm_data['data']['Corefile']
-            
+            corefile = cm_data["data"]["Corefile"]
+
             start_line_id = f"template ANY ANY {fqdn} {{"
             if start_line_id not in corefile:
                 print("No NXDOMAIN template found; nothing to do")
                 return
-            
+
             lines = corefile.split("\n")
             new_lines = []
             skip_block = False
-            
+
             for line in lines:
                 # Start of template block
                 if not skip_block and start_line_id in line:
                     skip_block = True
                     continue
-                
+
                 # End of template block
                 if skip_block and line.strip() == "}":
                     skip_block = False
                     continue
-                
+
                 # Skip lines inside the block
                 if skip_block:
                     continue
-                
+
                 # Keep all other lines
                 new_lines.append(line)
-    
+
             if skip_block:
                 print("WARNING: Template block was not properly closed")
                 return
-            
+
             new_corefile = "\n".join(new_lines)
 
             # Verify the removal worked
@@ -411,7 +406,7 @@ class VirtualizationFaultInjector(FaultInjector):
                 print("ERROR: Template was not successfully removed!")
                 return
 
-            cm_data['data']['Corefile'] = new_corefile
+            cm_data["data"]["Corefile"] = new_corefile
 
             # Apply using temporary file
             tmp_file_path = self._write_yaml_to_file("coredns", cm_data)
@@ -419,10 +414,8 @@ class VirtualizationFaultInjector(FaultInjector):
 
             # Restart CoreDNS
             self.kubectl.exec_command("kubectl -n kube-system rollout restart deployment coredns")
-            self.kubectl.exec_command(
-                "kubectl -n kube-system rollout status deployment coredns --timeout=30s"
-            )
-            
+            self.kubectl.exec_command("kubectl -n kube-system rollout status deployment coredns --timeout=30s")
+
             print(f"Recovered Service DNS Resolution Failure fault for service: {service}")
 
     ############# HELPER FUNCTIONS ################
