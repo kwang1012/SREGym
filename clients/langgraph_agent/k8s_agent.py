@@ -1,3 +1,5 @@
+import json
+
 import yaml
 from langchain_core.messages import AIMessage
 from langgraph.checkpoint.memory import MemorySaver
@@ -13,6 +15,8 @@ from clients.langgraph_agent.tools.text_editing.file_manip import create, edit, 
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+
+REPO_ROOT_PATH = "/Users/yms/tianyins_group/srearena"
 
 
 class XAgent:
@@ -72,13 +76,78 @@ class XAgent:
         return END
 
     def mock_llm_inference_step(self, state: State):
+        ai_message_template = AIMessage(
+            content="",
+            additional_kwargs={
+                "tool_calls": [
+                    {
+                        "id": "call_osNIUg8kE7psP360dHinqNbm",
+                        "function": {
+                            "arguments": "",
+                            "name": "",
+                        },
+                        "type": "function",
+                    }
+                ],
+                "refusal": None,
+            },
+            response_metadata={
+                "token_usage": {
+                    "completion_tokens": 39,
+                    "prompt_tokens": 588,
+                    "total_tokens": 627,
+                    "completion_tokens_details": {
+                        "accepted_prediction_tokens": 0,
+                        "audio_tokens": 0,
+                        "reasoning_tokens": 0,
+                        "rejected_prediction_tokens": 0,
+                    },
+                    "prompt_tokens_details": {"audio_tokens": 0, "cached_tokens": 0},
+                },
+                "model_name": "gpt-4o-2024-08-06",
+                "system_fingerprint": "fp_07871e2ad8",
+                "id": "chatcmpl-Bhh2o2j0cJ5jw6wTll8TXTzifUvJF",
+                "service_tier": "default",
+                "finish_reason": "tool_calls",
+                "logprobs": None,
+            },
+            id="run--d19df02c-3833-4866-b9d9-998d43e90179-0",
+            tool_calls=[
+                {
+                    "name": "",
+                    "args": {
+                        "path": "",
+                        "line_number": "",
+                    },
+                    "id": "call_osNIUg8kE7psP360dHinqNbm",
+                    "type": "tool_call",
+                }
+            ],
+            usage_metadata={
+                "input_tokens": 588,
+                "output_tokens": 39,
+                "total_tokens": 627,
+                "input_token_details": {"audio": 0, "cache_read": 0},
+                "output_token_details": {"audio": 0, "reasoning": 0},
+            },
+        )
         logger.info("invoking mock llm inference, custom state: %s", state)
-        test_campaign = yaml.safe_load(open(AGENT_TEST_CAMPAIGN_FILE, "r"))
-        return {
-            "messages": [state["messages"] + [msg_to_append]],
-            "curr_file": state["curr_file"],
-            "curr_line": state["curr_line"],
-        }
+        test_campaign = yaml.safe_load(open(self.test_campaign_file, "r"))
+        for tool_call in test_campaign["tool_calls"]:
+            function_name = tool_call["name"]
+            function_args = {key: value for key, value in tool_call.items() if key != "name"}
+            function_args_str = json.dumps(function_args)
+            ai_message_template.additional_kwargs["tool_calls"][0]["function"]["arguments"] = function_args_str
+            ai_message_template.additional_kwargs["tool_calls"][0]["function"]["name"] = function_name
+            ai_message_template.tool_calls[0]["name"] = function_name
+            ai_message_template.tool_calls[0]["args"] = function_args
+            logger.info("[mock llm] ai message returned: %s", ai_message_template)
+
+            yield {
+                "messages": [state["messages"] + [ai_message_template]],
+                "curr_file": state["curr_file"],
+                "curr_line": state["curr_line"],
+            }
 
     # this is the agent node. it simply queries the llm and return the results
     def llm_inference_step(self, state: State):
@@ -93,7 +162,8 @@ class XAgent:
         # we add the node to the graph
         if mock:
             self.graph_builder.add_node("agent", self.mock_llm_inference_step)
-        self.graph_builder.add_node("agent", self.llm_inference_step)
+        else:
+            self.graph_builder.add_node("agent", self.llm_inference_step)
 
         # we also have a tool node. this tool node connects to a jaeger MCP server
         # and allows you to query any jaeger information

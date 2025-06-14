@@ -1,0 +1,4 @@
+tool_calls:
+  - name: open
+    path: "tests/file_editing/example.txt"
+    line_number: 1
