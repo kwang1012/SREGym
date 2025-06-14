@@ -40,7 +40,8 @@ USER_INPUTS = [
 class TestOpenFile:
     def test_open_file_success(self, test_campaign_file: str):
         xagent = get_agent()
-        xagent.test_campaign_setter(f"{ROOT_REPO_PATH}/tests/file_editing/open_1.yaml")
+        print(f"xagent msg switch branch: {xagent.test_tool_or_ai_response}")
+        xagent.test_campaign_setter(test_campaign_file)
         test_campaign = yaml.safe_load(open(test_campaign_file, "r"))
         test_user_inputs = test_campaign["user_inputs"]
         feed_input_to_agent(xagent, test_user_inputs)
