@@ -1,3 +1,4 @@
+import yaml
 from langchain_core.messages import AIMessage
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.constants import END
@@ -34,6 +35,10 @@ class XAgent:
         ]
         self.file_editing_tools = [open_file, goto_line, create, edit, insert]
         self.llm = llm
+        self.test_campaign_file = ""
+
+    def test_campaign_setter(self, test_campaign_file):
+        self.test_campaign_file = test_campaign_file
 
     @property
     def all_tools(self):
@@ -66,8 +71,9 @@ class XAgent:
         logger.info("no tool call, returning END")
         return END
 
-    def mock_llm_inference_step(self, state: State, msg_to_append: AIMessage = None):
+    def mock_llm_inference_step(self, state: State):
         logger.info("invoking mock llm inference, custom state: %s", state)
+        test_campaign = yaml.safe_load(open(AGENT_TEST_CAMPAIGN_FILE, "r"))
         return {
             "messages": [state["messages"] + [msg_to_append]],
             "curr_file": state["curr_file"],
@@ -83,8 +89,10 @@ class XAgent:
             "curr_line": state["curr_line"],
         }
 
-    def build_agent(self):
+    def build_agent(self, mock: bool = False):
         # we add the node to the graph
+        if mock:
+            self.graph_builder.add_node("agent", self.mock_llm_inference_step)
         self.graph_builder.add_node("agent", self.llm_inference_step)
 
         # we also have a tool node. this tool node connects to a jaeger MCP server
