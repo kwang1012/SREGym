@@ -49,4 +49,4 @@ class TestOpenFile:
         config = {"configurable": {"thread_id": "1"}}
         assert xagent.graph.get_state(config).values["curr_file"] == test_campaign["expected_curr_file"]
         assert xagent.graph.get_state(config).values["curr_line"] == str(test_campaign["expected_curr_line"])
-        assert test_campaign["expected_output"] in xagent.graph.get_state(config).values["messages"][-1].content
+        assert test_campaign["expected_output"] in xagent.graph.get_state(config).values["messages"][-2].content
