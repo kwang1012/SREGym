@@ -1,3 +1,4 @@
+from langchain_core.messages import AIMessage
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.constants import END
 from langgraph.graph import START, StateGraph
@@ -64,6 +65,14 @@ class XAgent:
                 return END
         logger.info("no tool call, returning END")
         return END
+
+    def mock_llm_inference_step(self, state: State, msg_to_append: AIMessage = None):
+        logger.info("invoking mock llm inference, custom state: %s", state)
+        return {
+            "messages": [state["messages"] + [msg_to_append]],
+            "curr_file": state["curr_file"],
+            "curr_line": state["curr_line"],
+        }
 
     # this is the agent node. it simply queries the llm and return the results
     def llm_inference_step(self, state: State):
