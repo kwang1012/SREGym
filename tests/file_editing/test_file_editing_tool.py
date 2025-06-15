@@ -42,8 +42,8 @@ def git_restore_repo():
 
 
 USER_INPUTS = [
-    f"{ROOT_REPO_PATH}/tests/file_editing/open_1.yaml",
-    f"{ROOT_REPO_PATH}/tests/file_editing/open_2.yaml",
+    f"{ROOT_REPO_PATH}/tests/file_editing/test_open_file_1.yaml",
+    f"{ROOT_REPO_PATH}/tests/file_editing/test_open_file_2.yaml",
 ]
 
 
