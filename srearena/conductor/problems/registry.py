@@ -93,6 +93,9 @@ class ProblemRegistry:
             "wrong_dns_policy_social_network": lambda: WrongDNSPolicy(
                 app_name="social_network", faulty_service="user-service"
             ),
+            "wrong_dns_policy_hotel_reservation": lambda: WrongDNSPolicy(
+                app_name="hotel_reservation", faulty_service="profile"
+            ),
             # "missing_service_astronomy_shop": lambda: MissingService(app_name="astronomy_shop", faulty_service="ad"),
             # K8S operator misoperation -> Refactor later, not sure if they're working
             # They will also need to be updated to the new problem format.
