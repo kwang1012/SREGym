@@ -1,4 +1,5 @@
 import os
+import subprocess
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -30,6 +31,16 @@ def feed_input_to_agent(xagent: XAgent, input_text: list[str]):
 
 ROOT_REPO_PATH = "/Users/yms/tianyins_group/srearena"
 
+
+def git_restore_repo():
+    """Restores all tracked files in the root of the repository."""
+    try:
+        subprocess.run(["git", "restore", "."], cwd=ROOT_REPO_PATH, check=True)
+        print("Repository restored successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to restore repository: {e}")
+
+
 USER_INPUTS = [
     f"{ROOT_REPO_PATH}/tests/file_editing/open_1.yaml",
     f"{ROOT_REPO_PATH}/tests/file_editing/open_2.yaml",
@@ -50,3 +61,4 @@ class TestOpenFile:
         assert xagent.graph.get_state(config).values["curr_file"] == test_campaign["expected_curr_file"]
         assert xagent.graph.get_state(config).values["curr_line"] == str(test_campaign["expected_curr_line"])
         assert test_campaign["expected_output"] in xagent.graph.get_state(config).values["messages"][-2].content
+        git_restore_repo()
