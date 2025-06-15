@@ -375,7 +375,7 @@ def insert(
     state: Annotated[dict, InjectedState],
     tool_call_id: Annotated[str, InjectedToolCallId],
     text: str,
-    line: Union[int, None] = None,
+    line_number: Union[int, None] = None,
 ):
     """
     Insert <text> at the end of the currently opened file or after <line> if specified.
@@ -386,7 +386,7 @@ def insert(
     wf = WindowedFile(state["curr_file"])
 
     pre_edit_lint = flake8(wf.path)
-    insert_info = wf.insert(text, line=line - 1 if line is not None else None)
+    insert_info = wf.insert(text, line=line_number - 1 if line_number is not None else None)
     post_edit_lint = flake8(wf.path)
 
     # Try to filter out pre-existing errors
