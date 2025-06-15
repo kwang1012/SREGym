@@ -1,5 +1,3 @@
-import random
-
 from srearena.conductor.oracles.base import Oracle
 
 
@@ -17,7 +15,7 @@ class DNSResolutionMitigationOracle(Oracle):
         service_names = [svc.metadata.name for svc in kubectl.list_services(namespace).items]
 
         if faulty_service == None:
-            faulty_service = random.choice(service_names)
+            faulty_service = service_names[0]
 
         # Get the service's selector
         command = f"kubectl get service {faulty_service} -n {namespace} -o jsonpath='{{.spec.selector}}'"
