@@ -133,35 +133,35 @@ class Conductor:
             with SigintAwareSection():
                 print(f"[Session Start] Problem ID: {self.problem_id}")
                 print("Setting up OpenEBS...")
-                    self.kubectl.exec_command("kubectl apply -f https://openebs.github.io/charts/openebs-operator.yaml")
-                    self.kubectl.exec_command(
-                        'kubectl patch storageclass openebs-hostpath '
-                        '-p \'{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}\''
-                    )
-                    self.kubectl.wait_for_ready("openebs")
-                    print("OpenEBS setup completed.")
-                
-                    print("Setting up metrics-server...")
-                    self.kubectl.exec_command(
-                        "kubectl apply -f "
-                        "https://github.com/kubernetes-sigs/metrics-server/"
-                        "releases/latest/download/components.yaml"
-                    )
-                    self.kubectl.exec_command(
-                        "kubectl -n kube-system patch deployment metrics-server "
-                        "--type=json -p='["
-                        "{\"op\":\"add\",\"path\":\"/spec/template/spec/containers/0/args/-\",\"value\":\"--kubelet-insecure-tls\"},"
-                        "{\"op\":\"add\",\"path\":\"/spec/template/spec/containers/0/args/-\",\"value\":\"--kubelet-preferred-address-types=InternalIP\"}"
-                        "]'"
-                    )
-                    self.kubectl.wait_for_ready("metrics-server", namespace="kube-system")
-                    print("metrics-server setup completed.")
-                
-                    self.prometheus.deploy()
-                
-                    self.problem.app.delete()
-                    self.problem.app.deploy()
-                    self.problem.app.start_workload()
+                self.kubectl.exec_command("kubectl apply -f https://openebs.github.io/charts/openebs-operator.yaml")
+                self.kubectl.exec_command(
+                    "kubectl patch storageclass openebs-hostpath "
+                    '-p \'{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}\''
+                )
+                self.kubectl.wait_for_ready("openebs")
+                print("OpenEBS setup completed.")
+
+                print("Setting up metrics-server...")
+                self.kubectl.exec_command(
+                    "kubectl apply -f "
+                    "https://github.com/kubernetes-sigs/metrics-server/"
+                    "releases/latest/download/components.yaml"
+                )
+                self.kubectl.exec_command(
+                    "kubectl -n kube-system patch deployment metrics-server "
+                    "--type=json -p='["
+                    '{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"},'
+                    '{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-preferred-address-types=InternalIP"}'
+                    "]'"
+                )
+                self.kubectl.wait_for_ready("metrics-server", namespace="kube-system")
+                print("metrics-server setup completed.")
+
+                self.prometheus.deploy()
+
+                self.problem.app.delete()
+                self.problem.app.deploy()
+                self.problem.app.start_workload()
         except KeyboardInterrupt:
             print("\nImmediately terminating and Cleaning up...")
             self.exit_cleanup_and_recover_fault()
