@@ -1,5 +1,6 @@
 """Inject faults at the virtualization layer: K8S, Docker, etc."""
 
+import copy
 import time
 
 import yaml
@@ -568,6 +569,68 @@ class VirtualizationFaultInjector(FaultInjector):
         self.kubectl.exec_command("kubectl -n kube-system rollout status deployment coredns --timeout=30s")
 
         print("Recovered from stale CoreDNS config for all .svc.cluster.local domains")
+
+    # V.13 - Inject a sidecar container that binds to the same port as the main container (port conflict)
+    def inject_sidecar_port_conflict(self, microservices: list[str]):
+        for service in microservices:
+
+            original_deployment_yaml = self._get_deployment_yaml(service)
+            deployment_yaml = copy.deepcopy(original_deployment_yaml)
+
+            containers = deployment_yaml["spec"]["template"]["spec"]["containers"]
+
+            main_container = containers[0] if containers else {}
+            default_port = 8080
+            port = default_port
+            ports_list = main_container.get("ports", [])
+            if ports_list:
+                port = ports_list[0].get("containerPort", default_port)
+
+            sidecar_container = {
+                "name": "sidecar",
+                "image": "busybox:latest",
+                "command": [
+                    "sh",
+                    "-c",
+                    f"while true; do nc -lk -p {port} >/dev/null 2>&1; done",
+                ],
+                "ports": [
+                    {
+                        "containerPort": port,
+                    }
+                ],
+            }
+
+            containers.append(sidecar_container)
+
+            modified_yaml_path = self._write_yaml_to_file(service, deployment_yaml)
+
+            delete_cmd = f"kubectl delete deployment {service} -n {self.namespace}"
+            apply_cmd = f"kubectl apply -f {modified_yaml_path} -n {self.namespace}"
+
+            delete_result = self.kubectl.exec_command(delete_cmd)
+            print(f"Delete result for {service}: {delete_result}")
+
+            apply_result = self.kubectl.exec_command(apply_cmd)
+            print(f"Apply result for {service}: {apply_result}")
+
+            # Save the *original* deployment YAML for recovery
+            self._write_yaml_to_file(service, original_deployment_yaml)
+
+            print(f"Injected sidecar port conflict fault for service: {service}")
+
+    def recover_sidecar_port_conflict(self, microservices: list[str]):
+        for service in microservices:
+            delete_cmd = f"kubectl delete deployment {service} -n {self.namespace}"
+            apply_cmd = f"kubectl apply -f /tmp/{service}_modified.yaml -n {self.namespace}"
+
+            delete_result = self.kubectl.exec_command(delete_cmd)
+            print(f"Delete result for {service}: {delete_result}")
+
+            apply_result = self.kubectl.exec_command(apply_cmd)
+            print(f"Apply result for {service}: {apply_result}")
+
+            print(f"Recovered from sidecar port conflict fault for service: {service}")
 
     ############# HELPER FUNCTIONS ################
     def _wait_for_pods_ready(self, microservices: list[str], timeout: int = 30):
