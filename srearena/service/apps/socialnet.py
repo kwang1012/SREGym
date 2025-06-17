@@ -1,5 +1,7 @@
 """Interface to the social network application from DeathStarBench"""
 
+import time
+
 from srearena.generators.workload.wrk2 import Wrk2, Wrk2WorkloadManager
 from srearena.paths import SOCIAL_NETWORK_METADATA, TARGET_MICROSERVICES
 from srearena.service.apps.base import Application
@@ -68,8 +70,8 @@ class SocialNetwork(Application):
 
         if hasattr(self, "wrk"):
             self.wrk.stop()
-        # self.kubectl.delete_namespace(self.namespace)
-        # time.sleep(15)
+        self.kubectl.delete_namespace(self.namespace)
+        time.sleep(10)
 
     def create_workload(self):
         self.wrk = Wrk2WorkloadManager(
