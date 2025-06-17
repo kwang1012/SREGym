@@ -164,7 +164,7 @@ class Conductor:
                 self.problem.app.start_workload()
         except KeyboardInterrupt:
             print("\nImmediately terminating and Cleaning up...")
-            self.exit_cleanup_and_recover_fault()
+            atexit.register(self.exit_cleanup_and_recover_fault)
             raise SystemExit from None
 
         # Phase 1: NO OP

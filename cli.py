@@ -13,6 +13,7 @@ from rich.panel import Panel
 
 from srearena.conductor import Conductor, exit_cleanup_fault
 from srearena.service.shell import Shell
+from srearena.utils.sigint_aware_section import SigintAwareSection
 
 WELCOME = """
 # SREArena
@@ -106,17 +107,18 @@ class HumanAgent:
 
         with patch_stdout():
             try:
-                input = await loop.run_in_executor(
-                    None,
-                    lambda: self.session.prompt(prompt_text, style=style, completer=completer),
-                )
+                with SigintAwareSection():
+                    input = await loop.run_in_executor(
+                        None,
+                        lambda: self.session.prompt(prompt_text, style=style, completer=completer),
+                    )
 
-                if input.lower() == "exit":
-                    atexit.register(exit_cleanup_fault, conductor=self.conductor)
-                    raise SystemExit
+                    if input.lower() == "exit":
+                        raise SystemExit
 
-                return input
+                    return input
             except (SystemExit, KeyboardInterrupt, EOFError):
+                atexit.register(exit_cleanup_fault, conductor=self.conductor)
                 raise SystemExit from None
 
     def _filter_dict(self, dictionary, filter_func):
