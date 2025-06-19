@@ -23,13 +23,14 @@ logger.info("Starting Prometheus MCP Server")
 #Here, I initialize the FastMCP server with the name "Prometheus MCP Server
 mcp = FastMCP("Prometheus MCP Server")
 
-prometheus_url = "http://localhost:32000"
-observability_client = ObservabilityClient(prometheus_url)
+
 USE_HTTP = True
 
 @mcp.tool(name="get_metrics")
 def get_metrics(query: str):
     logger.info("[prom_mcp] get_metrics called, getting prometheus metrics")
+    prometheus_url = "http://localhost:32000"
+    observability_client = ObservabilityClient(prometheus_url)
     try:
         url = f"{prometheus_url}/api/v1/query"
         param= {"query": query }
