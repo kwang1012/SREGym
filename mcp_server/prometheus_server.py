@@ -23,7 +23,7 @@ logger.info("Starting Prometheus MCP Server")
 #Here, I initialize the FastMCP server with the name "Prometheus MCP Server
 mcp = FastMCP("Prometheus MCP Server")
 
-prometheus_url = "http://localhost:9090"
+prometheus_url = "http://localhost:32000"
 observability_client = ObservabilityClient(prometheus_url)
 USE_HTTP = True
 
