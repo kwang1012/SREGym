@@ -4,6 +4,7 @@ from srearena.conductor.problems.ad_service_manual_gc import AdServiceManualGc
 from srearena.conductor.problems.assign_non_existent_node import AssignNonExistentNode
 from srearena.conductor.problems.auth_miss_mongodb import MongoDBAuthMissing
 from srearena.conductor.problems.cart_service_failure import CartServiceFailure
+from srearena.conductor.problems.configmap_drift import ConfigMapDrift
 from srearena.conductor.problems.container_kill import ChaosMeshContainerKill
 from srearena.conductor.problems.image_slow_load import ImageSlowLoad
 from srearena.conductor.problems.kafka_queue_problems import KafkaQueueProblems
@@ -109,6 +110,9 @@ class ProblemRegistry:
             "sidecar_port_conflict_hotel_reservation": lambda: SidecarPortConflict(
                 app_name="hotel_reservation", faulty_service="frontend"
             ),
+
+            "configmap_drift_hotel_reservation": lambda: ConfigMapDrift(app_name="hotel_reservation", faulty_service="mongodb-geo"),
+
             # "missing_service_astronomy_shop": lambda: MissingService(app_name="astronomy_shop", faulty_service="ad"),
             # K8S operator misoperation -> Refactor later, not sure if they're working
             # They will also need to be updated to the new problem format.

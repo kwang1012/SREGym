@@ -1,6 +1,7 @@
 """Inject faults at the virtualization layer: K8S, Docker, etc."""
 
 import copy
+import json
 import time
 
 import yaml
@@ -636,6 +637,53 @@ class VirtualizationFaultInjector(FaultInjector):
 
             print(f"Recovered from sidecar port conflict fault for service: {service}")
 
+    # Inject ConfigMap drift by removing critical keys
+    def inject_configmap_drift(self, microservices: list[str]):
+        for service in microservices:
+
+            configmap_name, keys_to_remove = self._get_configmap_name(service)
+
+            cm_data = self._get_configmap_yaml(configmap_name)
+            original_cm_data = copy.deepcopy(cm_data)
+
+            for key in keys_to_remove:
+                if key in cm_data.get("data", {}):
+                    patch = f'[{{"op":"remove","path":"/data/{key}"}}]'
+                    self.kubectl.exec_command(
+                        f"kubectl patch configmap {configmap_name} -n {self.namespace} --type json -p '{patch}'"
+                    )
+                    print(f"[Drift] Removed '{key}' from {configmap_name}")
+                else:
+                    print(f"[Drift] Key '{key}' not present in {configmap_name}")
+
+
+            self.kubectl.exec_command(
+                f"kubectl rollout restart deployment {service} -n {self.namespace}"
+            )
+            self.kubectl.exec_command(
+                f"kubectl rollout status deployment {service} -n {self.namespace}"
+            )
+
+            # Save the *original* configmap YAML for recovery
+            self._write_yaml_to_file(configmap_name, original_cm_data)
+
+            print(f"Injected ConfigMap drift fault for service: {service} on '{configmap_name}'.")
+
+    def recover_configmap_drift(self, microservices: list[str]):
+        for service in microservices:
+            configmap_name, _ = self._get_configmap_name(service)
+
+            self.kubectl.exec_command(
+                f"kubectl apply -f /tmp/{configmap_name}_modified.yaml -n {self.namespace}"
+            )
+            self.kubectl.exec_command(
+                f"kubectl rollout restart deployment {service} -n {self.namespace}"
+            )
+
+            self.kubectl.wait_for_ready(self.namespace)
+
+            print(f"Recovered ConfigMap drift fault for service: {service} on '{configmap_name}'.")
+
     ############# HELPER FUNCTIONS ################
     def _wait_for_pods_ready(self, microservices: list[str], timeout: int = 30):
         for service in microservices:
@@ -683,6 +731,10 @@ class VirtualizationFaultInjector(FaultInjector):
             f"kubectl get deployment {service_name} -n {self.namespace} -o yaml"
         )
         return yaml.safe_load(deployment_yaml)
+    
+    def _get_configmap_yaml(self, configmap_name: str):
+        configmap_yaml = self.kubectl.exec_command(f"kubectl get configmap {configmap_name} -n {self.namespace} -o yaml")
+        return yaml.safe_load(configmap_yaml)
 
     def _get_service_yaml(self, service_name: str):
         deployment_yaml = self.kubectl.exec_command(f"kubectl get service {service_name} -n {self.namespace} -o yaml")
@@ -749,6 +801,23 @@ class VirtualizationFaultInjector(FaultInjector):
 
         print(f"DNS policy propagation check for service '{service}' failed after {max_wait}s.")
 
+    def _get_configmap_name(self, service: str) -> tuple[str, list[str]]:
+        """Get the configmap name and key for a given service."""
+
+        if self.namespace == "test-hotel-reservation": # HotelReservation
+            svc_map = {
+                "mongodb-geo": ("mongo-geo-script", ["k8s-geo-mongo.sh"]),
+                "mongodb-rate": ("mongo-rate-script", ["k8s-rate-mongo.sh"]),
+            }
+        elif self.namespace == "test-social-network": # SocialNetwork
+            svc_map = {
+                "media-mongodb": ("media-mongodb", ["mongod.conf"]),
+                "user-mongodb": ("user-mongodb", ["mongod.conf"]),
+            }
+        else:
+            raise ValueError(f"Unsupported namespace: {self.namespace}")
+        
+        return svc_map[service]
 
 if __name__ == "__main__":
     namespace = "test-social-network"
