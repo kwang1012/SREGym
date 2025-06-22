@@ -14,7 +14,6 @@ class NetworkPolicyBlock(Problem):
         self.faulty_service = faulty_service
         self.policy_name = f"deny-all-{faulty_service}"
         
-        # Required workload setup (exactly as shown in repo examples)
         self.app.payload_script = (
             TARGET_MICROSERVICES / "hotelReservation/wrk2/scripts/hotel-reservation/mixed-workload_type_1.lua"
         )
