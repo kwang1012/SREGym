@@ -789,12 +789,6 @@ class VirtualizationFaultInjector(FaultInjector):
         )
         return yaml.safe_load(deployment_yaml)
 
-    def _get_configmap_yaml(self, configmap_name: str):
-        configmap_yaml = self.kubectl.exec_command(
-            f"kubectl get configmap {configmap_name} -n {self.namespace} -o yaml"
-        )
-        return yaml.safe_load(configmap_yaml)
-
     def _get_service_yaml(self, service_name: str):
         deployment_yaml = self.kubectl.exec_command(f"kubectl get service {service_name} -n {self.namespace} -o yaml")
         return yaml.safe_load(deployment_yaml)
@@ -859,25 +853,6 @@ class VirtualizationFaultInjector(FaultInjector):
             waited += sleep
 
         print(f"DNS policy propagation check for service '{service}' failed after {max_wait}s.")
-
-    def _get_configmap_name(self, service: str) -> tuple[str, list[str]]:
-        """Get the configmap name and key for a given service."""
-
-        if self.namespace == "test-hotel-reservation":  # HotelReservation
-            svc_map = {
-                "mongodb-geo": ("mongo-geo-script", ["k8s-geo-mongo.sh"]),
-                "mongodb-rate": ("mongo-rate-script", ["k8s-rate-mongo.sh"]),
-            }
-        elif self.namespace == "test-social-network":  # SocialNetwork
-            svc_map = {
-                "media-mongodb": ("media-mongodb", ["mongod.conf"]),
-                "user-mongodb": ("user-mongodb", ["mongod.conf"]),
-            }
-        else:
-            raise ValueError(f"Unsupported namespace: {self.namespace}")
-
-        return svc_map[service]
-
 
 if __name__ == "__main__":
     namespace = "test-social-network"
