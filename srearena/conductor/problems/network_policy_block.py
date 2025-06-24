@@ -7,6 +7,7 @@ from srearena.conductor.problems.base import Problem
 from srearena.paths import TARGET_MICROSERVICES
 from srearena.service.apps.hotelres import HotelReservation
 from srearena.service.kubectl import KubeCtl
+from srearena.utils.decorators import mark_fault_injected
 
 
 class NetworkPolicyBlock(Problem):
@@ -22,12 +23,12 @@ class NetworkPolicyBlock(Problem):
         self.app.create_workload()
 
         super().__init__(app=self.app, namespace=self.app.namespace)
-        config.load_kube_config()
         self.networking_v1 = client.NetworkingV1Api()
 
         self.localization_oracle = LocalizationOracle(problem=self, expected=[self.faulty_service])
         self.mitigation_oracle = MitigationOracle(problem=self)
 
+    @mark_fault_injected
     def inject_fault(self):
         """Block ALL traffic to/from the target service"""
         policy = {
@@ -43,6 +44,7 @@ class NetworkPolicyBlock(Problem):
         }
         self.networking_v1.create_namespaced_network_policy(namespace=self.namespace, body=policy)
 
+    @mark_fault_injected
     def recover_fault(self):
         """Remove the NetworkPolicy"""
         self.networking_v1.delete_namespaced_network_policy(name=self.policy_name, namespace=self.namespace)
