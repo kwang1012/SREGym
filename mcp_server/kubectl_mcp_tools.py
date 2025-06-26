@@ -20,10 +20,13 @@ kubectl_mcp = FastMCP("Kubectl MCP Server")
 def extract_session_id(ctx: Context):
     """
     Use this function to get the session id of the request
+    First use custom session id.
     """
-    str_url = str(ctx.request_context.request.url)
-    url = URL(str_url)
-    ssid = url.query.get("session_id")
+    ssid = ctx.request_context.request.headers.get("srearena_ssid")
+    if ssid is None:
+        str_url = str(ctx.request_context.request.url)
+        url = URL(str_url)
+        ssid = url.query.get("session_id")
     return ssid
 
 
