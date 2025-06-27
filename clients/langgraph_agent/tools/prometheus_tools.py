@@ -9,6 +9,8 @@ from langchain_core.tools.base import ArgsSchema, BaseTool
 from mcp import ClientSession, StdioServerParameters, stdio_client
 from mcp.client.sse import sse_client
 from pydantic import BaseModel, Field
+from clients.langgraph_agent.llm_backend.init_backend import get_llm_backend_for_tools
+
 
 USE_HTTP = True
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -23,6 +25,28 @@ class GetMetrics(BaseTool):
     name: str = "get_metrics"
     description: str = "Get metrics from Prometheus using a query"
     args_schema: Optional[ArgsSchema] = GetMetricsInput 
+
+
+    def _summarize_metrics(self, metrics):
+        system_prompt = """
+        You are a tool for a Site Reliability Engineering team. Currently, the team faces an incident in the cluster and needs to fix it ASAP.
+            Your job is to analyze and summarize given microservice metrics, given in format of dictionaries.
+            Read the given metrics. Summarize the metrics. Analyze what could be the root cause of the incident.
+            Be succinct and concise. Include important metrics that reflects the root cause of the incident in format of raw metrics as strings, no need to prettify the json.
+            DO NOT truncate the metrics.
+
+            Return your response in this format:
+            SERVICE NAME: <insert service name>
+            SUMMARY: <insert summary of metrics>
+
+            """
+        logger.info(f"raw traces received: {metrics}")
+        llm = get_llm_backend_for_tools()
+        # then use this `llm` for inference
+        metrics_summary = llm.inference(messages=metrics.content[0].text, system_prompt=system_prompt)
+        logger.info(f"Traces summary: {metrics_summary}")
+        return metrics_summary
+    
 
     def _run(self, run_manager: Optional[CallbackManagerForToolRun]= None) -> str:
         logger.error("No sync version of tools, exiting.")
@@ -80,24 +104,9 @@ class GetMetrics(BaseTool):
             },
         )
         logger.info(f"Result: {result}")
+        summary = self._summarize_metrics(result)
         await exit_stack.aclose()
-        return result
+        return summary
 
 
-def _summarize_metrics(self, metrics):
-    system_prompt = """
-    You are a tool for a Site Reliability Engineering team. Currently, the team faces an incident in the cluster and needs to fix it ASAP.
-        Your job is to analyze and summarize given microservice metrics, given in format of dictionaries.
-        Read the given metrics. Summarize the metrics. Analyze what could be the root cause of the incident.
-        Be succinct and concise. Include important metrics that reflects the root cause of the incident in format of raw metrics as strings, no need to prettify the json.
-        DO NOT truncate the metrics.
 
-        Return your response in this format:
-        SERVICE NAME: <insert service name>
-        SUMMARY: <insert summary of metrics>
-
-        """
-    logger.info(f"raw traces received: {metrics}")
-    metrics_summary = self.llm_backend.inference(system_prompt, metrics)
-    logger.info(f"Traces summary: {metrics_summary}")
-    return metrics_summary

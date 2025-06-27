@@ -9,6 +9,7 @@ from langchain_core.tools.base import ArgsSchema, BaseTool
 from mcp import ClientSession, StdioServerParameters, stdio_client
 from mcp.client.sse import sse_client
 from pydantic import BaseModel, Field
+from clients.langgraph_agent.llm_backend.init_backend import get_llm_backend_for_tools
 
 USE_HTTP = True
 
@@ -193,8 +194,9 @@ class GetOperations(BaseTool):
             "get_operations",
             arguments={"service": service},
         )
+        summary = self._summarize_traces(result)
         await exit_stack.aclose()
-        return result
+        return summary
 
 
 def _summarize_traces(self, traces):
@@ -211,6 +213,8 @@ def _summarize_traces(self, traces):
 
         """
     logger.info(f"raw traces received: {traces}")
-    traces_summary = self.llm_backend.inference(system_prompt, traces)
+    llm = get_llm_backend_for_tools()
+        # then use this `llm` for inference 
+    traces_summary = llm.inference(messages=traces.content[0].text, system_prompt=system_prompt)
     logger.info(f"Traces summary: {traces_summary}")
     return traces_summary
