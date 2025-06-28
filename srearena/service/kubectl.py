@@ -126,7 +126,7 @@ class KubeCtl:
 
             raise Exception(f"[red]Timeout: Namespace '{namespace}' was not deleted within {max_wait} seconds.")
 
-    def wait_for_job_completion(self, name: str, namespace: str, sleep: int = 5, max_wait: int = 10_00):
+    def wait_for_job_completion(self, name: str, namespace: str, sleep: int = 5, max_wait: int = 10_000):
         """Wait for a Kubernetes Job to complete."""
         batch_v1 = client.BatchV1Api()
         console = Console()
