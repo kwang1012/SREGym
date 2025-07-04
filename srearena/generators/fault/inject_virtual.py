@@ -6,14 +6,13 @@ import time
 from pathlib import Path
 
 import yaml
-import threading
 
 from srearena.generators.fault.base import FaultInjector
 from srearena.paths import TARGET_MICROSERVICES
 from srearena.service.apps.base import Application
 from srearena.service.helm import Helm
 from srearena.service.kubectl import KubeCtl
-import requests
+
 
 class VirtualizationFaultInjector(FaultInjector):
     def __init__(self, namespace: str):
@@ -1322,132 +1321,6 @@ class VirtualizationFaultInjector(FaultInjector):
             self.kubectl.exec_command(f"kubectl rollout restart deployment {svc} -n {self.namespace}")
         self.kubectl.wait_for_stable(self.namespace)
         print(f"Pods for {microservices} are back to Running")
-    
-    def inject_traffic_spike(
-    self,
-    target_service: str,
-    service_endpoint: str,
-    traffic_intensity: int = 1000,
-    duration: int = 300,
-    reduce_resources: bool = True
-):
-    
-        print(f"Injecting traffic spike: {traffic_intensity} req/s for {duration}s")
-
-        if reduce_resources:
-            self._reduce_service_resources(target_service)
-
-        self._start_traffic_generation(service_endpoint, traffic_intensity, duration)
-
-    def _reduce_service_resources(self, service_name: str):
-        """Reduce resource limits to make service more vulnerable."""
-        patch = {
-            "spec": {
-                "template": {
-                    "spec": {
-                        "containers": [{
-                            "name": service_name,
-                            "resources": {
-                                "limits": {
-                                    "cpu": "100m",
-                                    "memory": "128Mi"
-                                },
-                                "requests": {
-                                    "cpu": "50m", 
-                                    "memory": "64Mi"
-                                }
-                            }
-                        }]
-                    }
-                }
-            }
-        }
-        
-        self.kubectl.apps_v1_api.patch_namespaced_deployment(
-            name=service_name,
-            namespace=self.namespace,
-            body=patch
-        )
-        
-        self.kubectl.exec_command(
-            f"kubectl rollout restart deployment {service_name} -n {self.namespace}"
-        )
-        print(f"Reduced resources for {service_name}")
-
-    def _start_traffic_generation(self, endpoint: str, intensity: int, duration: int):
-        def traffic_worker():
-            
-            session = requests.Session()
-            end_time = time.time() + duration
-            request_interval = 1.0 / intensity
-            
-            while time.time() < end_time:
-                try:
-                    session.get(endpoint, timeout=2)
-                except:
-                    pass 
-                time.sleep(request_interval)
-        
-        num_workers = min(20, intensity // 50) 
-        for _ in range(num_workers):
-            thread = threading.Thread(target=traffic_worker, daemon=True)
-            thread.start()
-
-    def recover_traffic_spike(
-        self,
-        target_service: str,
-        target_replicas: int = 5,
-        restore_resources: bool = True
-    ):
-
-        print(f"Recovering from traffic spike for {target_service}")
-        
-        self.kubectl.exec_command(
-            f"kubectl scale deployment {target_service} --replicas={target_replicas} -n {self.namespace}"
-        )
-        print(f"Scaled {target_service} to {target_replicas} replicas")
-        
-        if restore_resources:
-            self._restore_service_resources(target_service)
-        
-        self.kubectl.wait_for_stable(self.namespace)
-        print(f"Recovery completed for {target_service}")
-
-    def _restore_service_resources(self, service_name: str):
-        patch = {
-            "spec": {
-                "template": {
-                    "spec": {
-                        "containers": [{
-                            "name": service_name,
-                            "resources": {
-                                "limits": {
-                                    "cpu": "500m",
-                                    "memory": "512Mi"
-                                },
-                                "requests": {
-                                    "cpu": "200m",
-                                    "memory": "256Mi"
-                                }
-                            }
-                        }]
-                    }
-                }
-            }
-        }
-        
-        self.kubectl.apps_v1_api.patch_namespaced_deployment(
-            name=service_name,
-            namespace=self.namespace,
-            body=patch
-        )
-        
-        self.kubectl.exec_command(
-            f"kubectl rollout restart deployment {service_name} -n {self.namespace}"
-        )
-        print(f"Restored resources for {service_name}")
-
-
 
 
 if __name__ == "__main__":
