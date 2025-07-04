@@ -26,6 +26,11 @@ class ChaosMeshContainerKill(Problem):
         self.localization_oracle = LocalizationOracle(problem=self, expected=[self.faulty_service])
 
         self.app.create_workload()
+        self.mitigation_oracle = CompoundedOracle(
+            self,
+            MitigationOracle(problem=self),
+            WorkloadOracle(problem=self, wrk_manager=self.app.wrk),
+        )
 
     @mark_fault_injected
     def inject_fault(self):
