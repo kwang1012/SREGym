@@ -1,7 +1,7 @@
 from kubernetes import client, config
 
 from srearena.conductor.oracles.localization import LocalizationOracle
-from srearena.conductor.oracles.network_policy_oracle import NetworkPolicyDetectionOracle
+from srearena.conductor.oracles.network_policy_oracle import NetworkPolicyMitigationOracle
 from srearena.conductor.problems.base import Problem
 from srearena.paths import TARGET_MICROSERVICES
 from srearena.service.apps.hotelres import HotelReservation
@@ -25,7 +25,7 @@ class NetworkPolicyBlock(Problem):
         self.networking_v1 = client.NetworkingV1Api()
 
         self.localization_oracle = LocalizationOracle(problem=self, expected=[self.faulty_service])
-        self.mitigation_oracle = NetworkPolicyDetectionOracle(problem=self)
+        self.mitigation_oracle = NetworkPolicyMitigationOracle(problem=self)
 
     @mark_fault_injected
     def inject_fault(self):
