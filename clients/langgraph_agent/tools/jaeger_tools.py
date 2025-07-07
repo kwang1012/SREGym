@@ -45,6 +45,7 @@ class GetTraces(BaseTool):
             SUMMARY: <insert summary of traces>
 
             STRICTLY FOLLOW THIS FORMAT
+            
             """
         logger.info(f"raw traces received: {traces}")
         llm = get_llm_backend_for_tools()
@@ -225,10 +226,8 @@ class GetOperations(BaseTool):
             "get_operations",
             arguments={"service": service},
         )
-
-        summary = self._summarize_traces(result)
         await exit_stack.aclose()
-        return summary
+        return result
 
 
 
