@@ -32,8 +32,8 @@ from clients.langgraph_agent.llm_backend.init_backend import get_llm_backend_for
 USE_HTTP = True  # Set to False to use local server
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
-@tool("get_traces", description = "Get Jaeger traces")
 
+@tool("get_traces", description = "Get Jaeger traces")
 async def get_traces(
     service: str,
     last_n_minutes: int,

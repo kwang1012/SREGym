@@ -11,7 +11,7 @@ from langgraph.prebuilt import ToolNode
 from clients.langgraph_agent.llm_backend.init_backend import get_llm_backend_for_tools
 from clients.langgraph_agent.state import State
 from clients.langgraph_agent.tools.basic_tool_node import BasicToolNode
-from clients.langgraph_agent.tools.jaeger_tools import *
+from clients.langgraph_agent.tools.jaeger_tools import get_traces, get_operations, get_services
 from clients.langgraph_agent.tools.prometheus_tools import *
 from clients.langgraph_agent.tools.text_editing.file_manip import create, edit, goto_line, insert, open_file
 
@@ -30,17 +30,12 @@ class XAgent:
     def __init__(self, llm):
         self.graph_builder = StateGraph(State)
         self.graph = None
-
-        get_traces = GetTraces()
-        get_services = GetServices()
-        get_operations = GetOperations()
-        get_metrics = GetMetrics()
         self.observability_tools = [
-            get_traces,
-            get_services,
-            get_operations,
-            get_metrics,
+             get_traces,
+             get_services,
+             get_operations
         ]
+
         self.file_editing_tools = [open_file, goto_line, create, edit, insert]
         self.llm = llm
 
@@ -209,7 +204,7 @@ class XAgent:
         # we also have a tool node. this tool node connects to a jaeger MCP server
         # and allows you to query any jaeger information
 
-        observability_tool_node = ToolNode(self.observability_tools)
+        observability_tool_node = BasicToolNode(self.observability_tools, is_async=True)
         file_editing_tool_node = ToolNode(self.file_editing_tools)
 
         # we add the node to the graph
