@@ -40,6 +40,7 @@ from srearena.conductor.problems.wrong_dns_policy import WrongDNSPolicy
 from srearena.conductor.problems.wrong_service_selector import WrongServiceSelector
 from srearena.conductor.problems.network_policy_block import NetworkPolicyBlock
 from srearena.conductor.problems.taint_no_toleration import TaintNoToleration
+from srearena.conductor.problems.rolling_update_misconfigured import RollingUpdateMisconfigured
 
 
 
@@ -168,6 +169,8 @@ class ProblemRegistry:
                 app_name="hotel_reservation", faulty_service="frontend"
             ),
             "env_variable_shadowing_astronomy_shop": lambda: EnvVariableShadowing(),
+            "rolling_update_misconfigured": lambda: RollingUpdateMisconfigured(
+                app_name="social_network", faulty_service="media-mongodb"),
             # "missing_service_astronomy_shop": lambda: MissingService(app_name="astronomy_shop", faulty_service="ad"),
             # K8S operator misoperation -> Refactor later, not sure if they're working
             # They will also need to be updated to the new problem format.

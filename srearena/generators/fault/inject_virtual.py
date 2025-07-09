@@ -1153,6 +1153,45 @@ class VirtualizationFaultInjector(FaultInjector):
 
             print(f"Recovered from environment variable shadowing fault for service: {service}")
 
+    def inject_rolling_update_misconfigured(self, microservices: list[str]):
+        for service in microservices:
+            deployment_yaml = self._get_deployment_yaml(service)
+            original_deployment_yaml = copy.deepcopy(deployment_yaml)
+
+            deployment_yaml["spec"]["strategy"] = {
+                "type": "RollingUpdate",
+                "rollingUpdate": {
+                    "maxUnavailable": "100%",
+                    "maxSurge": "0%"  
+                }
+            }
+
+            modified_yaml_path = self._write_yaml_to_file(service, deployment_yaml)
+            delete_command = f"kubectl delete deployment {service} -n {self.namespace}"
+            apply_command = f"kubectl apply -f {modified_yaml_path} -n {self.namespace}"
+
+            delete_result = self.kubectl.exec_command(delete_command)
+            print(f"Deleted deployment {service}: {delete_result}")
+
+            apply_result = self.kubectl.exec_command(apply_command)
+            print(f"Applied faulty deployment {service}: {apply_result}")
+
+            self._write_yaml_to_file(service, original_deployment_yaml)
+            print(f"Injected maxUnavailable fault for {service}")
+
+    def recover_rolling_update_misconfigured(self, microservices: list[str]):
+        for service in microservices:
+            original_yaml_path = f"/tmp/{service}_modified.yaml"
+
+            delete_command = f"kubectl delete deployment {service} -n {self.namespace}"
+            delete_result = self.kubectl.exec_command(delete_command)
+            print(f"Deleted faulty deployment {service}: {delete_result}")
+
+            apply_command = f"kubectl apply -f {original_yaml_path} -n {self.namespace}"
+            apply_result = self.kubectl.exec_command(apply_command)
+            print(f"Restored original deployment {service}: {apply_result}")
+
+
     ############# HELPER FUNCTIONS ################
     def _wait_for_pods_ready(self, microservices: list[str], timeout: int = 30):
         for service in microservices:
