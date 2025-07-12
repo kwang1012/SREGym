@@ -17,6 +17,7 @@ from clients.langgraph_agent.tools.basic_tool_node import BasicToolNode
 from clients.langgraph_agent.tools.jaeger_tools import get_operations, get_services, get_traces
 from clients.langgraph_agent.tools.prometheus_tools import get_metrics
 from clients.langgraph_agent.tools.text_editing.file_manip import create, edit, goto_line, insert, open_file
+from clients.langgraph_agent.tools.compile.compile_tool import compile_postgresql_server  
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -43,6 +44,8 @@ class XAgent:
         self.observability_tools = [get_traces, get_services, get_operations, get_metrics]
 
         self.file_editing_tools = [open_file, goto_line, create, edit, insert]
+
+        self.compile_tools = [compile_postgresql_server]
         self.llm = llm
 
         # here are testing purposes attr
@@ -55,7 +58,7 @@ class XAgent:
 
     @property
     def all_tools(self):
-        return [*self.observability_tools, *self.file_editing_tools]
+        return [*self.observability_tools, *self.file_editing_tools, *self.compile_tools]
 
     def route_tools(self, state: State):
         """
@@ -66,6 +69,7 @@ class XAgent:
         logger.info("in route tools: %s", state)
         file_tool_names = ["open_file", "goto_line", "create", "edit", "insert"]
         observability_tool_names = ["get_traces", "get_services", "get_operations", "get_metrics"]
+        compile_tool_names = ["compile_postgresql_server"]
         if isinstance(state, list):
             ai_message = state[-1]
         elif messages := state.get("messages", []):
@@ -78,6 +82,9 @@ class XAgent:
             if tool_name in file_tool_names:
                 logger.info("invoking tool node: file tool")
                 return "file_editing_tool_node"
+            elif tool_name in compile_tool_names:
+                logger.info("invoking tool node: compile tool")
+                return "compile_tool_node"
             elif tool_name in observability_tool_names:
                 logger.info("invoking tool node: observability tool")
                 return "observability_tool_node"
@@ -214,10 +221,12 @@ class XAgent:
 
         observability_tool_node = BasicToolNode(self.observability_tools, is_async=True)
         file_editing_tool_node = ToolNode(self.file_editing_tools)
+        compile_tool_node = ToolNode(self.compile_tools)
 
         # we add the node to the graph
         self.graph_builder.add_node("observability_tool_node", observability_tool_node)
         self.graph_builder.add_node("file_editing_tool_node", file_editing_tool_node)
+        self.graph_builder.add_node("compile_tool_node", compile_tool_node)
 
         # after creating the nodes, we now add the edges
         # the start of the graph is denoted by the keyword START, end is END.
@@ -244,6 +253,7 @@ class XAgent:
             {
                 "observability_tool_node": "observability_tool_node",
                 "file_editing_tool_node": "file_editing_tool_node",
+                "compile_tool_node": "compile_tool_node",
                 END: END,
             },
         )
@@ -252,6 +262,7 @@ class XAgent:
         # here, it is implemented as a in-memory checkpointer.
         self.graph_builder.add_edge("observability_tool_node", "agent")
         self.graph_builder.add_edge("file_editing_tool_node", "agent")
+        self.graph_builder.add_edge("compile_tool_node", "agent")
         memory = MemorySaver()
         self.graph = self.graph_builder.compile(checkpointer=memory)
 
