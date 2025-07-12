@@ -48,8 +48,8 @@ tool_call_id: Annotated[str, InjectedToolCallId] = "",
         "make install",
         f"{homedir}/pgsql/bin/initdb -D {homedir}/pgsql/data",
         f"{homedir}/pgsql/bin/pg_ctl -D {homedir}/pgsql/data -l logfile start",
-        f"{homedir}/pgsql/bin/createdb testing",
-        f"{homedir}/pgsql/bin/psql testing"
+        f"{homedir}/pgsql/bin/createdb test",
+        f"{homedir}/pgsql/bin/psql test"
     ]
 
     
