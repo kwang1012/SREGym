@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 from .get_llm_backend import LiteLLMBackend
 
-print(load_dotenv())
+load_dotenv()
 
 global PROVIDER_TOOLS, MODEL_TOOLS, URL_TOOLS, API_VERSION_TOOLS, API_KEY_TOOLS, REASONING_EFFORT_TOOLS, SEED_TOOLS, TOP_P_TOOLS, TEMPERATURE_TOOLS, THINKING_TOOLS, THINKING_BUDGET_TOOLS, MAX_TOKENS_TOOLS
 
@@ -82,6 +82,18 @@ try:
 except KeyError:
     WX_PROJECT_ID = ""
     print(f"Unable to find environment variable - WX_PROJECT_ID. Setting to {WX_PROJECT_ID}.")
+
+try:
+    WATSONX_API_BASE = os.environ["WATSONX_API_BASE"]
+except KeyError:
+    WATSONX_API_BASE = ""
+    print(f"Unable to find environment variable - WATSONX_API_BASE. Setting to {WATSONX_API_BASE}.")
+
+try:
+    WATSONX_API_KEY = os.environ["WATSONX_API_KEY"]
+except KeyError:
+    WATSONX_API_KEY = ""
+    print(f"Unable to find environment variable - WATSONX_API_KEY. Setting to {WATSONX_API_KEY}.")
 
 try:
     THINKING_BUDGET_TOOLS = int(os.environ["THINKING_BUDGET_TOOLS"])
