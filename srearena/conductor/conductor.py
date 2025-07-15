@@ -120,6 +120,22 @@ class Conductor:
                 else:
                     return "[❌] Incorrect detection. Proceeding anyway..."
 
+            if self.strict_detection_mode:
+                if not results.get("success", False):
+                    self.submission_stage = "done"
+                    return "[❌] Incorrect detection. Ending evaluation."
+
+            if results.get("success", False):
+                if self.submission_stage == "done":
+                    return "[✅] Detection successful. No further stages to evaluate."
+                else:
+                    return "[✅] Detection successful. Proceeding to next stage..."
+            else:
+                if self.submission_stage == "done":
+                    return "[❌] Incorrect detection. No further stages to evaluate."
+                else:
+                    return "[❌] Incorrect detection. Proceeding anyway..."
+
         elif self.submission_stage == "localization":
             if not self.problem.localization_oracle:
                 return "[⚠️] This problem does not support localization evaluation."
