@@ -28,4 +28,4 @@ class ChaosMeshNetworkPartition(Problem):
     @mark_fault_injected
     def recover_fault(self):
         print("== Fault Recovery ==")
-        self.injector.recover_network_partition()
+        self.injector.recover_network_partition(from_service="shipping", to_service="quote")
