@@ -6,6 +6,7 @@ from srearena.conductor.problems.auth_miss_mongodb import MongoDBAuthMissing
 from srearena.conductor.problems.cart_service_failure import CartServiceFailure
 from srearena.conductor.problems.configmap_drift import ConfigMapDrift
 from srearena.conductor.problems.container_kill import ChaosMeshContainerKill
+from srearena.conductor.problems.cpu_stress import ChaosMeshCPUStress
 from srearena.conductor.problems.duplicate_pvc_mounts import DuplicatePVCMounts
 from srearena.conductor.problems.env_variable_leak import EnvVariableLeak
 from srearena.conductor.problems.env_variable_shadowing import EnvVariableShadowing
@@ -181,6 +182,7 @@ class ProblemRegistry:
             ),
             "valkey_auth_disruption": ValkeyAuthDisruption,
             "valkey_memory_disruption": ValkeyMemoryDisruption,
+            "chaos_mesh_cpu_stress": ChaosMeshCPUStress,
             # "missing_service_astronomy_shop": lambda: MissingService(app_name="astronomy_shop", faulty_service="ad"),
             # K8S operator misoperation -> Refactor later, not sure if they're working
             # They will also need to be updated to the new problem format.

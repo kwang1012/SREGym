@@ -246,6 +246,79 @@ class SymptomFaultInjector(FaultInjector):
     def recover_kernel_fault(self):
         self.delete_chaos_experiment("kernel-chaos")
 
+    def inject_cpu_stress(self, deployment_name: str, microservice: str):
+        """
+        Inject CPU stress fault using Chaos Mesh after reducing CPU limits on the deployment.
+        """
+        # Patch deployment's CPU settings to low limits
+        patch = [
+            {
+                "op": "replace",
+                "path": "/spec/template/spec/containers/0/resources/requests/cpu",
+                "value": "2m",
+            },
+            {
+                "op": "replace",
+                "path": "/spec/template/spec/containers/0/resources/limits/cpu",
+                "value": "2m",
+            },
+        ]
+        patch_str = yaml.dump(patch)
+        patch_cmd = f"kubectl patch deployment {deployment_name} " f"-n {self.namespace} --type='json' -p='{patch_str}'"
+        print(f"Patching CPU limits for deployment {deployment_name}")
+        self.kubectl.exec_command(patch_cmd)
+
+        # Define and dump the StressChaos experiment
+        experiment_name = f"cpu-stress-{microservice}"
+        chaos_experiment = {
+            "apiVersion": "chaos-mesh.org/v1alpha1",
+            "kind": "StressChaos",
+            "metadata": {
+                "name": experiment_name,
+                "namespace": self.namespace,
+            },
+            "spec": {
+                "mode": "all",
+                "selector": {
+                    "namespaces": [self.namespace],
+                    "labelSelectors": {"app.kubernetes.io/component": microservice},
+                },
+                "stressors": {
+                    "cpu": {
+                        "workers": 30,
+                        "load": 100,
+                    }
+                },
+            },
+        }
+
+        self.create_chaos_experiment(chaos_experiment, experiment_name)
+
+    def recover_cpu_stress(self, deployment_name: str, microservice: str):
+        """
+        Recover from CPU stress fault and restore original CPU limits.
+        Deletes the YAML spec from /tmp/cpu-stress-{microservice}.yaml.
+        """
+        experiment_name = f"cpu-stress-{microservice}"
+        self.delete_chaos_experiment(experiment_name)
+
+        # Revert CPU requests/limits
+        patch = [
+            {
+                "op": "replace",
+                "path": "/spec/template/spec/containers/0/resources/requests/cpu",
+                "value": "50m",
+            },
+            {
+                "op": "remove",
+                "path": "/spec/template/spec/containers/0/resources/limits/cpu",
+            },
+        ]
+        patch_str = yaml.dump(patch)
+        patch_cmd = f"kubectl patch deployment {deployment_name} " f"-n {self.namespace} --type='json' -p='{patch_str}'"
+        print(f"Reverting CPU patch for deployment {deployment_name}")
+        self.kubectl.exec_command(patch_cmd)
+
 
 if __name__ == "__main__":
     namespace = "test-hotel-reservation"
