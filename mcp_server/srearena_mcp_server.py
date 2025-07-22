@@ -1,4 +1,5 @@
 from kubectl_mcp_tools import kubectl_mcp
+from mcp_server.configs.load_all_cfg import mcp_server_cfg
 from prometheus_server import mcp as prometheus_mcp
 from observability_server import mcp as observability_mcp
 import uvicorn
@@ -19,5 +20,7 @@ app = Starlette(
 )
 
 if __name__ == "__main__":
+    port = mcp_server_cfg.mcp_server_port
+    host = "0.0.0.0" if mcp_server_cfg.expose_server else "127.0.0.1"
     logger.info("Starting SREArena MCP Server")
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(app, host=host, port=port)

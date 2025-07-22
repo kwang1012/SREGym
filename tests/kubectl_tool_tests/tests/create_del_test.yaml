@@ -24,7 +24,7 @@ test:
 
   # No validation for this, but you can manually validate through the log information.
   - user_input: "Show me the rollback order of previous commands"
-    tool_call: "get_previous_rollbackabel_cmd"
+    tool_call: "get_previous_rollbackable_cmd"
 
   - user_input: "Rollback the last mutating command."
     tool_call: "rollback_command"

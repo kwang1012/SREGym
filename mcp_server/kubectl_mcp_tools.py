@@ -3,12 +3,11 @@ from fastmcp import FastMCP, Context
 from yarl import URL
 from kubectl_server_helper.sliding_lru_session_cache import SlidingLRUSessionCache
 from kubectl_server_helper.kubctl_tool_set import KubectlToolSet
-from mcp_server.configs.kubectl_session_cfg import KubectlSessionCfg
+from mcp_server.configs.load_all_cfg import kubectl_session_cfg
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-kubectl_session_cfg = KubectlSessionCfg()
 sessionCache = SlidingLRUSessionCache(
     max_size=kubectl_session_cfg.session_cache_size,
     ttl_seconds=kubectl_session_cfg.session_ttl
@@ -60,7 +59,9 @@ def exec_kubectl_cmd_safely(cmd: str, ctx: Context) -> str:
     ssid = extract_session_id(ctx)
     kubctl_tool = get_tools(ssid)
     logger.info(f"session {ssid} is using tool \"exec_kubectl_cmd_safely\"; Command: {cmd}.")
-    return kubctl_tool.cmd_runner.exec_kubectl_cmd_safely(cmd)
+    result = kubctl_tool.cmd_runner.exec_kubectl_cmd_safely(cmd)
+    assert isinstance(result, str)
+    return result
 
 
 @kubectl_mcp.tool()
@@ -77,11 +78,13 @@ def rollback_command(ctx: Context) -> str:
     ssid = extract_session_id(ctx)
     kubctl_tool = get_tools(ssid)
     logger.info(f"session {ssid} is using tool \"rollback_command\".")
-    return kubctl_tool.rollback_tool.rollback()
+    result = kubctl_tool.rollback_tool.rollback()
+    assert isinstance(result, str)
+    return result
 
 
 @kubectl_mcp.tool()
-def get_previous_rollbackabel_cmd(ctx: Context) -> str:
+def get_previous_rollbackable_cmd(ctx: Context) -> str:
     """
     Use this function to get a list of commands you
     previously executed that could be roll-backed.
@@ -95,6 +98,6 @@ def get_previous_rollbackabel_cmd(ctx: Context) -> str:
     """
     ssid = extract_session_id(ctx)
     kubctl_tool = get_tools(ssid)
-    logger.info(f"session {ssid} is using tool \"get_previous_rollbackabel_cmd\".")
+    logger.info(f"session {ssid} is using tool \"get_previous_rollbackable_cmd\".")
     cmds = kubctl_tool.rollback_tool.get_previous_rollbackable_cmds()
     return "\n".join([f"{i + 1}. {cmd}" for i, cmd in enumerate(cmds)])

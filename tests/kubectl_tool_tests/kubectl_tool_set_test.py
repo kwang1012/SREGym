@@ -1,13 +1,11 @@
-import time
-import uuid
-from pathlib import Path
-import subprocess  # nosec B404
 import logging
+import subprocess  # nosec B404
+import time
+from pathlib import Path
+
+import pytest
 import yaml
 
-from fastmcp import Client
-import pytest
-from fastmcp.client.transports import SSETransport
 from clients.langgraph_agent.nl2kubectl_agent import NL2KubectlAgent
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -21,8 +19,6 @@ TEST_SETTINGS = [
     KUBECTL_TOOL_TEST_DIR / "tests" / "create_del_test.yaml",
     KUBECTL_TOOL_TEST_DIR / "tests" / "patch_test.yaml",
 ]
-
-KUBECTL_TOOLS_MCP_URL = "http://127.0.0.1:8000/kubectl_mcp_tools/sse"
 
 # in seconds
 TIME_OUT = 30
@@ -41,14 +37,14 @@ def exec_shell_cmd(cmd: str):
         raise e
 
 
-def get_agent(client: Client, is_mock):
+def get_agent(is_mock):
     if is_mock:
         llm = None
     else:
         from clients.langgraph_agent.llm_backend.init_backend import get_llm_backend_for_tools
         llm = get_llm_backend_for_tools()
 
-    agent = NL2KubectlAgent(llm, client)
+    agent = NL2KubectlAgent(llm)
     agent.build_agent(mock=is_mock)
     return agent
 
@@ -109,13 +105,7 @@ def running_test(test_rounds, agent):
 @pytest.mark.parametrize("test_campaign_file", TEST_SETTINGS)
 class TestKubectlTools:
     def test_kubectl_tools_success(self, test_campaign_file: str):
-        session_id = str(uuid.uuid4())
-        transport = SSETransport(
-            url=KUBECTL_TOOLS_MCP_URL,
-            headers={"srearena_ssid": session_id},
-        )
-        client = Client(transport)
-        agent = get_agent(client, is_mock=True)
+        agent = get_agent(is_mock=True)
         logger.info(f"agent msg switch branch: {agent.test_tool_or_ai_response}")
         agent.test_campaign_setter(test_campaign_file)
         test_campaign = yaml.safe_load(open(test_campaign_file, "r"))

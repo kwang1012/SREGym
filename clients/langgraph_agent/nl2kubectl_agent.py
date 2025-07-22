@@ -1,25 +1,27 @@
-import asyncio
 import json
 import logging
+import uuid
+
 import yaml
+from fastmcp import Client
+from fastmcp.client.transports import SSETransport
 from langchain_core.messages import AIMessage
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.constants import END
 from langgraph.graph import START, StateGraph
 
+from .state import State
 from .tools.kubectl_tools import \
     ExecKubectlCmdSafely, \
     RollbackCommand, \
-    GetPreviousRollbackabelCmd
-from fastmcp import Client
-from fastmcp.client.transports import SSETransport
+    GetPreviousRollbackableCmd
 from .tools.stateful_async_tool_node import StatefulAsyncToolNode
 from .utils.ai_msg_mock_utils import ai_msg_tpl
-from .state import State
-
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+
+KUBECTL_TOOLS_MCP_URL = "http://127.0.0.1:8000/kubectl_mcp_tools/sse"
 
 
 def route_tools(state: State):
@@ -40,7 +42,7 @@ def route_tools(state: State):
         kubectl_tool_names = [
             "exec_kubectl_cmd_safely",
             "rollback_command",
-            "get_previous_rollbackabel_cmd",
+            "get_previous_rollbackable_cmd",
         ]
         if tool_name in kubectl_tool_names:
             logger.info("routing tool name: %s", tool_name)
@@ -54,15 +56,21 @@ def route_tools(state: State):
 
 
 class NL2KubectlAgent:
-    def __init__(self, llm, client: Client):
-        self.client = client
+    def __init__(self, llm):
+        session_id = str(uuid.uuid4())
+        transport = SSETransport(
+            url=KUBECTL_TOOLS_MCP_URL,
+            headers={"srearena_ssid": session_id},
+        )
+        self.client = Client(transport)
+
         exec_kubectl_cmd_safely = ExecKubectlCmdSafely(self.client)
         rollback_command = RollbackCommand(self.client)
-        get_previous_rollbackabel_cmd = GetPreviousRollbackabelCmd(self.client)
+        get_previous_rollbackable_cmd = GetPreviousRollbackableCmd(self.client)
         self.kubectl_tools = [
             exec_kubectl_cmd_safely,
             rollback_command,
-            get_previous_rollbackabel_cmd,
+            get_previous_rollbackable_cmd,
         ]
 
         self.llm = llm
@@ -140,7 +148,7 @@ class NL2KubectlAgent:
 
         # we also have a tool node. this tool node connects to a jaeger MCP server
         # and allows you to query any jaeger information
-        kubectl_tools_node = StatefulAsyncToolNode(self.kubectl_tools, self.client)
+        kubectl_tools_node = StatefulAsyncToolNode(self.kubectl_tools)
 
         # we add the node to the graph
         self.graph_builder.add_node("kubectl_tools_node", kubectl_tools_node)

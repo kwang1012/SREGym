@@ -24,7 +24,7 @@ class KubectlToolCfg(BaseModel):
 
     verify_dry_run: bool = Field(
         default=False,
-        description="Enable verification of dry run results.",
+        description="Enable verification of dry run results after real running.",
     )
 
     # Update "default" with session id if using remote mcp server
