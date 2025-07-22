@@ -441,6 +441,15 @@ class KubeCtl:
         except client.exceptions.ApiException as e:
             raise RuntimeError(f"Failed to get resource quotas in namespace '{namespace}': {e}")
 
+    def delete_resource_quota(self, name: str, namespace: str):
+        try:
+            self.core_v1_api.delete_namespaced_resource_quota(
+                name=name, namespace=namespace, body=client.V1DeleteOptions(propagation_policy="Foreground")
+            )
+            print(f"✅ Deleted resource quota '{name}' in namespace '{namespace}'")
+        except client.exceptions.ApiException as e:
+            raise RuntimeError(f"❌ Failed to delete resource quota '{name}' in namespace '{namespace}': {e}")
+
 
 # Example usage:
 if __name__ == "__main__":
