@@ -1477,7 +1477,8 @@ class VirtualizationFaultInjector(FaultInjector):
         print(f"Pods for {microservices} are back to Running")
 
     def inject_persistent_volume_affinity_violation(self, microservices: list[str]):
-        
+        # set pv spec nodeAffinity to node A
+        # set service spec nodeSelector to node B
 
     def recover_persistent_volume_affinity_violation(self, microservices: list[str]):
 
