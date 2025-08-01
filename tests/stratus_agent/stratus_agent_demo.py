@@ -66,6 +66,7 @@ if __name__ == "__main__":
     diagnosis_agent_cfg = get_diagnosis_agent_cfg()
     diagnosis_agent = BaseAgent(llm, diagnosis_agent_cfg.model_copy(update={"max_round": 3}))
     diagnosis_agent.build_agent()
+    diagnosis_agent.save_agent_graph_to_png()
 
     pid = "revoke_auth_mongodb-1"
     conductor = Conductor()
@@ -104,13 +105,13 @@ if __name__ == "__main__":
     problem.app.start_workload()
     pf_processes = setup_port_forwarding()
 
-    # Phase 1: NO OP
-    final_state = diagnosis_agent.run({"app_summary": problem.app.get_app_summary()})
-    logger.info(f"Final state: {final_state}")
-    if 'detection' in final_state['ans'] and isinstance(final_state['ans']['detection'], bool):
-        print(f"NO OP Detection Result: {'✅' if not final_state['ans']['detection'] else '❌'}")
-    else:
-        print(f"NO OP Detection Result: '❌'; Invalid answer provided by the agent!")
+    # # Phase 1: NO OP
+    # final_state = diagnosis_agent.run({"app_summary": problem.app.get_app_summary()})
+    # logger.info(f"Final state: {final_state}")
+    # if 'detection' in final_state['ans'] and isinstance(final_state['ans']['detection'], bool):
+    #     print(f"NO OP Detection Result: {'✅' if not final_state['ans']['detection'] else '❌'}")
+    # else:
+    #     print(f"NO OP Detection Result: '❌'; Invalid answer provided by the agent!")
 
     # Phase 2: Inject Fault
     print("[Injecting fault now...]")

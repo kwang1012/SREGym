@@ -1,39 +1,43 @@
 """Adopted from previous project"""
 
-import json
 import logging
+import os
 from typing import Dict, Optional
 
 import litellm
 from dotenv import load_dotenv
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-from langchain_core.tools import BaseTool
+from langchain_litellm import ChatLiteLLM
 from langchain_openai import ChatOpenAI
-from langchain_litellm import ChatLiteLLM 
+import time
+from requests.exceptions import HTTPError
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 load_dotenv()
 
+MAX_RETRIES = int(os.getenv("MAX_RETRIES", "5"))  # Maximum number of retries for rate-limiting
+INIT_RETRY_DELAY = int(os.getenv("INIT_RETRY_DELAY", "1"))  # Initial delay in seconds
+
 
 class LiteLLMBackend:
 
     def __init__(
-        self,
-        provider: str,
-        model_name: str,
-        url: str,
-        api_key: str,
-        api_version: str,
-        seed: int,
-        top_p: float,
-        temperature: float,
-        reasoning_effort: str,
-        thinking_tools: str,
-        thinking_budget_tools: int,
-        max_tokens: int,
-        extra_headers: Optional[Dict[str, str]] = None,
+            self,
+            provider: str,
+            model_name: str,
+            url: str,
+            api_key: str,
+            api_version: str,
+            seed: int,
+            top_p: float,
+            temperature: float,
+            reasoning_effort: str,
+            thinking_tools: str,
+            thinking_budget_tools: int,
+            max_tokens: int,
+            extra_headers: Optional[Dict[str, str]] = None,
     ):
         self.provider = provider
         self.model_name = model_name
@@ -51,10 +55,10 @@ class LiteLLMBackend:
         litellm.drop_params = True
 
     def inference(
-        self,
-        messages: str | list[SystemMessage | HumanMessage | AIMessage],
-        system_prompt: Optional[str] = None,
-        tools: Optional[list[any]] = None,
+            self,
+            messages: str | list[SystemMessage | HumanMessage | AIMessage],
+            system_prompt: Optional[str] = None,
+            tools: Optional[list[any]] = None,
     ):
         if isinstance(messages, str):
             # logger.info(f"NL input as str received: {messages}")
@@ -69,7 +73,6 @@ class LiteLLMBackend:
                 HumanMessage(content=messages),
             ]
         elif isinstance(messages, list):
-            # logger.info(f"NL input as list received: {messages}")
             prompt_messages = messages
             if isinstance(messages[0], HumanMessage):
                 logger.info("No system message provided.")
@@ -83,7 +86,6 @@ class LiteLLMBackend:
                 prompt_messages.insert(0, system_message)
         else:
             raise ValueError(f"messages must be either a string or a list of dicts, but got {type(messages)}")
-        # logger.info(f"prompting llm with messages: {prompt_messages}")
 
         if self.provider == "openai":
             llm = ChatOpenAI(
@@ -93,13 +95,13 @@ class LiteLLMBackend:
             )
         elif self.provider == "watsonx":
             llm = ChatLiteLLM(
-                model = self.model_name,
+                model=self.model_name,
                 api_key=self.api_key,
                 temperature=self.temperature,
-                custom_llm_provider = self.provider,   
+                custom_llm_provider=self.provider,
             )
-        
-       
+        else:
+            raise ValueError(f"Unsupported provider: {self.provider}")
 
         if tools:
             logger.info(f"binding tools to llm: {tools}")
@@ -109,6 +111,24 @@ class LiteLLMBackend:
         #   if the model decides to do function calling
         # TODO: check how does function call looks like in langchain
 
-        completion = llm.invoke(input=prompt_messages)
-        logger.info(f"llm response: {completion}")
-        return completion
+        # Retry logic for rate-limiting
+        retry_delay = INIT_RETRY_DELAY
+        for attempt in range(MAX_RETRIES):
+            try:
+                completion = llm.invoke(input=prompt_messages)
+                logger.info(f"llm response: {completion}")
+                return completion
+            except HTTPError as e:
+                if e.response.status_code == 429:  # Rate-limiting error
+                    logger.warning(
+                        f"Rate-limited. Retrying in {retry_delay} seconds... (Attempt {attempt + 1}/{MAX_RETRIES})")
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                else:
+                    logger.error(f"HTTP error occurred: {e}")
+                    raise
+            except Exception as e:
+                logger.error(f"An unexpected error occurred: {e}")
+                raise
+
+        raise RuntimeError("Max retries exceeded. Unable to complete the request.")

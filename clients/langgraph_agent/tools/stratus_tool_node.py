@@ -1,7 +1,7 @@
 import asyncio
 import logging
 
-from langchain_core.messages import ToolMessage
+from langchain_core.messages import ToolMessage, AIMessage
 from langchain_core.tools import BaseTool
 from langgraph.types import Command
 from pydantic_core import ValidationError
@@ -44,6 +44,14 @@ class StratusToolNode:
             message = messages[-1]
         else:
             raise ValueError("No message found in input")
+
+        if not isinstance(message, AIMessage):
+            logger.warning(f"Expected last message to be an AIMessage, but got {type(message)}.\n"
+                           f"{inputs.get('messages', [])}")
+            raise ValueError("Last message is not an AIMessage; skipping tool invocation.")
+        if not getattr(message, "tool_calls", None):
+            logger.warning("AIMessage does not contain tool_calls.")
+            return {"messages": []}
 
         rescheduled_tool_calls = reschedule_tool_calls(message.tool_calls)
 
