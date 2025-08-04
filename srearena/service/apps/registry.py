@@ -2,6 +2,7 @@ import json
 
 from srearena.paths import *
 from srearena.service.apps.astronomy_shop import AstronomyShop
+from srearena.service.apps.fleet_cast import FleetCast
 from srearena.service.apps.flight_ticket import FlightTicket
 from srearena.service.apps.hotel_reservation import HotelReservation
 from srearena.service.apps.social_network import SocialNetwork
@@ -18,6 +19,7 @@ class AppRegistry:
             "Hotel Reservation": HotelReservation,
             "Social Network": SocialNetwork,
             # "Train Ticket": TrainTicket
+            "Fleet Cast": FleetCast,
         }
 
         self.APP_PATH = {
@@ -26,6 +28,7 @@ class AppRegistry:
             "Hotel Reservation": HOTEL_RES_METADATA,
             "Social Network": SOCIAL_NETWORK_METADATA,
             # "Train Ticket": TRAIN_TICKET_METADATA
+            "Fleet Cast": FLEET_CAST_METADATA,
         }
 
     def get_app_instance(self, app_name: str):

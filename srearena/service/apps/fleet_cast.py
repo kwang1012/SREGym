@@ -1,0 +1,59 @@
+"""Interface to the FleetCast application."""
+
+import time
+
+from srearena.generators.workload.locust import LocustWorkloadManager
+from srearena.paths import FLEET_CAST_METADATA
+from srearena.service.apps.base import Application
+from srearena.service.helm import Helm
+from srearena.service.kubectl import KubeCtl
+
+
+class FleetCast(Application):
+    def __init__(self):
+        super().__init__(FLEET_CAST_METADATA)
+        self.load_app_json()
+        self.kubectl = KubeCtl()
+        self.create_namespace()
+
+    def load_app_json(self):
+        super().load_app_json()
+        metadata = self.get_app_json()
+        self.frontend_service = "frontend"
+        self.frontend_port = 8080
+
+    def deploy(self):
+        """Deploy the Helm configurations."""
+        self.kubectl.create_namespace_if_not_exist(self.namespace)
+
+        Helm.add_repo(
+            "fleetcast",
+            "https://lilygn.github.io/FleetCast",
+        )
+
+        Helm.install(**self.helm_configs)
+        Helm.assert_if_deployed(self.helm_configs["namespace"])
+
+    def delete(self):
+        """Delete the Helm configurations."""
+        Helm.uninstall(**self.helm_configs)
+        self.kubectl.delete_namespace(self.helm_configs["namespace"])
+        self.kubectl.wait_for_namespace_deletion(self.namespace)
+
+    def cleanup(self):
+        Helm.uninstall(**self.helm_configs)
+        self.kubectl.delete_namespace(self.helm_configs["namespace"])
+
+        if hasattr(self, "wrk"):
+            self.wrk.stop()
+
+    def create_workload(self):
+        self.wrk = LocustWorkloadManager(
+            namespace=self.namespace,
+            locust_url="load-generator:8089",
+        )
+
+    def start_workload(self):
+        if not hasattr(self, "wrk"):
+            self.create_workload()
+        self.wrk.start()
