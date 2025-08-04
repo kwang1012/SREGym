@@ -2,14 +2,14 @@ from srearena.conductor.oracles.localization import LocalizationOracle
 from srearena.conductor.oracles.mitigation import MitigationOracle
 from srearena.conductor.problems.base import Problem
 from srearena.generators.fault.inject_virtual import VirtualizationFaultInjector
-from srearena.service.apps.hotel_reservation import HotelReservation
+from srearena.service.apps.social_network import SocialNetwork
 from srearena.service.kubectl import KubeCtl
 from srearena.utils.decorators import mark_fault_injected
 
 
 class PersistentVolumeAffinityViolation(Problem):
-    def __init__(self, faulty_service: str = "user"):
-        self.app = HotelReservation()
+    def __init__(self, faulty_service: str = "user-service"):
+        self.app = SocialNetwork()
         self.kubectl = KubeCtl()
         self.namespace = self.app.namespace
         self.faulty_service = faulty_service
