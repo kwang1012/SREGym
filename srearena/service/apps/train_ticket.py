@@ -5,6 +5,7 @@ import tempfile
 import time
 from pathlib import Path
 
+from srearena.generators.workload.locust import LocustWorkloadManager
 from srearena.paths import TARGET_MICROSERVICES, TRAIN_TICKET_METADATA
 from srearena.service.apps.base import Application
 from srearena.service.helm import Helm
@@ -31,10 +32,10 @@ class TrainTicket(Application):
             self.kubectl.create_namespace_if_not_exist(self.namespace)
 
         Helm.install(**self.helm_configs)
-        self.kubectl.wait_for_job_completion(name="train-ticket-deploy", namespace="train-ticket")
+        self.kubectl.wait_for_job_completion(name="train-ticket-deploy", namespace="train-ticket") 
 
         self._deploy_flagd_infrastructure()
-        self._deploy_locust()
+        self._deploy_load_generator()
 
     def delete(self):
         """Delete the Helm configurations."""
@@ -48,30 +49,25 @@ class TrainTicket(Application):
         if self.namespace:
             self.kubectl.delete_namespace(self.namespace)
 
+    def create_workload(self):
+        """Create workload manager for log collection (like astronomy shop)."""  
+        self.wrk = LocustWorkloadManager(
+            namespace=self.namespace,
+            locust_url="load-generator:8089",
+        )
+
     def start_workload(self):
-        """Start TrainTicket workload using Locust."""
-        try:
-            from srearena.generators.workload.trainticket_locust import TrainTicketLocustWorkloadManager
-
-            if not self.workload_manager:
-                self.workload_manager = TrainTicketLocustWorkloadManager(namespace=self.namespace, kubectl=self.kubectl)
-
-            self.workload_manager.start()
-            # Trigger F1 scenario with moderate load
-            self.workload_manager.trigger_f1_scenario(user_count=5, spawn_rate=1)
-            print("[TrainTicket] Workload started - F1 scenario active")
-
-        except Exception as e:
-            print(f"[TrainTicket] Warning: Failed to start workload: {e}")
+        """Start workload log collection (like astronomy shop)."""
+        if not hasattr(self, "wrk"):
+            self.create_workload()
+        self.wrk.start()
+        print("[TrainTicket] Workload log collection started")
 
     def stop_workload(self):
-        """Stop the current workload."""
-        if self.workload_manager:
-            try:
-                self.workload_manager.stop_workload()
-                print("[TrainTicket] Workload stopped")
-            except Exception as e:
-                print(f"[TrainTicket] Warning: Failed to stop workload: {e}")
+        """Stop the workload log collection."""
+        if hasattr(self, "wrk"):
+            self.wrk.stop()
+            print("[TrainTicket] Workload log collection stopped")
 
     def _deploy_flagd_infrastructure(self):
         """Deploy flagd service and ConfigMap for fault injection."""
@@ -91,34 +87,34 @@ class TrainTicket(Application):
         except Exception as e:
             print(f"[TrainTicket] Warning: Failed to deploy flagd infrastructure: {e}")
 
-    def _deploy_locust(self):
-        """Deploy Locust load generator from srearena/resources"""
+    def _deploy_load_generator(self):
+        """Deploy the auto-starting load generator (like astronomy shop)."""
         try:
-            # Update path to use srearena/resources instead of aiopslab-applications
-            locust_resources_path = Path(__file__).parent.parent.parent / "resources" / "trainticket"
 
-            # Apply Locust configurations
-            for file in ["locust-configmap.yaml", "locust-deployment.yaml"]:
-                yaml_path = locust_resources_path / file
-                if yaml_path.exists():
-                    # Need to process the template first
-                    with open(yaml_path, "r") as f:
-                        content = f.read()
-                    # Replace {{ .Values.namespace }} with actual namespace
-                    content = content.replace("{{ .Values.namespace }}", self.namespace)
-
-                    # Write to temp file and apply
-                    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as tmp:
-                        tmp.write(content)
-                        temp_path = tmp.name
-
-                    result = self.kubectl.exec_command(f"kubectl apply -f {temp_path}")
-                    os.unlink(temp_path)
-                    print(f"[TrainTicket] Applied {file}: {result}")
-
-            print("[TrainTicket] Locust workload generator deployed")
+            locustfile_path = Path(__file__).parent.parent.parent / "resources" / "trainticket" / "locustfile.py"
+            
+            if locustfile_path.exists():
+                result = self.kubectl.exec_command(f"kubectl create configmap locustfile-config --from-file=locustfile.py={locustfile_path} -n {self.namespace} --dry-run=client -o yaml | kubectl apply -f -")
+                print(f"[TrainTicket] Created ConfigMap from file: {result}")
+            
+            deployment_path = Path(__file__).parent.parent.parent / "resources" / "trainticket" / "locust-deployment.yaml"
+            
+            if deployment_path.exists():
+                with open(deployment_path, "r") as f:
+                    content = f.read()
+                
+                with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as tmp:
+                    tmp.write(content)
+                    temp_path = tmp.name
+                
+                result = self.kubectl.exec_command(f"kubectl apply -f {temp_path}")
+                os.unlink(temp_path)
+                print(f"[TrainTicket] Deployed load generator: {result}")
+            
+            print("[TrainTicket] Load generator deployed with auto-start")
+            
         except Exception as e:
-            print(f"[TrainTicket] Warning: Failed to deploy Locust: {e}")
+            print(f"[TrainTicket] Warning: Failed to deploy load generator: {e}")
 
     def get_flagd_status(self):
         """Check if flagd infrastructure is running."""
@@ -128,11 +124,6 @@ class TrainTicket(Application):
         except Exception:
             return False
 
-    def get_workload_stats(self):
-        """Get current workload statistics."""
-        if self.workload_manager:
-            return self.workload_manager.get_stats()
-        return {}
 
 
 # if __name__ == "__main__":

@@ -1,36 +1,13 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: locust-master
-  namespace: {{ .Values.namespace }}
+  name: load-generator
+  namespace: train-ticket
   labels:
-    app: locust
-    role: master
+    app: load-generator
 spec:
   selector:
-    app: locust
-    role: master
-  ports:
-  - name: web
-    port: 8089
-    targetPort: 8089
-  - name: master
-    port: 5557
-    targetPort: 5557
-  type: ClusterIP
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: locust-master-web
-  namespace: {{ .Values.namespace }}
-  labels:
-    app: locust
-    role: master
-spec:
-  selector:
-    app: locust
-    role: master
+    app: load-generator
   ports:
   - name: web
     port: 8089
@@ -41,44 +18,47 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: locust-master
-  namespace: {{ .Values.namespace }}
+  name: load-generator
+  namespace: train-ticket
   labels:
-    app: locust
-    role: master
+    app: load-generator
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: locust
-      role: master
+      app: load-generator
   template:
     metadata:
       labels:
-        app: locust
-        role: master
+        app: load-generator
     spec:
       containers:
-      - name: locust
+      - name: load-generator
         image: locustio/locust:2.14.2
         ports:
         - containerPort: 8089
           name: web
-        - containerPort: 5557
-          name: master
         env:
-        - name: LOCUST_MODE
-          value: "master"
-        - name: LOCUST_WEB_AUTH
-          value: "admin:admin"
+        - name: LOCUST_AUTOSTART
+          value: "true"
+        - name: LOCUST_USERS
+          value: "5"
+        - name: LOCUST_SPAWN_RATE
+          value: "1"
+        - name: LOCUST_HEADLESS
+          value: "false"
+        - name: LOCUST_WEB_HOST
+          value: "0.0.0.0"
+        - name: LOCUST_WEB_PORT
+          value: "8089"
         - name: LOCUST_HOST
           value: "http://ts-ui-dashboard:8080"
         args:
-        - "--master"
-        - "--host=http://ts-ui-dashboard:8080"
+        - "--locustfile=/usr/src/app/locustfile.py"
         volumeMounts:
-        - name: locust-config
-          mountPath: /mnt/locust
+        - name: locustfile
+          mountPath: /usr/src/app/locustfile.py
+          subPath: locustfile.py
         resources:
           requests:
             memory: "256Mi"
@@ -87,54 +67,6 @@ spec:
             memory: "512Mi"
             cpu: "500m"
       volumes:
-      - name: locust-config
+      - name: locustfile
         configMap:
-          name: locust-config
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: locust-worker
-  namespace: {{ .Values.namespace }}
-  labels:
-    app: locust
-    role: worker
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: locust
-      role: worker
-  template:
-    metadata:
-      labels:
-        app: locust
-        role: worker
-    spec:
-      containers:
-      - name: locust
-        image: locustio/locust:2.14.2
-        env:
-        - name: LOCUST_MODE
-          value: "worker"
-        - name: LOCUST_MASTER_NODE_HOST
-          value: "locust-master"
-        - name: LOCUST_MASTER_NODE_PORT
-          value: "5557"
-        args:
-        - "--worker"
-        - "--master-host=locust-master"
-        volumeMounts:
-        - name: locust-config
-          mountPath: /mnt/locust
-        resources:
-          requests:
-            memory: "256Mi"
-            cpu: "100m"
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
-      volumes:
-      - name: locust-config
-        configMap:
-          name: locust-config
+          name: locustfile-config
