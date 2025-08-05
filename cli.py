@@ -12,10 +12,10 @@ from rich.markdown import Markdown
 from rich.panel import Panel
 
 from srearena.conductor import Conductor, exit_cleanup_fault
-from srearena.service.shell import Shell
-from srearena.service.kubectl import KubeCtl
-from srearena.service.telemetry.prometheus import Prometheus
 from srearena.service.apps.registry import AppRegistry
+from srearena.service.kubectl import KubeCtl
+from srearena.service.shell import Shell
+from srearena.service.telemetry.prometheus import Prometheus
 from srearena.utils.sigint_aware_section import SigintAwareSection
 
 WELCOME = """
@@ -57,8 +57,8 @@ class HumanAgent:
         self.console = Console(force_terminal=True, color_system="auto")
         self.conductor = conductor
         self.apps = AppRegistry()
-        self.session_purpose = None # "problem", "app_deploy", "app_undeploy"
-        
+        self.session_purpose = None  # "problem", "app_deploy", "app_undeploy"
+
         self.instantiate_completer_options()
         self.completer = WordCompleter(self.available_options, ignore_case=True, match_middle=True, sentence=True)
 
@@ -73,7 +73,7 @@ class HumanAgent:
 
         for pid in pids:
             self.available_options.append(f"start {pid}")
-        
+
         for app_name in app_names:
             self.available_options.append(f"deploy {app_name}")
             self.available_options.append(f"undeploy {app_name}")
@@ -112,7 +112,13 @@ class HumanAgent:
 
     def print_running_apps(self):
         deployed_apps = self.conductor.get_deployed_apps()
-        self.console.print(Panel('\n'.join(deployed_apps) if len(deployed_apps) > 0 else "No app currently deployed", title="Deployed Apps", style="white on blue"))
+        self.console.print(
+            Panel(
+                "\n".join(deployed_apps) if len(deployed_apps) > 0 else "No app currently deployed",
+                title="Deployed Apps",
+                style="white on blue",
+            )
+        )
         self.console.print()
 
     async def process_user_command(self):
@@ -148,7 +154,9 @@ class HumanAgent:
         elif user_input.strip() == "options":
             self.display_options_message()
         else:
-            self.console.print("Invalid command. Please use the available options. Type `options` to see availble commands.")
+            self.console.print(
+                "Invalid command. Please use the available options. Type `options` to see availble commands."
+            )
 
     async def get_action(self, env_input):
         self.display_env_message(env_input)
@@ -182,12 +190,13 @@ class HumanAgent:
 
                     return input
             except (SystemExit, KeyboardInterrupt, EOFError):
-                if self.session_purpose and self.session_purpose == "problem" and self.conductor.submission_stage in ["noop", "done"]:
+                if self.session_purpose:
                     atexit.register(exit_cleanup_fault, conductor=self.conductor)
                 raise SystemExit from None
 
     def _filter_dict(self, dictionary, filter_func):
         return {k: v for k, v in dictionary.items() if filter_func(k, v)}
+
 
 async def main():
     conductor = Conductor()
@@ -211,6 +220,7 @@ async def main():
             conductor.undeploy_app()
         case _:
             pass
+
 
 if __name__ == "__main__":
     asyncio.run(main())
