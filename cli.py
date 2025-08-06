@@ -133,7 +133,7 @@ class HumanAgent:
 async def main():
     conductor = Conductor()
     agent = HumanAgent(conductor)
-    conductor.register_agent(agent, name="human")
+    conductor.register_agent(name="human")
 
     agent.display_welcome_message()
     await agent.set_problem()
