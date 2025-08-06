@@ -1,5 +1,4 @@
-import threading
-
+import pyfiglet
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -7,13 +6,15 @@ from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
 
-from srearena.conductor import Conductor
-from srearena.conductor.parser import ResponseParser
-from srearena.utils.sigint_aware_section import SigintAwareSection
-from srearena.utils.status import SubmissionStatus
-
+# Note: no direct import of Conductor here; will be provided by set_conductor
 app = FastAPI()
-conductor = Conductor()
+conductor = None
+
+
+def set_conductor(c):
+    """Provide the Conductor instance to the API module."""
+    global conductor
+    conductor = c
 
 
 class SubmitRequest(BaseModel):
@@ -22,70 +23,65 @@ class SubmitRequest(BaseModel):
 
 @app.post("/submit")
 async def submit_solution(req: SubmitRequest):
-    if conductor.submission_stage is None:
+    """
+    Accepts a detection solution, evaluates it, and returns the updated results.
+    """
+    if conductor is None or conductor.submission_stage is None:
         raise HTTPException(status_code=400, detail="No problem has been started")
 
+    # Build and wrap the submit command in a Markdown code block
     cmd = f"submit({req.solution})"
+    wrapped = f"```\n{cmd}\n```"
+
+    # Parse the API call
     try:
-        parsed = conductor.parser.parse(cmd)
+        parsed = conductor.parser.parse(wrapped)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Parsing error: {e}")
 
     if parsed.get("api_name") != "submit":
         raise HTTPException(status_code=400, detail="Invalid submit command")
 
-    resp = await conductor.ask_env(cmd)
-    if resp == SubmissionStatus.VALID_SUBMISSION:
-        return {"status": "ok", "detail": "Mitigation stage evaluated"}
-    return {"status": "ok", "detail": resp}
+    # Execute the environment step through the conductor
+    resp = await conductor.ask_env(wrapped)
+
+    # Return the updated results after this submission
+    return conductor.results
 
 
 @app.get("/status")
 async def get_status():
+    """
+    Returns the current submission stage.
+    """
+    if conductor is None:
+        raise HTTPException(status_code=400, detail="No problem has been started")
     return {"stage": conductor.submission_stage}
 
 
-@app.post("/start/{problem_id}")
-async def start_problem(problem_id: str):
-    if conductor.submission_stage is not None:
-        raise HTTPException(status_code=400, detail="Problem already in progress")
+def run_api(c, host: str = "0.0.0.0", port: int = 8000):
+    """
+    Start the API server using the provided Conductor instance.
+    """
+    set_conductor(c)
 
-    conductor.problem_id = problem_id
-
-    def _run():
-        import asyncio
-
-        asyncio.run(conductor.start_problem())
-
-    thread = threading.Thread(target=_run, daemon=True)
-    thread.start()
-
-    return {"message": f"Problem '{problem_id}' execution begun via conductor."}
-
-
-@app.get("/results")
-async def get_results():
-    if conductor.submission_stage != "done":
-        raise HTTPException(status_code=400, detail="Results not ready")
-    return conductor.results
-
-
-if __name__ == "__main__":
-    import pyfiglet
-
-    ascii_art = pyfiglet.figlet_format("SREArena")
     console = Console()
+    ascii_art = pyfiglet.figlet_format("SREArena")
     console.print(
-        Panel(
-            ascii_art, title="SREArena CLI Web Server", subtitle="Access at http://localhost:8000", style="bold green"
-        )
+        Panel(ascii_art, title="SREArena API Server", subtitle=f"Access at http://{host}:{port}", style="bold green")
     )
     endpoints = """
 **Available Endpoints**
-- **POST /start/{problem_id}**: Initialize and start the problem run
-- **POST /submit**: Submit a detection solution (JSON body: { "solution": "<your-solution>" })
+- **POST /submit**: Submit a detection solution (JSON body: { "solution": "<your-solution>" }) and receive evaluation results
 - **GET /status**: Get the current submission stage
-- **GET /results**: Retrieve the final results after completion
     """
     console.print(Markdown(endpoints))
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host=host, port=port)
+
+
+if __name__ == "__main__":
+    # standalone fallback: create a new Conductor if needed
+    from srearena.conductor import Conductor
+
+    c = Conductor()
+    run_api(c)
