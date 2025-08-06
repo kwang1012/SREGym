@@ -190,7 +190,7 @@ class HumanAgent:
 
                     return input
             except (SystemExit, KeyboardInterrupt, EOFError):
-                if self.session_purpose:
+                if self.session_purpose and self.conductor.submission_stage not in ["detection", "localization", "mitigation"]:
                     atexit.register(exit_cleanup_fault, conductor=self.conductor)
                 raise SystemExit from None
 
