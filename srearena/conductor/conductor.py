@@ -26,6 +26,7 @@ class Conductor:
         # runtime state
         self.problem_id = None
         self.problem = None
+        self.app = None
         self.detection_oracle = None
         self.execution_start_time = None
 
@@ -48,6 +49,7 @@ class Conductor:
         """
         self.execution_start_time = time.time()
         self.problem = self.problems.get_problem_instance(self.problem_id)
+        self.app = self.problem.app
         self.detection_oracle = DetectionOracle(self.problem)
         self.results = {}
 
@@ -67,7 +69,8 @@ class Conductor:
     async def ask_env(self, wrapped_cmd: str):
         """
         Called by CLI or HTTP /submit.  Parses & grades the `submit(...)` call,
-        advances submission_stage, and records results.
+        advances submission_stage, records results—and when we hit “done”,
+        triggers undeploy_app (which also tears down infra if nothing else is live).
         """
         from srearena.conductor.parser import ResponseParser
 
@@ -75,7 +78,6 @@ class Conductor:
         parsed = parser.parse(wrapped_cmd)
         if parsed["api_name"] != "submit":
             return "[❌] Only `submit(...)` is supported."
-
         sol = parsed["args"][0] if parsed["args"] else None
 
         # NO-OP
@@ -107,6 +109,7 @@ class Conductor:
                 return "[✅] Detection recorded — now submit mitigation."
             else:
                 self.submission_stage = "done"
+                self.undeploy_app()
                 return "[✅] Detection recorded — all done."
 
         # LOCALIZATION
@@ -120,6 +123,7 @@ class Conductor:
                 return "[✅] Localization recorded — now submit mitigation."
             else:
                 self.submission_stage = "done"
+                self.undeploy_app()
                 return "[✅] Localization recorded — all done."
 
         # MITIGATION
@@ -127,7 +131,9 @@ class Conductor:
             r = self.problem.mitigation_oracle.evaluate()
             self.results["Mitigation"] = r
             self.results["TTM"] = time.time() - self.execution_start_time
+
             self.submission_stage = "done"
+            self.undeploy_app()
             return "[✅] Mitigation recorded — all done."
 
         return "[✅] All stages completed."
