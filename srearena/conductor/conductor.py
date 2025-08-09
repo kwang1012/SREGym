@@ -156,7 +156,7 @@ class Conductor:
         print("Deploying Prometheus…")
         self.prometheus.deploy()
 
-        print("Deploying and starting workload…")
+        print("Deploying and starting workload")
         self.problem.app.deploy()
         self.problem.app.start_workload()
 
@@ -168,3 +168,12 @@ class Conductor:
         self.kubectl.exec_command("kubectl delete sc openebs-hostpath openebs-device --ignore-not-found")
         self.kubectl.exec_command("kubectl delete -f https://openebs.github.io/charts/openebs-operator.yaml")
         self.kubectl.wait_for_namespace_deletion("openebs")
+
+    def get_deployed_apps(self):
+        deployed_apps = []
+        for app_name in self.apps.get_app_names():
+            namespace = self.apps.get_app_metadata(app_name)["Namespace"]
+            if self.kubectl.get_namespace_deployment_status(namespace):
+                deployed_apps.append(app_name)
+
+        return deployed_apps
