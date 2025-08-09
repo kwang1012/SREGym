@@ -185,8 +185,8 @@ async def main():
     rollback_agent.build_agent()
 
     faults_info = "The diagnosis_agent failed to give summarization."
-    if "summarization" in final_state["ans"] and isinstance(final_state["ans"]["summarization"], str):
-        faults_info = final_state["ans"]["summarization"]
+    # if "summarization" in final_state["ans"] and isinstance(final_state["ans"]["summarization"], str):
+    #     faults_info = final_state["ans"]["summarization"]
 
     # retry logic
     stratus_agent_oracles = StratusAgentOracles(problem.namespace)

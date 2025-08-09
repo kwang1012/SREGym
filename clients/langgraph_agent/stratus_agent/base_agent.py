@@ -359,4 +359,4 @@ Conversation:
             res.append(event)
             event["messages"][-1].pretty_print()
 
-        return res
+        return res[-1]
