@@ -204,7 +204,6 @@ dependencies = [
     "urllib3==2.4.0",
     "uvicorn==0.34.2",
     "uvloop==0.21.0",
-    "wandb==0.19.11",
     "watchfiles==1.0.5",
     "wcwidth==0.2.13",
     "websocket-client==1.8.0",

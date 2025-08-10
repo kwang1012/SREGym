@@ -112,17 +112,6 @@ The clients will automatically load API keys from your .env file.
 
 You can check the running status of the cluster using [k9s](https://k9scli.io/) or other cluster monitoring tools conveniently.
 
-To browse your logged `session_id` values in the W&B app as a table:
-
-1. Make sure you have W&B installed and configured.
-2. Set the USE_WANDB environment variable:
-    ```bash
-    # Add to your .env file
-    echo "USE_WANDB=true" >> .env
-    ```
-3. In the W&B web UI, open any run and click Tables → Add Query Panel.
-4. In the key field, type `runs.summary` and click `Run`, then you will see the results displayed in a table format.
-
 <h2 id="⚙️usage">⚙️ Usage</h2>
 
 SREArena can be used in the following ways:

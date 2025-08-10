@@ -60,7 +60,6 @@ def main():
     driver_thread.start()
 
     # -- start the API server in the MAIN thread --
-    print("📡 HTTP API server launching at http://localhost:8000")
     run_api(conductor, host="0.0.0.0", port=8000)
 
     # once run_api returns (i.e. server shuts down), we know driver is done
