@@ -17,22 +17,22 @@ logger = logging.getLogger(__name__)
 
 
 class BaseAgent:
-    def __init__(self, llm, max_step, prompt_path, sync_tools, async_tools):
+    def __init__(self, llm, max_step, sync_tools, async_tools, tool_descs):
         self.graph_builder = StateGraph(State)
         self.graph: CompiledStateGraph | None = None
         self.max_round = max_step
-        self.prompts_file_path = prompt_path
         self.async_tools = async_tools
         self.sync_tools = sync_tools
         self.llm = llm
+        self.tool_descs = tool_descs
 
     def llm_inference_step(self, messages, tools):
         return self.llm.inference(messages=messages, tools=tools)
 
-    def llm_thinking_step(self, state: State, tool_descs: str):
+    def llm_thinking_step(self, state: State):
         human_prompt = HumanMessage(
             content="You are now in the thinking stage. Here are all the tools you can use:\n"
-            + tool_descs
+            + self.tool_descs
             + "Choose a tool from the list and output the tool name. Justify your tool choice. In the next step, you will generate a tool call for this tool"
         )
         # planning step, not providing tool
@@ -81,7 +81,7 @@ class BaseAgent:
             self.graph.stream(
                 state,
                 # recursion_limit could be as large as possible as we have our own limit.
-                config={"recursion_limit": 10000},
+                config={"recursion_limit": 10000, "configurable": {"thread_id": "1"}},
                 stream_mode="values",
             )
         )[-1]
@@ -118,7 +118,7 @@ class BaseAgent:
         async for event in self.graph.astream(
             state,
             # recursion_limit could be as large as possible as we have our own limit.
-            config={"recursion_limit": 10000},
+            config={"recursion_limit": 10000, "configurable": {"thread_id": "1"}},
             stream_mode="values",
         ):
             res.append(event)

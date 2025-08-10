@@ -2,11 +2,8 @@ import yaml
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 
-def get_starting_prompts(config_path):
-    with open(config_path, "r") as config_file:
-        config = yaml.safe_load(config_file)
-        max_step = config["max_step"]
-        prompt_file = open(config["prompts_path"], "r")
+def get_starting_prompts(prompt_path, max_step):
+    with open(prompt_path, "r") as prompt_file:
         prompts = yaml.safe_load(prompt_file)
         sys_prompt = prompts["system"]
         user_prompt = prompts["user"].format(max_step=max_step)
@@ -16,5 +13,4 @@ def get_starting_prompts(config_path):
         if user_prompt:
             prompts.append(HumanMessage(user_prompt))
 
-        prompt_file.close()
         return prompts
