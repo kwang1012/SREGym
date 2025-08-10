@@ -8,7 +8,6 @@ from langgraph.graph import START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import Command
 
-from clients.stratus.configs import BaseAgentCfg
 from clients.stratus.llm_backend.init_backend import get_llm_backend_for_tools
 from clients.stratus.stratus_agent.state import State
 from clients.stratus.tools.stratus_tool_node import StratusToolNode
@@ -89,14 +88,13 @@ class BaseAgent:
 
     async def arun(self, starting_prompts):
         """
-                Async running an agent
+        Async running an agent
 
-                Args:
-                    starting_prompts (dict): The data inside the dict will be filled into the prompts.
-        :w
+        Args:
+            starting_prompts (dict): The data inside the dict will be filled into the prompts.
 
-                Returns:
-                    final state of the agent running, including messages and other state values.
+        Returns:
+            final state of the agent running, including messages and other state values.
         """
         if not self.graph:
             raise ValueError("Agent graph is None. Have you built the agent?")
