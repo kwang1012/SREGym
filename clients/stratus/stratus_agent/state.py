@@ -7,13 +7,14 @@ class State(TypedDict):
     # in the annotation defines how this state key should be updated
     # (in this case, it appends messages to the list, rather than overwriting them)
     messages: Annotated[list, add_messages]
-    workdir: str
-    curr_file: str
-    curr_line: int
+    # workdir: str
+    # curr_file: str
+    # curr_line: int
     # number or rounds used to finish assigned tasks
-    num_rounds: int
+    # num_rounds: int
+    num_steps: int
     # number of rounds used for rectifying submission
-    rec_submission_rounds: int
+    # rec_submission_rounds: int
     submitted: bool
-    submit_tried: bool
-    ans: dict
+    # submit_tried: bool
+    # ans: dict
