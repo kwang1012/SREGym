@@ -65,20 +65,14 @@ class BaseAgent:
         if not self.graph:
             raise ValueError("Agent graph is None. Have you built the agent?")
 
-        prompts = self.get_init_prompts(data_for_prompts)
+        prompts = get_init_prompts(data_for_prompts)
         if len(prompts) == 0:
             raise ValueError("No prompts used to start the conversation!")
 
         state = {
             "messages": prompts,
-            "workdir": "",
-            "curr_file": "",
-            "curr_line": 0,
-            "num_rounds": 0,
-            "rec_submission_rounds": 0,
-            "submit_tried": False,
+            "num_steps": 0,
             "submitted": False,
-            "ans": dict(),
         }
 
         return list(
@@ -103,7 +97,7 @@ class BaseAgent:
         if not self.graph:
             raise ValueError("Agent graph is None. Have you built the agent?")
 
-        prompts = self.get_init_prompts(data_for_prompts)
+        prompts = get_init_prompts(data_for_prompts)
         if len(prompts) == 0:
             raise ValueError("No prompts used to start the conversation!")
 
