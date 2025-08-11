@@ -60,7 +60,7 @@ def main():
     driver_thread.start()
 
     # -- start the API server in the MAIN thread --
-    run_api(conductor, host="0.0.0.0", port=8000)
+    run_api(conductor)
 
     # once run_api returns (i.e. server shuts down), we know driver is done
     # fetch the results we stored on the `main` function object

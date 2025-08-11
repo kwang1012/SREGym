@@ -1,3 +1,5 @@
+import os
+
 import pyfiglet
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -43,8 +45,12 @@ async def get_status():
     return {"stage": stage}
 
 
-def run_api(conductor, host: str = "0.0.0.0", port: int = 8000):
+def run_api(conductor):
     set_conductor(conductor)
+
+    # Load from .env with defaults
+    host = os.getenv("API_HOSTNAME", "0.0.0.0")
+    port = int(os.getenv("API_PORT", "8000"))
 
     console = Console()
     art = pyfiglet.figlet_format("SREArena")
