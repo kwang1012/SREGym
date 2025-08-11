@@ -21,7 +21,6 @@ from rich.panel import Panel
 
 from srearena.conductor.conductor import Conductor
 from srearena.service.shell import Shell
-from srearena.utils.sigint_aware_section import SigintAwareSection
 
 WELCOME = """
 # SREArena
@@ -127,11 +126,10 @@ class HumanAgent:
         prompt_txt = [("class:prompt", "SREArena> ")]
         with patch_stdout():
             try:
-                with SigintAwareSection():
-                    return await loop.run_in_executor(
-                        None,
-                        lambda: self.session.prompt(prompt_txt, style=style, completer=self.completer),
-                    )
+                return await loop.run_in_executor(
+                    None,
+                    lambda: self.session.prompt(prompt_txt, style=style, completer=self.completer),
+                )
             except (KeyboardInterrupt, EOFError):
                 sys.exit(0)
 
