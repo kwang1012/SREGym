@@ -132,6 +132,7 @@ class Conductor:
 
     def deploy_app(self):
         """Kubectl + Prometheus + problem.app deployment."""
+        self.submission_stage = "setup"
         print("Setting up metrics-server…")
         self.kubectl.exec_command(
             "kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/"
@@ -162,6 +163,7 @@ class Conductor:
         self.problem.app.start_workload()
 
     def undeploy_app(self):
+        self.submission_stage = "teardown"
         """Teardown problem.app and, if no other apps running, OpenEBS/Prometheus."""
         if self.problem:
             self.problem.app.cleanup()
