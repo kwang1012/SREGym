@@ -1,6 +1,7 @@
 import time
 
 from srearena.generators.workload.wrk2 import Wrk2, Wrk2WorkloadManager
+from srearena.observer.trace_api import TraceAPI
 from srearena.paths import FAULT_SCRIPTS, HOTEL_RES_METADATA, TARGET_MICROSERVICES
 from srearena.service.apps.base import Application
 from srearena.service.apps.helpers import get_frontend_url
@@ -11,6 +12,7 @@ class HotelReservation(Application):
     def __init__(self):
         super().__init__(HOTEL_RES_METADATA)
         self.kubectl = KubeCtl()
+        self.trace_api = None
         self.script_dir = FAULT_SCRIPTS
         self.helm_deploy = False
 
@@ -73,14 +75,6 @@ class HotelReservation(Application):
         self.create_configmaps()
         self.kubectl.apply_configs(self.namespace, self.k8s_deploy_path)
         self.kubectl.wait_for_ready(self.namespace)
-
-    def deploy_without_wait(self):
-        """Deploy the Kubernetes configurations without waiting for ready."""
-
-        print(f"Deploying Kubernetes configurations in namespace: {self.namespace}")
-        self.kubectl.apply_configs(self.namespace, self.k8s_deploy_path)
-        print(f"Waiting for stability...")
-        self.kubectl.wait_for_stable(namespace=self.namespace)
 
     def delete(self):
         """Delete the configmap."""
