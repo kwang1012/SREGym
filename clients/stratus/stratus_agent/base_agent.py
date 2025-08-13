@@ -32,37 +32,47 @@ class BaseAgent:
     def llm_inference_step(self, messages, tools):
         return self.llm.inference(messages=messages, tools=tools)
 
-    def llm_thinking_step(self, state: State):
+    def llm_thinking_prompt_inject_step(self, state: State):
         human_prompt = HumanMessage(
             content="You are now in the thinking stage. Here are all the tools you can use:\n"
             + self.tool_descs
             + "Choose a tool from the list and output the tool name. Justify your tool choice. In the next step, you will generate a tool call for this tool"
         )
-        # planning step, not providing tool
-        ai_message = self.llm_inference_step(state["messages"] + [human_prompt], tools=None)
         return {
-            "messages": [human_prompt, ai_message],
+            "messages": [human_prompt],
+        }
+
+    def llm_thinking_step(self, state: State):
+        # planning step, not providing tool
+        ai_message = self.llm_inference_step(state["messages"], tools=None)
+        return {
+            "messages": [ai_message],
+        }
+
+    def llm_tool_call_prompt_inject_step(self, state: State):
+        human_prompt = HumanMessage(content="Now generate a tool call according to your last chosen tool.")
+        return {
+            "messages": [human_prompt],
         }
 
     def llm_tool_call_step(self, state: State):
-        human_prompt = HumanMessage(content="Now generate a tool call according to your last chosen tool.")
         if self.sync_tools is None:
             if self.async_tools is not None:
-                ai_message = self.llm_inference_step(state["messages"] + [human_prompt], tools=self.async_tools)
+                ai_message = self.llm_inference_step(state["messages"], tools=self.async_tools)
             else:
                 raise ValueError("the agent must have at least 1 tool!")
         else:
             if self.async_tools is None:
-                ai_message = (self.llm_inference_step(state["messages"] + [human_prompt], tools=self.sync_tools),)
+                ai_message = (self.llm_inference_step(state["messages"], tools=self.sync_tools),)
             else:
-                ai_message = self.llm_inference_step(
-                    state["messages"] + [human_prompt], tools=[*self.sync_tools, *self.async_tools]
-                )
+                ai_message = self.llm_inference_step(state["messages"], tools=[*self.sync_tools, *self.async_tools])
         return {
-            "messages": [human_prompt, ai_message],
+            "messages": [ai_message],
         }
 
     def should_submit_router(self, state: State):
+        # Fixme: bad programming here! make sure self.max_step and self.post_round_process_node is defined in
+        #   this class too!!
         should_submit = state["num_steps"] == self.max_step and state["submitted"] == False
         logger.info(f"Should the agent submit? {"Yes!" if should_submit else "No!"}")
         return self.force_submit_node if should_submit else self.post_round_process_node

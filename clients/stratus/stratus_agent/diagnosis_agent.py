@@ -22,7 +22,9 @@ class DiagnosisAgent(BaseAgent):
         super().__init__(**kwargs)
         self.tool_node = None
         self.max_step = kwargs.get("max_step", 20)
+        self.thinking_prompt_inject_node = "pre_thinking_step"
         self.thinking_node = "thinking_step"
+        self.tool_calling_prompt_inject_node = "pre_tool_calling_step"
         self.tool_calling_node = "tool_calling_step"
         self.process_tool_call_node = "process_tool_call"
         self.post_round_process_node = "post_round_process"
@@ -31,6 +33,8 @@ class DiagnosisAgent(BaseAgent):
         self.tool_node = StratusToolNode(async_tools=self.async_tools, sync_tools=self.sync_tools)
 
         # we add the node to the graph
+        self.graph_builder.add_node(self.thinking_prompt_inject_node, self.llm_thinking_prompt_inject_step)
+        self.graph_builder.add_node(self.tool_calling_prompt_inject_node, self.llm_tool_call_prompt_inject_step)
         self.graph_builder.add_node(self.thinking_node, self.llm_thinking_step)
         self.graph_builder.add_node(self.tool_calling_node, self.llm_tool_call_step)
         self.graph_builder.add_node(self.process_tool_call_node, self.tool_node)
@@ -41,8 +45,10 @@ class DiagnosisAgent(BaseAgent):
         # self.graph_builder.add_node("post_tool_hook", self.post_tool_hook)
         # self.graph_builder.add_node("summarize_messages", self.summarize_messages)
 
-        self.graph_builder.add_edge(START, self.thinking_node)
-        self.graph_builder.add_edge(self.thinking_node, self.tool_calling_node)
+        self.graph_builder.add_edge(START, self.thinking_prompt_inject_node)
+        self.graph_builder.add_edge(self.thinking_prompt_inject_node, self.thinking_node)
+        self.graph_builder.add_edge(self.thinking_node, self.tool_calling_prompt_inject_node)
+        self.graph_builder.add_edge(self.tool_calling_prompt_inject_node, self.tool_calling_node)
         self.graph_builder.add_edge(self.tool_calling_node, self.process_tool_call_node)
         self.graph_builder.add_edge(self.process_tool_call_node, self.post_round_process_node)
         self.graph_builder.add_conditional_edges(
