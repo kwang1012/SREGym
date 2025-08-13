@@ -20,6 +20,10 @@ class LanggraphToolConfig(BaseModel):
     submit_mcp_url: str = Field(
         description="url for submit mcp server", default=f"{os.environ['MCP_SERVER_URL']}/submit/sse"
     )
+    benchmark_submit_url: str = Field(
+        description="url for the submission result destination, default to http://localhost:8000/submit",
+        default=f"http://localhost:8000/submit",
+    )
 
     min_len_to_sum: int = Field(
         description="Minimum length of text that will be summarized " "first before being input to the main agent.",
