@@ -105,8 +105,6 @@ class LiteLLMBackend:
         else:
             raise ValueError(f"Unsupported provider: {self.provider}")
 
-        logger.info(f"llm is: {llm}")
-
         if tools:
             logger.info(f"binding tools to llm: {tools}")
             llm = llm.bind_tools(tools, tool_choice="auto")

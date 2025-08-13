@@ -144,12 +144,19 @@ def main():
     sync_tools = []
     async_tools = []
     tool_descriptions = ""
-    for sync_tool_struct, async_tool_struct in zip(
-        diagnosis_agent_config["sync_tools"], diagnosis_agent_config["async_tools"]
-    ):
-        sync_tools.append(str_to_tool(sync_tool_struct))
-        async_tools.append(str_to_tool(async_tool_struct))
-        tool_descriptions += sync_tool_struct["description"] + "\n\n" + async_tool_struct["description"]
+    if diagnosis_agent_config["sync_tools"] is not None:
+        for sync_tool_struct in diagnosis_agent_config["sync_tools"]:
+            sync_tools.append(str_to_tool(sync_tool_struct))
+            tool_descriptions += sync_tool_struct["description"] + "\n\n"
+    else:
+        sync_tools = None
+    if diagnosis_agent_config["async_tools"] is not None:
+        for async_tool_struct in diagnosis_agent_config["async_tools"]:
+            async_tools.append(str_to_tool(async_tool_struct))
+            tool_descriptions += async_tool_struct["description"] + "\n\n"
+    else:
+        async_tools = None
+
     submit_tool = str_to_tool("submit_tool")
 
     agent = DiagnosisAgent(

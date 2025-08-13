@@ -39,20 +39,27 @@ class BaseAgent:
             + "Choose a tool from the list and output the tool name. Justify your tool choice. In the next step, you will generate a tool call for this tool"
         )
         # planning step, not providing tool
-        ai_message = self.llm_inference_step(state["messages"] + [human_prompt], tools=[])
-        # ai_message.additional_kwargs["is_thought"] = True
-        # let's rely on the annotated dict type
-        # new_messages = [human_prompt, ai_message]
+        ai_message = self.llm_inference_step(state["messages"] + [human_prompt], tools=None)
         return {
-            "messages": ai_message,
+            "messages": [human_prompt, ai_message],
         }
 
     def llm_tool_call_step(self, state: State):
         human_prompt = HumanMessage(content="Now generate a tool call according to your last chosen tool.")
+        if self.sync_tools is None:
+            if self.async_tools is not None:
+                ai_message = self.llm_inference_step(state["messages"] + [human_prompt], tools=[self.async_tools])
+            else:
+                raise ValueError("the agent must have at least 1 tool!")
+        else:
+            if self.async_tools is None:
+                ai_message = (self.llm_inference_step(state["messages"] + [human_prompt], tools=[self.sync_tools]),)
+            else:
+                ai_message = self.llm_inference_step(
+                    state["messages"] + [human_prompt], tools=[self.sync_tools + self.async_tools]
+                )
         return {
-            "messages": self.llm_inference_step(
-                state["messages"] + [human_prompt], tools=[self.sync_tools + self.async_tools]
-            ),
+            "messages": [human_prompt, ai_message],
         }
 
     def should_submit_router(self, state: State):
