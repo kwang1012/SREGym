@@ -39,14 +39,13 @@ async def submit_tool(ans: str, tool_call_id: Annotated[str, InjectedToolCallId]
     result = await session.call_tool(
         "submit",
         arguments={
-            "answer": ans,
+            "ans": ans,
         },
     )
     await exit_stack.aclose()
     return Command(
         update={
             "submitted": True,
-            "ans": ans,
             "messages": [ToolMessage(f"Submission complete. No further action is needed.", tool_call_id=tool_call_id)],
         }
     )

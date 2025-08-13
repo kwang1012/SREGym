@@ -57,9 +57,6 @@ class StratusToolNode:
         to_update = dict()
         new_messages = []
         for i, tool_call in enumerate(message.tool_calls):
-            if tool_call["name"] == "submit_tool":
-                to_update["submitted"] = True
-
             try:
                 logger.info(f"invoking tool: {tool_call['name']}, tool_call: {tool_call}")
                 if tool_call["name"] in self.async_tools_by_name:
@@ -83,7 +80,17 @@ class StratusToolNode:
                         }
                     )
                 else:
-                    raise ValueError(f'Tool {tool_call["name"]} does not exist!')
+                    logger.info(f"agent tries to call tool that DNE: {tool_call['name']}")
+                    Command(
+                        update={
+                            "messages": [
+                                ToolMessage(
+                                    content=f"Tool {tool_call['name']} does not exist!",
+                                    tool_call_id=tool_call["id"],
+                                )
+                            ]
+                        }
+                    )
 
                 assert isinstance(
                     tool_result, Command
