@@ -94,7 +94,7 @@ class HumanAgent:
         while self.conductor.submission_stage != "done":
             # display last environment or grading response
             if env:
-                self.console.print(Panel(env, title="Environment", style="white on blue"))
+                print(env)
 
             inp = await self._prompt()
             text = inp.strip()
