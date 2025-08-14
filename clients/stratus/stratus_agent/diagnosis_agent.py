@@ -32,7 +32,8 @@ class DiagnosisAgent(BaseAgent):
         self.graph_builder.add_node(self.tool_calling_node, self.llm_tool_call_step)
         self.graph_builder.add_node(self.process_tool_call_node, self.tool_node)
         self.graph_builder.add_node(self.post_round_process_node, self.post_round_process)
-        self.graph_builder.add_node(self.force_submit_node, self.llm_force_submit_tool_call_node)
+        self.graph_builder.add_node(self.force_submit_prompt_inject_node, self.llm_force_submit_thinking_step)
+        self.graph_builder.add_node(self.force_submit_tool_call_node, self.llm_force_submit_tool_call_step)
 
         self.graph_builder.add_edge(START, self.thinking_prompt_inject_node)
         self.graph_builder.add_edge(self.thinking_prompt_inject_node, self.thinking_node)
@@ -44,11 +45,12 @@ class DiagnosisAgent(BaseAgent):
             self.process_tool_call_node,
             self.should_submit_router,
             {
-                self.force_submit_node: self.force_submit_node,
+                self.force_submit_prompt_inject_node: self.force_submit_prompt_inject_node,
                 self.post_round_process_node: self.post_round_process_node,
             },
         )
-        self.graph_builder.add_edge(self.force_submit_node, END)
+        self.graph_builder.add_edge(self.force_submit_prompt_inject_node, self.force_submit_tool_call_node)
+        self.graph_builder.add_edge(self.force_submit_tool_call_node, END)
         self.graph_builder.add_edge(self.post_round_process_node, END)
 
         memory = MemorySaver()

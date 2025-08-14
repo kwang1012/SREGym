@@ -1,5 +1,6 @@
 import logging
 
+from langgraph.checkpoint.memory import MemorySaver
 from langgraph.constants import END
 from langgraph.graph import START
 
@@ -15,10 +16,6 @@ class RollbackAgent(BaseAgent):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.tool_node = None
-        self.thinking_prompt_inject_node = "pre_thinking_step"
-        self.thinking_node = "thinking_step"
-        self.tool_calling_prompt_inject_node = "pre_tool_calling_step"
-        self.tool_calling_node = "tool_calling_step"
 
     def build_agent(self):
         self.tool_node = StratusToolNode(
@@ -26,18 +23,30 @@ class RollbackAgent(BaseAgent):
             sync_tools=self.sync_tools,
         )
 
-        # we add the node to the graph
-        self.graph_builder.add_node("tool_agent", self.llm_tool_call_step)
-        self.graph_builder.add_node("tool_node", self.tool_node)
-        self.graph_builder.add_node("post_tool_hook", self.post_tool_hook)
+        self.graph_builder.add_node(self.thinking_prompt_inject_node, self.llm_thinking_prompt_inject_step)
+        self.graph_builder.add_node(self.tool_calling_prompt_inject_node, self.llm_tool_call_prompt_inject_step)
+        self.graph_builder.add_node(self.thinking_node, self.llm_thinking_step)
+        self.graph_builder.add_node(self.tool_calling_node, self.llm_tool_call_step)
+        self.graph_builder.add_node(self.process_tool_call_node, self.tool_node)
+        self.graph_builder.add_node(self.post_round_process_node, self.post_round_process)
+        self.graph_builder.add_node(self.force_submit_tool_call_node, self.llm_force_submit_tool_call_node)
 
-        self.graph_builder.add_edge(START, "tool_agent")
-        self.graph_builder.add_edge("tool_agent", "tool_node")
-        self.graph_builder.add_edge("tool_node", "post_tool_hook")
+        self.graph_builder.add_edge(START, self.thinking_prompt_inject_node)
+        self.graph_builder.add_edge(self.thinking_prompt_inject_node, self.thinking_node)
+        self.graph_builder.add_edge(self.thinking_node, self.tool_calling_prompt_inject_node)
+        self.graph_builder.add_edge(self.tool_calling_prompt_inject_node, self.tool_calling_node)
+        self.graph_builder.add_edge(self.tool_calling_node, self.process_tool_call_node)
+        self.graph_builder.add_edge(self.process_tool_call_node, self.post_round_process_node)
         self.graph_builder.add_conditional_edges(
-            "post_tool_hook",
-            self.post_tool_route,
-            {"next_round": "tool_agent", END: END},
+            self.process_tool_call_node,
+            self.should_submit_router,
+            {
+                self.force_submit_tool_call_node: self.force_submit_tool_call_node,
+                self.post_round_process_node: self.post_round_process_node,
+            },
         )
+        self.graph_builder.add_edge(self.force_submit_tool_call_node, END)
+        self.graph_builder.add_edge(self.post_round_process_node, END)
 
-        self.graph = self.graph_builder.compile()
+        memory = MemorySaver()
+        self.graph = self.graph_builder.compile(checkpointer=memory)

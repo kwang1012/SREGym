@@ -26,7 +26,8 @@ class BaseAgent:
         self.llm = llm
         self.tool_descs = tool_descs
         self.submit_tool = submit_tool
-        self.force_submit_node = "force_submit"
+        self.force_submit_prompt_inject_node = "force_submit_thinking_step"
+        self.force_submit_tool_call_node = "force_submit_tool_call"
         self.llm_force_submit_tool_call_node = StratusToolNode(sync_tools=[], async_tools=[submit_tool])
         self.thinking_prompt_inject_node = "pre_thinking_step"
         self.thinking_node = "thinking_step"
@@ -81,7 +82,7 @@ class BaseAgent:
         #   this class too!!
         should_submit = state["num_steps"] == self.max_step and state["submitted"] == False
         logger.info(f"Should the agent submit? {"Yes!" if should_submit else "No!"}")
-        return self.force_submit_node if should_submit else self.post_round_process_node
+        return self.force_submit_prompt_inject_node if should_submit else self.post_round_process_node
 
     def post_round_process(self, state: State):
         logger.info("agent finished a round")
@@ -91,11 +92,13 @@ class BaseAgent:
         }
 
     def llm_force_submit_thinking_step(self, state: State):
-        # actual tool node defined in __init__
         human_prompt = HumanMessage(
             content="You have reached your step limit, please submit your results by generating a `submit` tool's tool call."
         )
-        return {"messages": self.llm_inference_step(state["messages"] + [human_prompt], tools=[self.submit_tool])}
+        return {"messages": [human_prompt]}
+
+    def llm_force_submit_tool_call_step(self, state: State):
+        return {"messages": self.llm_inference_step(state["messages"], tools=[self.submit_tool])}
 
     def save_agent_graph_to_png(self):
         with open("./agent_graph.png", "wb") as png:
