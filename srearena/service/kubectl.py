@@ -141,21 +141,21 @@ class KubeCtl:
         """Wait for a namespace to be fully deleted before proceeding."""
 
         console = Console()
+        console.log("[bold yellow]Waiting for namespace deletion...")
 
-        with console.status("[bold yellow]Waiting for namespace deletion...") as status:
-            wait = 0
+        wait = 0
 
-            while wait < max_wait:
-                try:
-                    self.core_v1_api.read_namespace(name=namespace)
-                except Exception as e:
-                    console.log(f"[bold green]Namespace '{namespace}' has been deleted.")
-                    return
+        while wait < max_wait:
+            try:
+                self.core_v1_api.read_namespace(name=namespace)
+            except Exception as e:
+                console.log(f"[bold green]Namespace '{namespace}' has been deleted.")
+                return
 
-                time.sleep(sleep)
-                wait += sleep
+            time.sleep(sleep)
+            wait += sleep
 
-            raise Exception(f"[red]Timeout: Namespace '{namespace}' was not deleted within {max_wait} seconds.")
+        raise Exception(f"[red]Timeout: Namespace '{namespace}' was not deleted within {max_wait} seconds.")
 
     def is_ready(self, pod):
         phase = pod.status.phase or ""
