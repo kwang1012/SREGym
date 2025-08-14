@@ -110,7 +110,7 @@ class MitigationAgent(BaseAgent):
         return last_state
 
 
-async def main():
+def build_default_mitigation_agent():
     # agent config and init setup
     file_parent_dir = Path(__file__).resolve().parent
     mitigation_agent_config_path = file_parent_dir.parent / "configs" / "mitigation_agent_config.yaml"
@@ -138,11 +138,11 @@ async def main():
         {
             "name": "submit_tool",
             "description": """
-                The tool to submit benchmark results
+                    The tool to submit benchmark results
 
-                    Args:
-                        ans (str): the answer you would like to submit to the benchmark
-        """,
+                        Args:
+                            ans (str): the answer you would like to submit to the benchmark
+            """,
         }
     )
 
@@ -157,12 +157,20 @@ async def main():
     )
     mitigation_agent.build_agent()
     mitigation_agent.save_agent_graph_to_png()
+    return mitigation_agent, mitigation_agent_prompt_path, mitigation_agent_max_step
 
-    res = await mitigation_agent.arun(
-        get_starting_prompts(mitigation_agent_prompt_path, max_step=mitigation_agent_max_step)
-    )
+
+async def single_run_with_predefined_prompts():
+    agent, prompt_path, max_step = build_default_mitigation_agent()
+    res = await agent.arun(get_starting_prompts(prompt_path, max_step=max_step))
+    return res
+
+
+async def retry_run_with_feedback(feedback_prompts):
+    agent, prompt_path, max_step = build_default_mitigation_agent()
+    res = await agent.arun(feedback_prompts)
     return res
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    logger.info("Mitigation agent does not support running as a module.")
