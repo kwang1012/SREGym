@@ -60,7 +60,7 @@ def run_api(conductor):
             """
 **Available Endpoints**
 - **POST /submit**: `{ "solution": "<your-solution>" }` → grades the current stage  
-- **GET /status**: returns `{ "stage": "detection" | "localization" | "mitigation" | "done" }`
+- **GET /status**: returns `{ "stage": "setup" | "noop" | "detection" | "localization" | "mitigation" | "done" }`
 """
         )
     )
