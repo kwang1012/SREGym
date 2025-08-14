@@ -90,6 +90,7 @@ class Conductor:
             # if no further stages, finalize here
             if not self.problem.localization_oracle and not self.problem.mitigation_oracle:
                 snapshot = dict(self.results)
+                self.problem.recover_fault()
                 self.undeploy_app()
                 return snapshot
 
@@ -108,6 +109,7 @@ class Conductor:
 
             if not self.problem.mitigation_oracle:
                 snapshot = dict(self.results)
+                self.problem.recover_fault()
                 self.undeploy_app()
                 return snapshot
 
@@ -121,6 +123,7 @@ class Conductor:
             self.results["TTM"] = time.time() - self.execution_start_time
 
             snapshot = dict(self.results)
+            self.problem.recover_fault()
             self.undeploy_app()
             return snapshot
 
@@ -161,7 +164,6 @@ class Conductor:
     def undeploy_app(self):
         """Teardown problem.app and, if no other apps running, OpenEBS/Prometheus."""
         if self.problem:
-            self.problem.recover_fault()
             self.problem.app.cleanup()
         self.submission_stage = "done"
 
