@@ -97,7 +97,7 @@ async def mitigation_task_main():
             # otherwise, rollback all changes
             # rollback agent is stateless and "best effort" idempotent, just rollback
             # memory is cleared in the retry_run() method, so the agent can start anew.
-            rollback_agent_last_state = rollback_agent_main()
+            rollback_agent_last_state = await rollback_agent_main()
             curr_attempt += 1
         return mitigation_agent_last_state
 
