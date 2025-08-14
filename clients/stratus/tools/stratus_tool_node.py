@@ -32,7 +32,6 @@ class StratusToolNode:
     """A node that runs the tools requested in the last AIMessage."""
 
     def __init__(self, sync_tools: list[BaseTool], async_tools: list[BaseTool]) -> None:
-        logger.info(f"Initializing Stratus Tool Node, sync tools: {sync_tools}, async tools: {async_tools}")
         self.sync_tools_by_name = {t.name: t for t in sync_tools} if sync_tools is not None else None
         self.async_tools_by_name = {t.name: t for t in async_tools} if async_tools is not None else None
 
