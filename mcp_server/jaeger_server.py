@@ -23,6 +23,11 @@ def get_services() -> str:
     """
 
     logger.info("[ob_mcp] get_services called, getting jaeger services")
+    jaeger_port = os.environ.get("JAEGER_PORT", None)
+    if jaeger_port is None:
+        err_msg = "JAEGER_PORT environment variable is not set!"
+        logger.error(err_msg)
+        raise RuntimeError(err_msg)
     grafana_url = "http://localhost:" + os.environ["JAEGER_PORT"]
     jaeger_client = ObservabilityClient(grafana_url)
     try:

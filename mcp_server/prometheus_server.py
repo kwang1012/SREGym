@@ -24,6 +24,11 @@ def get_metrics(query: str) -> str:
     """
 
     logger.info("[prom_mcp] get_metrics called, getting prometheus metrics")
+    prometheus_port = os.environ.get("PROMETHEUS_PORT", None)
+    if prometheus_port is None:
+        err_msg = "PROMETHEUS_PORT environment variable is not set!"
+        logger.error(err_msg)
+        raise RuntimeError(err_msg)
     prometheus_url = "http://localhost:" + os.environ["PROMETHEUS_PORT"]
     observability_client = ObservabilityClient(prometheus_url)
     try:
