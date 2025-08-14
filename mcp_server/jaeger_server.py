@@ -3,14 +3,14 @@ from datetime import datetime, timedelta
 
 from fastmcp import FastMCP
 
-from mcp_server.utils import ObservabilityClient
+from mcp_server.utils import JaegerClient
 
-logger = logging.getLogger("Observability MCP Server")
-logger.info("Starting Observability MCP Server")
-mcp = FastMCP("Observability MCP Server")
+logger = logging.getLogger("Jaeger MCP Server")
+logger.info("Starting Jaeger MCP Server")
+mcp = FastMCP("Jaeger MCP Server")
 
 grafana_url = "http://localhost:16686"
-observability_client = ObservabilityClient(grafana_url)
+jaeger_client = JaegerClient(grafana_url)
 
 
 @mcp.tool(name="get_services")
@@ -26,7 +26,7 @@ def get_services() -> str:
     logger.info("[ob_mcp] get_services called, getting jaeger services")
     try:
         url = f"{grafana_url}/api/services"
-        response = observability_client.make_request("GET", url)
+        response = jaeger_client.make_request("GET", url)
         logger.info(f"[ob_mcp] get_services status code: {response.status_code}")
         logger.info(f"[ob_mcp] get_services result: {response}")
         logger.info(f"[ob_mcp] result: {response.json()}")
@@ -53,7 +53,7 @@ def get_operations(service: str) -> str:
     try:
         url = f"{grafana_url}/api/operations"
         params = {"service": service}
-        response = observability_client.make_request("GET", url, params=params)
+        response = jaeger_client.make_request("GET", url, params=params)
         logger.info(f"[ob_mcp] get_operations: {response.status_code}")
         operations = str(response.json()["data"])
         return operations if operations else "None"
@@ -88,7 +88,7 @@ def get_traces(service: str, last_n_minutes: int) -> str:
             "end": end_time,
             "limit": 20,
         }
-        response = observability_client.make_request("GET", url, params=params)
+        response = jaeger_client.make_request("GET", url, params=params)
         logger.info(f"[ob_mcp] get_traces: {response.status_code}")
         traces = str(response.json()["data"])
         return traces if traces else "None"

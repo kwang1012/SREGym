@@ -6,8 +6,8 @@ from starlette.applications import Starlette
 from starlette.routing import Mount
 
 from mcp_server.configs.load_all_cfg import mcp_server_cfg
+from mcp_server.jaeger_server import mcp as observability_mcp
 from mcp_server.kubectl_mcp_tools import kubectl_mcp
-from mcp_server.observability_server import mcp as observability_mcp
 from mcp_server.prometheus_server import mcp as prometheus_mcp
 from mcp_server.submit_server import mcp as submit_mcp
 
