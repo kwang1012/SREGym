@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import List
 
 import yaml
+from langchain_core.messages import HumanMessage, SystemMessage
 
 from clients.stratus.stratus_agent.diagnosis_agent import main as diagnosis_task_main
 from clients.stratus.stratus_agent.localization_agent import main as localization_task_main
@@ -86,13 +87,19 @@ async def mitigation_task_main():
         mitigation_agent_last_state = ""
         rollback_agent_last_state = ""
         while curr_attempt < mitigation_agent_max_retry_attempts:
+            # TODO: add incident summary feature to localization agent for mitigation agent's initial prompts
             if curr_attempt == 0:
                 mitigation_agent_last_state = await mitigation_agent_single_run()
             else:
                 # we compose the retry prompts here.
-                mitigation_agent_last_state = await mitigation_agent_retry_run(
-                    generate_run_summary(mitigation_agent_last_state)
-                )
+                last_run_summary = generate_run_summary(mitigation_agent_last_state)
+                mitigation_agent_prompts = yaml.safe_load(open(mitigation_agent_prompt_path, "r"))
+                retry_run_initial_messages = [
+                    SystemMessage(mitigation_agent_prompts["system"]),
+                    HumanMessage(mitigation_agent_prompts["user"] + "\n\n" + ""),
+                ]
+
+                mitigation_agent_last_state = await mitigation_agent_retry_run(last_run_summary)
             oracle_results = validate_oracles(oracles)
             if oracle_results[0] is True:
                 # agent succeeds, let's finish here.

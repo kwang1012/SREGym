@@ -17,7 +17,7 @@ system: >
   as this task is not graded over your answer but the final result of the mitigation; therefore, you have to make sure the
   application has become healthy before you call submit_tool.
 
-user: >
+user: |
   In each round, there is an explanation stage where you should respond with reasons of why you want to call the tools with the arguments next;
   the tools you mentioned must be available to you at first; 
   then, there is a tool-call stage, where you make tool_calls consistent with your explanation.
@@ -26,7 +26,8 @@ user: >
   If you call submit_tool in tool-call stage, the process will end immediately and this round won’t count toward the limit.
   If you exceed this limitation, the system will force to end the conversation and you will be considered failing the tasks.
   You should minimize the number of interaction rounds while ensuring task completion.
-  
+
+retry_user: |
   The following is the information of faults identified by a diagnosis agent in the app:
   
   {faults_info}
