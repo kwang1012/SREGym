@@ -3,7 +3,7 @@ max_step: 20
 max_retry_attempts: 10
 # choose from: naive, validate, none
 retry_mode: validate
-sync_tools: |
+sync_tools:
   - name: wait_tool
     description: |
       Use this tool to wait for you action to take effect. The upper limit is 120 seconds. 

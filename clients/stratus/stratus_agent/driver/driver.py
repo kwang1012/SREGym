@@ -164,23 +164,23 @@ async def main():
     # run localization agent 1 time for localization
     # (BTS it's just diagnosis agent with different prompts)
     # here, running the file's main function should suffice
-    logger.info("*" * 25 + "Starting [localization agent] for [localization]" + "*" * 25)
-    last_state = await localization_task_main()
-    logger.info("*" * 25 + "Finished [localization agent]" + "*" * 25)
-
-    file_parent_dir = Path(__file__).resolve().parent.parent
-    localization_agent_config_path = file_parent_dir.parent / "configs" / "localization_agent_config.yaml"
-    localization_agent_config = yaml.safe_load(open(localization_agent_config_path, "r"))
-    localization_agent_prompt_path = file_parent_dir.parent / "configs" / localization_agent_config["prompts_path"]
-    localization_agent_prompts = yaml.safe_load(open(localization_agent_prompt_path, "r"))
-    localization_fault_summary = generate_run_summary(
-        last_state, localization_agent_prompts["localization_summary_prompt"]
-    )
+    # logger.info("*" * 25 + "Starting [localization agent] for [localization]" + "*" * 25)
+    # last_state = await localization_task_main()
+    # logger.info("*" * 25 + "Finished [localization agent]" + "*" * 25)
+    #
+    # file_parent_dir = Path(__file__).resolve().parent.parent
+    # localization_agent_config_path = file_parent_dir.parent / "configs" / "localization_agent_config.yaml"
+    # localization_agent_config = yaml.safe_load(open(localization_agent_config_path, "r"))
+    # localization_agent_prompt_path = file_parent_dir.parent / "configs" / localization_agent_config["prompts_path"]
+    # localization_agent_prompts = yaml.safe_load(open(localization_agent_prompt_path, "r"))
+    # localization_fault_summary = generate_run_summary(
+    #     last_state, localization_agent_prompts["localization_summary_prompt"]
+    # )
 
     # run mitigation task 1 time for mitigation
     # it includes retry logics
     logger.info("*" * 25 + "Starting [mitigation agent] for [mitigation]" + "*" * 25)
-    await mitigation_task_main(localization_fault_summary)
+    await mitigation_task_main("test")
     logger.info("*" * 25 + "Finished [mitigation agent]" + "*" * 25)
 
 
