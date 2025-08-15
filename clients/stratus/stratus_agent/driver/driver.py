@@ -66,6 +66,7 @@ async def mitigation_task_main(localization_summary):
     # oracle
     logger.info("setting up oracles")
     cluster_state_oracle = ClusterStateOracle()
+    # TODO: get app from benchmark
     app = "test"
     workload_oracle = WorkloadOracle(app)
     oracles = [cluster_state_oracle, workload_oracle]
