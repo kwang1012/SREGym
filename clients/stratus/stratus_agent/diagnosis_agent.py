@@ -52,8 +52,8 @@ class DiagnosisAgent(BaseAgent):
         self.graph_builder.add_edge(self.force_submit_tool_call_node, END)
         self.graph_builder.add_edge(self.post_round_process_node, END)
 
-        memory = MemorySaver()
-        self.graph = self.graph_builder.compile(checkpointer=memory)
+        self.memory_saver = MemorySaver()
+        self.graph = self.graph_builder.compile(checkpointer=self.memory_saver)
 
     async def arun(self, starting_prompts):
         """
