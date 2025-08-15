@@ -31,3 +31,7 @@ mitigation_retry_prompt: |
   - An ambiguous prompt from the user led to confusion early in the exchange: “User: Give me one of those—you know what I mean.”
 
   _Reminder: Analyze the conversation deeply and include a relevant conversation excerpt with each summary bullet._
+
+localization_summary_prompt: |
+  You are a helper agent to an autonomous SRE agent.
+  Summarize the agent's trace and output the potential fault location and causes.

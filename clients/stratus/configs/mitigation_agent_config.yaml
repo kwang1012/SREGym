@@ -3,7 +3,16 @@ max_step: 20
 max_retry_attempts: 10
 # choose from: naive, validate, none
 retry_mode: validate
-sync_tools: [wait_tool]
+sync_tools: |
+  - name: wait_tool
+    description: |
+      Use this tool to wait for you action to take effect. The upper limit is 120 seconds. 
+          Any value above 120 seconds will be truncated to 120 seconds. If you call this tool
+          along with other tools in your tool_calls list, this tool will be scheduled to the 
+          last for execution.
+
+          Args:
+              seconds (int): Number of seconds to wait.
 async_tools:
   - name: get_traces
     description: |

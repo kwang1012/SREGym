@@ -58,7 +58,6 @@ async def mitigation_task_main(localization_summary):
     rollback_agent_max_step = rollback_agent_config["max_step"]
     rollback_agent_prompt_path = file_parent_dir.parent / "configs" / rollback_agent_config["prompts_path"]
 
-    file_parent_dir = Path(__file__).resolve().parent
     llm_summarization_prompt_file = file_parent_dir.parent / "configs" / "llm_summarization_prompt.yaml"
     llm_summarization_prompt = yaml.safe_load(open(llm_summarization_prompt_file, "r"))["mitigation_retry_prompt"]
     mitigation_agent_prompts = yaml.safe_load(open(mitigation_agent_prompt_path, "r"))

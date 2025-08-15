@@ -7,6 +7,7 @@ from fastmcp import Client
 from fastmcp.client import SSETransport
 from langchain_core.tools import BaseTool
 
+from clients.stratus.stratus_utils.get_logger import get_logger
 from clients.stratus.tools.jaeger_tools import get_operations, get_services, get_traces
 from clients.stratus.tools.kubectl_tools import (
     ExecKubectlCmdSafely,
@@ -17,6 +18,8 @@ from clients.stratus.tools.kubectl_tools import (
 from clients.stratus.tools.prometheus_tools import get_metrics
 from clients.stratus.tools.submit_tool import submit_tool
 from clients.stratus.tools.wait_tool import wait_tool
+
+logger = get_logger()
 
 
 def get_client():
@@ -30,6 +33,7 @@ def get_client():
 
 
 def str_to_tool(tool_struct: dict[str, str]):
+    logger.info(f"tool_struct: {tool_struct}")
     if tool_struct["name"] == "get_traces":
         return get_traces
     elif tool_struct["name"] == "get_services":
