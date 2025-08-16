@@ -51,16 +51,16 @@ async def get_traces(service: str, last_n_minutes: int, tool_call_id: Annotated[
         },
     )
     await exit_stack.aclose()
-    traces = result.content[0].text
-    if langgraph_tool_config.use_summaries and len(traces) >= langgraph_tool_config.min_len_to_sum:
-        logger.info("Using summaries for traces.")
-        traces = _summarize_traces(traces)
+    # traces = result.content[0].text
+    # if langgraph_tool_config.use_summaries and len(traces) >= langgraph_tool_config.min_len_to_sum:
+    #     logger.info("Using summaries for traces.")
+    #     traces = _summarize_traces(traces)
 
     return Command(
         update={
             "messages": [
                 ToolMessage(
-                    content=traces,
+                    content=result,
                     tool_call_id=tool_call_id,
                 ),
             ]
@@ -192,14 +192,14 @@ async def get_operations(
         arguments={"service": service},
     )
     await exit_stack.aclose()
-    operations = result.content[0].text
-    if langgraph_tool_config.use_summaries and len(operations) >= langgraph_tool_config.min_len_to_sum:
-        logger.info("Using summaries for operations.")
-        operations = _summarize_operations(operations)
+    # operations = result.content[0].text
+    # if langgraph_tool_config.use_summaries and len(operations) >= langgraph_tool_config.min_len_to_sum:
+    #     logger.info("Using summaries for operations.")
+    #     operations = _summarize_operations(operations)
     return Command(
         update={
             "messages": [
-                ToolMessage(content=operations, tool_call_id=tool_call_id),
+                ToolMessage(content=result, tool_call_id=tool_call_id),
             ]
         }
     )

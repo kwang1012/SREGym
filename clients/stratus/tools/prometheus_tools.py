@@ -68,9 +68,9 @@ async def get_metrics(
     logger.info(f"Metrics received: {metrics}")
     await exit_stack.aclose()
 
-    if langgraph_tool_config.use_summaries and len(metrics) >= langgraph_tool_config.min_len_to_sum:
-        metrics = _summarize_metrics(result)
-        # logger.info(f"Summary: {metrics}")
+    # if langgraph_tool_config.use_summaries and len(metrics) >= langgraph_tool_config.min_len_to_sum:
+    #     metrics = _summarize_metrics(result)
+    #     # logger.info(f"Summary: {metrics}")
 
     return Command(
         update={
