@@ -147,13 +147,13 @@ async def get_services(tool_call_id: Annotated[str, InjectedToolCallId]) -> Comm
 
     result = await session.call_tool("get_services")
     await exit_stack.aclose()
-    services = result.content[0].text
-    logger.info(f"Result from get_services mcp tools: f{services}")
+    # services = result.content[0].text
+    logger.info(f"Result from get_services mcp tools: f{result}")
     return Command(
         update={
             "messages": [
                 ToolMessage(
-                    content=services,
+                    content=result,
                     tool_call_id=tool_call_id,
                 ),
             ]
