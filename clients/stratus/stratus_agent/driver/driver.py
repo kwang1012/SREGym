@@ -266,11 +266,7 @@ async def mitigation_task_main(localization_summary):
                 logger.info(f"composed retry prompts: {retry_run_initial_messages}")
                 mitigation_agent_last_state = await mitigation_agent_retry_run(retry_run_initial_messages)
             oracle_results = validate_oracles(oracles)
-            has_succeeded = True
-            for result in oracle_results:
-                if not result.success:
-                    has_succeeded = False
-
+            has_succeeded = oracle_results[0]
             if has_succeeded:
                 # agent succeeds, let's finish here.
                 logger.info("agent succeeds! manually submitting for the agent")
@@ -305,14 +301,14 @@ async def main():
     # run diagnosis agent 2 times
     # here, running the file's main function should suffice.
     # 1 for noop diagnosis
-    logger.info("*" * 25 + " Starting [diagnosis agent] for [NOOP detection] " + "*" * 25)
-    await diagnosis_task_main()
-    logger.info("*" * 25 + "Finished [diagnosis agent]" + "*" * 25)
-    #
-    # # 1 for faulty diagnosis
-    logger.info("*" * 25 + " Starting [diagnosis agent] for [Faulty detection] " + "*" * 25)
-    await diagnosis_task_main()
-    logger.info("*" * 25 + " Finished [diagnosis agent] " + "*" * 25)
+    # logger.info("*" * 25 + " Starting [diagnosis agent] for [NOOP detection] " + "*" * 25)
+    # await diagnosis_task_main()
+    # logger.info("*" * 25 + "Finished [diagnosis agent]" + "*" * 25)
+    # #
+    # # # 1 for faulty diagnosis
+    # logger.info("*" * 25 + " Starting [diagnosis agent] for [Faulty detection] " + "*" * 25)
+    # await diagnosis_task_main()
+    # logger.info("*" * 25 + " Finished [diagnosis agent] " + "*" * 25)
 
     # run localization agent 1 time for localization
     # (BTS it's just diagnosis agent with different prompts)
