@@ -1,4 +1,6 @@
 import os
+import threading
+from typing import Optional
 
 import pyfiglet
 from fastapi import FastAPI, HTTPException
@@ -10,6 +12,19 @@ from uvicorn import Config, Server
 
 app = FastAPI()
 _conductor = None
+
+_server: Optional[Server] = None
+_shutdown_event = threading.Event()
+
+
+def request_shutdown():
+    """
+    Signal the API server to shut down.
+    Safe to call from any thread and idempotent.
+    """
+    _shutdown_event.set()
+    if _server is not None:
+        _server.should_exit = True
 
 
 def set_conductor(c):
@@ -49,11 +64,15 @@ async def get_status():
 async def get_app():
     if _conductor is None:
         raise HTTPException(status_code=400, detail="No problem has been started")
-    app = _conductor.app
-    return {"app_name": app.app_name, "namespace": app.namespace, "descriptions": str(app.description)}
+    app_inst = _conductor.app
+    return {"app_name": app_inst.app_name, "namespace": app_inst.namespace, "descriptions": str(app_inst.description)}
 
 
 def run_api(conductor):
+    """
+    Start the API server and block until request_shutdown() is called.
+    """
+    global _server
     set_conductor(conductor)
 
     # Load from .env with defaults
@@ -76,4 +95,18 @@ def run_api(conductor):
     config = Config(app=app, host=host, port=port, log_level="info")
     config.install_signal_handlers = False
     server = Server(config)
-    server.run()
+    _server = server  # expose to request_shutdown()
+
+    # watcher thread: when _shutdown_event is set, flip server.should_exit
+    def _watch():
+        _shutdown_event.wait()
+        server.should_exit = True
+
+    threading.Thread(target=_watch, name="api-shutdown-watcher", daemon=True).start()
+
+    try:
+        server.run()  # blocks until should_exit becomes True
+    finally:
+        # cleanup for potential reuse
+        _shutdown_event.clear()
+        _server = None

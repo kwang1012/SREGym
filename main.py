@@ -11,7 +11,7 @@ from rich.prompt import Prompt
 from mcp_server.configs.load_all_cfg import mcp_server_cfg
 from mcp_server.srearena_mcp_server import app as mcp_app
 from srearena.conductor.conductor import Conductor
-from srearena.conductor.conductor_api import run_api
+from srearena.conductor.conductor_api import request_shutdown, run_api
 
 
 def driver_loop(conductor: Conductor):
@@ -73,14 +73,23 @@ def start_mcp_server_after_api():
     server.run()
 
 
+def _run_driver_and_shutdown(conductor: Conductor):
+    """Run the benchmark driver, stash results, then tell the API to exit."""
+    results = driver_loop(conductor)
+    setattr(main, "results", results)
+    # ⬇️ Ask the API server (running in main thread) to stop so we can write CSV
+    request_shutdown()
+
+
 def main():
     agent_name = Prompt.ask("[bold cyan]What would you like to call your agent?[/]", default="arena")
     conductor = Conductor()
     conductor.register_agent(agent_name)
 
-    # Start the driver in the background
+    # Start the driver in the background; it will call request_shutdown() when finished
     driver_thread = threading.Thread(
-        target=lambda: setattr(main, "results", driver_loop(conductor)),
+        target=_run_driver_and_shutdown,
+        args=(conductor,),
         name="driver",
         daemon=True,
     )
@@ -95,7 +104,14 @@ def main():
     mcp_thread.start()
 
     # Start the Conductor HTTP API in the MAIN thread (blocking)
-    run_api(conductor)
+    try:
+        run_api(conductor)
+    except KeyboardInterrupt:
+        # If interrupted, still try to shut down cleanly
+        request_shutdown()
+    finally:
+        # Give driver a moment to finish setting results
+        driver_thread.join(timeout=5)
 
     # When API shuts down, collect results from driver
     results = getattr(main, "results", [])
