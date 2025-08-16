@@ -103,6 +103,7 @@ async def main():
     agent.save_agent_graph_to_png()
 
     res = await agent.arun(get_starting_prompts(prompt_path, max_step=max_step))
+    agent.clear_memory()
     return res
 
 
