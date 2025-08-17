@@ -408,7 +408,7 @@ async def mitigation_task_main(localization_summary):
                     rollback_agent, rollback_agent_last_state = await rollback_agent_main()
                     rollback_end_time = time.perf_counter() - rollback_start_time
                     agent_names_lst.append("rollback_agent")
-                    usage_metadata = next(iter(rollback_agent.callback.usage_metadata.items()))
+                    usage_metadata = next(iter(rollback_agent.callback.usage_metadata.items()))[1]
                     input_tokens_lst.append(usage_metadata["input_tokens"])
                     output_tokens_lst.append(usage_metadata["output_tokens"])
                     total_tokens_lst.append(usage_metadata["total_tokens"])
@@ -455,8 +455,8 @@ async def main():
     agent_rollback_stack.append(diagnosis_agent_exec_stats["rollback_stack"])
     agent_oracle_results.append(diagnosis_agent_exec_stats["oracle_results"])
     logger.info("*" * 25 + " Finished [diagnosis agent] " + "*" * 25)
-    # #
-    # # # 1 for faulty diagnosis
+
+    # 1 for faulty diagnosis
     logger.info("*" * 25 + " Starting [diagnosis agent] for [Faulty detection] " + "*" * 25)
     diagnosis_agent_exec_stats = await diagnosis_task_main()
     agent_names.append("diagnosis_agent_faulty")
@@ -469,10 +469,10 @@ async def main():
     agent_rollback_stack.append(diagnosis_agent_exec_stats["rollback_stack"])
     agent_oracle_results.append(diagnosis_agent_exec_stats["oracle_results"])
     logger.info("*" * 25 + " Finished [diagnosis agent] " + "*" * 25)
-    #
-    # # run localization agent 1 time for localization
-    # # (BTS it's just diagnosis agent with different prompts)
-    # # here, running the file's main function should suffice
+
+    # run localization agent 1 time for localization
+    # (BTS it's just diagnosis agent with different prompts)
+    # here, running the file's main function should suffice
     logger.info("*" * 25 + " Starting [localization agent] for [localization] " + "*" * 25)
     localization_agent_exec_stats, localization_agent_last_state = await localization_task_main()
     agent_names.append("localization_agent")
