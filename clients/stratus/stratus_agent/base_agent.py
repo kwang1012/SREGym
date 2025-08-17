@@ -136,6 +136,7 @@ class BaseAgent:
             "messages": starting_prompts,
             "num_steps": 0,
             "submitted": False,
+            "rollback_stack": "",
         }
 
         return list(
@@ -172,6 +173,7 @@ class BaseAgent:
             # "rec_submission_rounds": 0,
             # "submit_tried": False,
             "submitted": False,
+            "rollback_stack": "",
             # "ans": dict(),
         }
 

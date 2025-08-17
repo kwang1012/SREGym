@@ -97,6 +97,7 @@ class MitigationAgent(BaseAgent):
                     # "submit_tried": False,
                     "submitted": False,
                     # "ans": dict(),
+                    "rollback_stack": "",
                 }
 
             async for event in self.graph.astream(
