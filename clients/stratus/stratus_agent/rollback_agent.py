@@ -22,7 +22,6 @@ class RollbackAgent(BaseAgent):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.tool_node = None
-        self.callback = UsageMetadataCallbackHandler()
 
     def build_agent(self):
         self.tool_node = StratusToolNode(

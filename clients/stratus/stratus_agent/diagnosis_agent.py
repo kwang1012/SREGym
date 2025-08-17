@@ -22,7 +22,6 @@ class DiagnosisAgent(BaseAgent):
         super().__init__(**kwargs)
         self.tool_node = None
         self.max_step = kwargs.get("max_step", 20)
-        self.callback = UsageMetadataCallbackHandler()
 
     def build_agent(self):
         self.tool_node = StratusToolNode(async_tools=self.async_tools, sync_tools=self.sync_tools)
@@ -100,7 +99,7 @@ class DiagnosisAgent(BaseAgent):
             async for event in self.graph.astream(
                 state,
                 # recursion_limit could be as large as possible as we have our own limit.
-                config={"recursion_limit": 10000, "configurable": {"thread_id": "1"}, "callbacks": self.callback},
+                config={"recursion_limit": 10000, "configurable": {"thread_id": "1"}, "callbacks": [self.callback]},
                 stream_mode="values",
             ):
                 graph_events.append(event)
