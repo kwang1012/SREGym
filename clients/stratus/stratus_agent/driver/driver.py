@@ -3,6 +3,7 @@ import time
 
 # for parsing return values from benchmark app info as python dict
 from ast import literal_eval
+from datetime import datetime
 from pathlib import Path
 from typing import List
 
@@ -29,9 +30,14 @@ from clients.stratus.tools.submit_tool import manual_submit_tool
 from clients.stratus.weak_oracles.base_oracle import BaseOracle, OracleResult
 from clients.stratus.weak_oracles.cluster_state_oracle import ClusterStateOracle
 from clients.stratus.weak_oracles.workload_oracle import WorkloadOracle
-from main import get_current_datetime_formatted
 
 logger = get_logger()
+
+
+def get_current_datetime_formatted():
+    now = datetime.now()
+    formatted_datetime = now.strftime("%m-%d_%H-%M")
+    return formatted_datetime
 
 
 async def validate_oracles(oracles: List[BaseOracle]) -> List[bool | List[OracleResult]]:
