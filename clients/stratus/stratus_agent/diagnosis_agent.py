@@ -98,7 +98,7 @@ class DiagnosisAgent(BaseAgent):
             async for event in self.graph.astream(
                 state,
                 # recursion_limit could be as large as possible as we have our own limit.
-                config={"recursion_limit": 10000, "configurable": {"thread_id": "1"}},
+                config={"recursion_limit": 10000, "configurable": {"thread_id": "1"}, "callbacks": self.callback},
                 stream_mode="values",
             ):
                 graph_events.append(event)
