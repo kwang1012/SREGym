@@ -4,11 +4,13 @@ from typing import Annotated
 
 from langchain_core.messages import ToolMessage
 from langchain_core.tools import InjectedToolCallId, tool
+from langgraph.prebuilt import InjectedState
 from langgraph.types import Command
 from mcp import ClientSession
 from mcp.client.sse import sse_client
 
 from clients.stratus.configs.langgraph_tool_configs import LanggraphToolConfig
+from clients.stratus.stratus_agent.state import State
 
 submit_tool_docstring = """
 Use this tool to submit your answer to the assigned tasks. You can give partial answer or empty answer
@@ -24,7 +26,9 @@ langgraph_tool_config = LanggraphToolConfig()
 
 
 @tool(description=submit_tool_docstring)
-async def submit_tool(ans: str, tool_call_id: Annotated[str, InjectedToolCallId]) -> Command:
+async def submit_tool(
+    ans: str, state: Annotated[State, InjectedState], tool_call_id: Annotated[str, InjectedToolCallId]
+) -> Command:
     # makes http call to benchmark submission server
     logging.info(f"submitting to benchmark, answer: {ans}")
 
@@ -42,7 +46,21 @@ async def submit_tool(ans: str, tool_call_id: Annotated[str, InjectedToolCallId]
             "ans": ans,
         },
     )
+
     await exit_stack.aclose()
+    if result["status"] != "200":
+        logger.info(f"HTTP submission failed: {result}")
+        logger.info("we don't set submitted to True, to force agent retry submission. \n")
+        logger.info("giving agent another change by decrementing step count")
+        return Command(
+            update={
+                "num_steps": state["num_steps"] + 1,
+                "messages": [
+                    ToolMessage(content=f"HTTP submission failed: {result}", tool_call_id=tool_call_id),
+                ],
+            }
+        )
+    logger.info("submission succeeded.")
     return Command(
         update={
             "submitted": True,
