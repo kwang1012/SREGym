@@ -164,27 +164,41 @@ class BaseAgent:
         if len(starting_prompts) == 0:
             raise ValueError("No prompts used to start the conversation!")
 
-        state = {
-            "messages": starting_prompts,
-            # "workdir": "",
-            # "curr_file": "",
-            # "curr_line": 0,
-            "num_steps": 0,
-            # "rec_submission_rounds": 0,
-            # "submit_tried": False,
-            "submitted": False,
-            "rollback_stack": "",
-            # "ans": dict(),
-        }
+        graph_events = []
+        while True:
+            graph_config = {"configurable": {"thread_id": "1"}}
+            last_state = self.graph.get_state(config=graph_config)
+            if len(last_state.values) != 0:
+                logger.info("There were last states.")
+                # this is all the previous msgs the agent had, we just inherit them in the next graph traversal
+                state = last_state.values
+            else:
+                logger.info("There were no states.")
+                # fresh agent start, init state here
+                state = {
+                    "messages": starting_prompts,
+                    # "workdir": "",
+                    # "curr_file": "",
+                    # "curr_line": 0,
+                    "num_steps": 0,
+                    # "rec_submission_rounds": 0,
+                    # "submit_tried": False,
+                    "submitted": False,
+                    # "ans": dict(),
+                    "rollback_stack": "",
+                }
 
-        res = []
-        async for event in self.graph.astream(
-            state,
-            # recursion_limit could be as large as possible as we have our own limit.
-            config={"recursion_limit": 10000, "configurable": {"thread_id": "1"}, "callbacks": [self.callback]},
-            stream_mode="values",
-        ):
-            res.append(event)
-            event["messages"][-1].pretty_print()
+            async for event in self.graph.astream(
+                state,
+                # recursion_limit could be as large as possible as we have our own limit.
+                config={"recursion_limit": 10000, "configurable": {"thread_id": "1"}, "callbacks": [self.callback]},
+                stream_mode="values",
+            ):
+                graph_events.append(event)
+                event["messages"][-1].pretty_print()
+            last_state = self.graph.get_state(config=graph_config)
+            if last_state.values["submitted"]:
+                logger.info("agent submitted, breaking loop.")
+                break
 
-        return res[-1]
+        return last_state

@@ -104,7 +104,7 @@ class DiagnosisAgent(BaseAgent):
                 stream_mode="values",
             ):
                 graph_events.append(event)
-                # event["messages"][-1].pretty_print()
+                event["messages"][-1].pretty_print()
             last_state = self.graph.get_state(config=graph_config)
             if last_state.values["submitted"]:
                 logger.info("agent submitted, breaking loop.")
