@@ -18,3 +18,4 @@ class State(TypedDict):
     submitted: bool
     # submit_tried: bool
     # ans: dict
+    rollback_stack: str

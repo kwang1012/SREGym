@@ -1,10 +1,12 @@
 import asyncio
+import time
 
 # for parsing return values from benchmark app info as python dict
 from ast import literal_eval
 from pathlib import Path
 from typing import List
 
+import pandas as pd
 import requests
 import yaml
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -27,15 +29,17 @@ from clients.stratus.tools.submit_tool import manual_submit_tool
 from clients.stratus.weak_oracles.base_oracle import BaseOracle, OracleResult
 from clients.stratus.weak_oracles.cluster_state_oracle import ClusterStateOracle
 from clients.stratus.weak_oracles.workload_oracle import WorkloadOracle
+from main import get_current_datetime_formatted
 
 logger = get_logger()
 
 
-def validate_oracles(oracles: List[BaseOracle]) -> List[bool | List[OracleResult]]:
+async def validate_oracles(oracles: List[BaseOracle]) -> List[bool | List[OracleResult]]:
     results = []
     attempt_failed = False
     for oracle in oracles:
-        res: OracleResult = oracle.validate()
+        logger.info(f"validating oracle: {oracle}")
+        res: OracleResult = await oracle.validate()
         if not res.success:
             attempt_failed = True
             results.append(res)
@@ -56,7 +60,23 @@ def get_app_info():
         logger.info(f"app info: {app_info}")
         return app_info
     except Exception as e:
-        logger.error(f"[submit_mcp] HTTP submission failed: {e}")
+        logger.error(f"[get_app_info] HTTP submission failed: {e}")
+        return "error"
+
+
+def get_curr_problem():
+    ltc = LanggraphToolConfig()
+    url = ltc.problem_url
+    try:
+        response = requests.get(url)
+        logger.info(f"Response status: {response.status_code}, text: {response.text}")
+        problem_str = str(response.text)
+        logger.info(f"problem as str: {problem_str}")
+        problem = literal_eval(problem_str)
+        logger.info(f"problem info: {problem}")
+        return problem["problem_id"]
+    except Exception as e:
+        logger.error(f"[get_curr_problem] HTTP submission failed: {e}")
         return "error"
 
 
@@ -113,8 +133,25 @@ async def diagnosis_task_main():
             )
         ),
     ]
-    last_state = await diagnosis_single_run(first_run_initial_messages)
-    return last_state
+    start_time = time.perf_counter()
+    agent, last_state = await diagnosis_single_run(first_run_initial_messages)
+    agent_time = time.perf_counter() - start_time
+    agent_exec_stats = dict()
+    # assuming we only use one model
+    usage_metadata = next(iter(agent.callback.usage_metadata.items()))[1]
+    logger.info(f"agent usage metadata: {usage_metadata}")
+    agent_exec_stats["input_tokens"] = usage_metadata["input_tokens"]
+    agent_exec_stats["output_tokens"] = usage_metadata["output_tokens"]
+    agent_exec_stats["total_tokens"] = usage_metadata["total_tokens"]
+    # assuming time in seconds.
+    agent_exec_stats["time"] = str(agent_time)
+    agent_exec_stats["steps"] = last_state.values["num_steps"]
+    agent_exec_stats["num_retry_attempts"] = "N/A"
+    agent_exec_stats["rollback_stack"] = "N/A"
+    agent_exec_stats["oracle_results"] = "N/A"
+    # agent_exec_stats["last_state"] = last_state
+    logger.info(f"Finished diagnosis agent run, output dict: {agent_exec_stats}")
+    return agent_exec_stats
 
 
 async def localization_task_main():
@@ -140,8 +177,23 @@ async def localization_task_main():
             )
         ),
     ]
-    last_state = await localization_single_run(first_run_initial_messages)
-    return last_state
+    start_time = time.perf_counter()
+    agent, last_state = await localization_single_run(first_run_initial_messages)
+    agent_time = time.perf_counter() - start_time
+    agent_exec_stats = dict()
+    usage_metadata = next(iter(agent.callback.usage_metadata.items()))[1]
+    agent_exec_stats["input_tokens"] = usage_metadata["input_tokens"]
+    agent_exec_stats["output_tokens"] = usage_metadata["output_tokens"]
+    agent_exec_stats["total_tokens"] = usage_metadata["total_tokens"]
+    # assuming time in seconds.
+    agent_exec_stats["time"] = str(agent_time)
+    agent_exec_stats["steps"] = last_state.values["num_steps"]
+    agent_exec_stats["num_retry_attempts"] = "N/A"
+    agent_exec_stats["rollback_stack"] = "N/A"
+    agent_exec_stats["oracle_results"] = "N/A"
+    # agent_exec_stats["last_state"] = last_state
+    logger.info(f"Finished localization agent run, output dict: {agent_exec_stats}")
+    return agent_exec_stats, last_state
 
 
 async def mitigation_task_main(localization_summary):
@@ -203,20 +255,65 @@ async def mitigation_task_main(localization_summary):
             )
         ),
     ]
-
+    start_time = time.perf_counter()
     logger.info(f"running in retry mode: [{mitigation_agent_retry_mode}]")
     # mitigation task in plain English:
     if mitigation_agent_retry_mode == "none":
         # if the retry mode is none, just run mitigation agent once.
-        await mitigation_agent_single_run(first_run_initial_messages)
+        agent, last_state = await mitigation_agent_single_run(first_run_initial_messages)
+        agent_time = time.perf_counter() - start_time
+        agent_exec_stats = dict()
+        agent_exec_stats["agent_name"] = "mitigation_agent_none"
+        usage_metadata = next(iter(agent.callback.usage_metadata.items()))[1]
+        agent_exec_stats["input_tokens"] = usage_metadata["input_tokens"]
+        agent_exec_stats["output_tokens"] = usage_metadata["output_tokens"]
+        agent_exec_stats["total_tokens"] = usage_metadata["total_tokens"]
+        # assuming time in seconds.
+        agent_exec_stats["time"] = str(agent_time)
+        agent_exec_stats["steps"] = last_state.values["num_steps"]
+        agent_exec_stats["num_retry_attempts"] = "N/A"
+        agent_exec_stats["rollback_stack"] = "N/A"
+        agent_exec_stats["oracle_results"] = "N/A"
+        # agent_exec_stats["last_state"] = last_state
+        logger.info(f"Finished localization agent run, output dict: {agent_exec_stats}")
+        return agent_exec_stats
+
     elif mitigation_agent_retry_mode == "naive":
         # if the retry mode is naive, run mitigation agent with retry but no rollback agent.
         curr_attempt = 0
         last_state = ""
+        oracle_results = OracleResult(
+            success=False, issues=["This is the beginning of mitigation, please observe the cluster for issues."]
+        )
+        agent_exec_stats = dict()
+        agent_names_lst = []
+        input_tokens_lst = []
+        output_tokens_lst = []
+        total_tokens_lst = []
+        time_lst = []
+        steps_lst = []
+        num_retry_attempts_lst = []
+        rollback_stack_lst = []
+        oracle_results_lst = []
         while curr_attempt < mitigation_agent_max_retry_attempts:
             logger.info(f"current attempt: {curr_attempt + 1}/{mitigation_agent_max_retry_attempts}")
-            last_state = await mitigation_agent_single_run(first_run_initial_messages)
-            oracle_results = validate_oracles(oracles)
+            agent, last_state = await mitigation_agent_single_run(first_run_initial_messages)
+
+            # recording post-run data
+            agent_time = time.perf_counter() - start_time
+            agent_names_lst.append("mitigation_agent_naive")
+            usage_metadata = next(iter(agent.callback.usage_metadata.items()))[1]
+            input_tokens_lst.append(usage_metadata["input_tokens"])
+            output_tokens_lst.append(usage_metadata["output_tokens"])
+            total_tokens_lst.append(usage_metadata["total_tokens"])
+            time_lst.append(str(agent_time))
+            steps_lst.append(last_state.values["num_steps"])
+            num_retry_attempts_lst.append(str(curr_attempt))
+            rollback_stack_lst.append("N/A, naive retry")
+
+            # getting oracle result
+            oracle_results = await validate_oracles(oracles)
+            oracle_results_lst.append(str(oracle_results))
             logger.info(f"oracle results: {oracle_results}")
             if oracle_results[0] is True:
                 # agent succeeds, let's finish here.
@@ -225,8 +322,18 @@ async def mitigation_task_main(localization_summary):
             # otherwise, naively retry
             logger.info(f"agent failed, retrying... {curr_attempt + 1}/{mitigation_agent_max_retry_attempts}")
             curr_attempt += 1
-        return last_state
+        agent_exec_stats["agent_names"] = agent_names_lst
+        agent_exec_stats["input_tokens"] = input_tokens_lst
+        agent_exec_stats["output_tokens"] = output_tokens_lst
+        agent_exec_stats["time"] = time_lst
+        agent_exec_stats["total_tokens"] = total_tokens_lst
+        agent_exec_stats["steps"] = steps_lst
+        agent_exec_stats["num_retry_attempts"] = num_retry_attempts_lst
+        agent_exec_stats["rollback_stack"] = rollback_stack_lst
+        agent_exec_stats["oracle_results"] = oracle_results_lst
+        return agent_exec_stats
     elif mitigation_agent_retry_mode == "validate":
+        logger.info(f"retry mode: [{mitigation_agent_retry_mode}]")
         # if the retry mode is validation, run mitigation agent with rollback and weak oracle.
         # each start of new agent trial, the agent should receive the last run's oracle results
         # and some reflections as input
@@ -236,10 +343,23 @@ async def mitigation_task_main(localization_summary):
         oracle_results = OracleResult(
             success=False, issues=["This is the beginning of mitigation, please observe the cluster for issues."]
         )
+
+        agent_exec_stats = dict()
+        agent_names_lst = []
+        input_tokens_lst = []
+        output_tokens_lst = []
+        total_tokens_lst = []
+        time_lst = []
+        steps_lst = []
+        num_retry_attempts_lst = []
+        rollback_stack_lst = []
+        oracle_results_lst = []
+
+        # starting retry loop
         while curr_attempt < mitigation_agent_max_retry_attempts:
             if curr_attempt == 0:
                 logger.info(f"running first try")
-                mitigation_agent_last_state = await mitigation_agent_single_run(first_run_initial_messages)
+                agent, mitigation_agent_last_state = await mitigation_agent_single_run(first_run_initial_messages)
             else:
                 logger.info(
                     f"running retries. current attempt: {curr_attempt + 1}/{mitigation_agent_max_retry_attempts}"
@@ -264,8 +384,23 @@ async def mitigation_task_main(localization_summary):
                     ),
                 ]
                 logger.info(f"composed retry prompts: {retry_run_initial_messages}")
-                mitigation_agent_last_state = await mitigation_agent_retry_run(retry_run_initial_messages)
-            oracle_results = validate_oracles(oracles)
+                agent, mitigation_agent_last_state = await mitigation_agent_retry_run(retry_run_initial_messages)
+
+            # recording post-run data
+            agent_time = time.perf_counter() - start_time
+            agent_names_lst.append("mitigation_agent_validate")
+            usage_metadata = next(iter(agent.callback.usage_metadata.items()))[1]
+            input_tokens_lst.append(usage_metadata["input_tokens"])
+            output_tokens_lst.append(usage_metadata["output_tokens"])
+            total_tokens_lst.append(usage_metadata["total_tokens"])
+            time_lst.append(str(agent_time))
+            steps_lst.append(mitigation_agent_last_state.values["num_steps"])
+            num_retry_attempts_lst.append(str(curr_attempt))
+            rollback_stack_lst.append("N/A, mitigation agent")
+
+            # getting oracle result
+            oracle_results = await validate_oracles(oracles)
+            oracle_results_lst.append(str(oracle_results))
             has_succeeded = oracle_results[0]
             if has_succeeded:
                 # agent succeeds, let's finish here.
@@ -273,6 +408,7 @@ async def mitigation_task_main(localization_summary):
                 await manual_submit_tool("")
                 logger.info("breaking the retry loop")
                 break
+                # return agent_exec_stats
             else:
                 # here the agent fails, we make decision if we should retry
                 should_retry = curr_attempt + 1 < mitigation_agent_max_retry_attempts
@@ -287,34 +423,95 @@ async def mitigation_task_main(localization_summary):
                     # memory is cleared in the retry_run() method, so the agent can start anew.
                     logger.info(f"agent failed, retrying... {curr_attempt + 1}/{mitigation_agent_max_retry_attempts}")
                     logger.info(f"running rollback agent to reverse progress")
-                    rollback_agent_last_state = await rollback_agent_main()
+                    rollback_start_time = time.perf_counter()
+                    rollback_agent, rollback_agent_last_state = await rollback_agent_main()
+                    rollback_end_time = time.perf_counter() - rollback_start_time
+                    agent_names_lst.append("rollback_agent")
+                    usage_metadata = next(iter(rollback_agent.callback.usage_metadata.items()))[1]
+                    input_tokens_lst.append(usage_metadata["input_tokens"])
+                    output_tokens_lst.append(usage_metadata["output_tokens"])
+                    total_tokens_lst.append(usage_metadata["total_tokens"])
+                    time_lst.append(str(rollback_end_time))
+                    steps_lst.append(rollback_agent_last_state.values["num_steps"])
+                    num_retry_attempts_lst.append(str(curr_attempt))
+                    rollback_stack_lst.append(rollback_agent_last_state.values["rollback_stack"])
+                    oracle_results_lst.append(str("N/A, rollback agent"))
                     curr_attempt += 1
                 else:
                     logger.info("we shouldn't retry as we don't have more attempts left.")
                     logger.info(f"making a real submission for the agent.")
                     await manual_submit_tool("")
+                    break
+                    # return agent_exec_stats
 
-        return mitigation_agent_last_state, rollback_agent_last_state
+        agent_exec_stats["agent_name"] = agent_names_lst
+        agent_exec_stats["input_tokens"] = input_tokens_lst
+        agent_exec_stats["output_tokens"] = output_tokens_lst
+        agent_exec_stats["total_tokens"] = total_tokens_lst
+        agent_exec_stats["time"] = time_lst
+        agent_exec_stats["steps"] = steps_lst
+        agent_exec_stats["num_retry_attempts"] = num_retry_attempts_lst
+        agent_exec_stats["rollback_stack"] = rollback_stack_lst
+        agent_exec_stats["oracle_results"] = oracle_results_lst
+        return agent_exec_stats
 
 
 async def main():
     # run diagnosis agent 2 times
     # here, running the file's main function should suffice.
     # 1 for noop diagnosis
+    current_problem = get_curr_problem()
+    agent_output_df = pd.DataFrame()
+    agent_names = []
+    agent_in_tokens = []
+    agent_out_tokens = []
+    agent_total_tokens = []
+    agent_times = []
+    agent_steps = []
+    agent_retry_attempts = []
+    agent_rollback_stack = []
+    agent_oracle_results = []
     logger.info("*" * 25 + " Starting [diagnosis agent] for [NOOP detection] " + "*" * 25)
-    await diagnosis_task_main()
-    logger.info("*" * 25 + "Finished [diagnosis agent]" + "*" * 25)
-    # #
-    # # # 1 for faulty diagnosis
-    logger.info("*" * 25 + " Starting [diagnosis agent] for [Faulty detection] " + "*" * 25)
-    await diagnosis_task_main()
+    diagnosis_agent_exec_stats = await diagnosis_task_main()
+    agent_names.append("diagnosis_agent_noop")
+    agent_in_tokens.append(diagnosis_agent_exec_stats["input_tokens"])
+    agent_out_tokens.append(diagnosis_agent_exec_stats["output_tokens"])
+    agent_total_tokens.append(diagnosis_agent_exec_stats["total_tokens"])
+    agent_times.append(diagnosis_agent_exec_stats["time"])
+    agent_steps.append(diagnosis_agent_exec_stats["steps"])
+    agent_retry_attempts.append(diagnosis_agent_exec_stats["num_retry_attempts"])
+    agent_rollback_stack.append(diagnosis_agent_exec_stats["rollback_stack"])
+    agent_oracle_results.append(diagnosis_agent_exec_stats["oracle_results"])
     logger.info("*" * 25 + " Finished [diagnosis agent] " + "*" * 25)
-    #
-    # # run localization agent 1 time for localization
-    # # (BTS it's just diagnosis agent with different prompts)
-    # # here, running the file's main function should suffice
+
+    # 1 for faulty diagnosis
+    logger.info("*" * 25 + " Starting [diagnosis agent] for [Faulty detection] " + "*" * 25)
+    diagnosis_agent_exec_stats = await diagnosis_task_main()
+    agent_names.append("diagnosis_agent_faulty")
+    agent_in_tokens.append(diagnosis_agent_exec_stats["input_tokens"])
+    agent_out_tokens.append(diagnosis_agent_exec_stats["output_tokens"])
+    agent_total_tokens.append(diagnosis_agent_exec_stats["total_tokens"])
+    agent_times.append(diagnosis_agent_exec_stats["time"])
+    agent_steps.append(diagnosis_agent_exec_stats["steps"])
+    agent_retry_attempts.append(diagnosis_agent_exec_stats["num_retry_attempts"])
+    agent_rollback_stack.append(diagnosis_agent_exec_stats["rollback_stack"])
+    agent_oracle_results.append(diagnosis_agent_exec_stats["oracle_results"])
+    logger.info("*" * 25 + " Finished [diagnosis agent] " + "*" * 25)
+
+    # run localization agent 1 time for localization
+    # (BTS it's just diagnosis agent with different prompts)
+    # here, running the file's main function should suffice
     logger.info("*" * 25 + " Starting [localization agent] for [localization] " + "*" * 25)
-    last_state = await localization_task_main()
+    localization_agent_exec_stats, localization_agent_last_state = await localization_task_main()
+    agent_names.append("localization_agent")
+    agent_in_tokens.append(localization_agent_exec_stats["input_tokens"])
+    agent_out_tokens.append(localization_agent_exec_stats["output_tokens"])
+    agent_total_tokens.append(localization_agent_exec_stats["total_tokens"])
+    agent_times.append(localization_agent_exec_stats["time"])
+    agent_steps.append(localization_agent_exec_stats["steps"])
+    agent_retry_attempts.append(localization_agent_exec_stats["num_retry_attempts"])
+    agent_rollback_stack.append(localization_agent_exec_stats["rollback_stack"])
+    agent_oracle_results.append(localization_agent_exec_stats["oracle_results"])
     logger.info("*" * 25 + " Finished [localization agent] " + "*" * 25)
 
     file_parent_dir = Path(__file__).resolve().parent.parent
@@ -323,14 +520,48 @@ async def main():
     localization_agent_prompt_path = file_parent_dir.parent / "configs" / localization_agent_config["prompts_path"]
     localization_agent_prompts = yaml.safe_load(open(localization_agent_prompt_path, "r"))
     localization_fault_summary = generate_run_summary(
-        last_state, localization_agent_prompts["localization_summary_prompt"]
+        localization_agent_last_state, localization_agent_prompts["localization_summary_prompt"]
     )
 
     # run mitigation task 1 time for mitigation
     # it includes retry logics
-    logger.info("*" * 25 + "Starting [mitigation agent] for [mitigation]" + "*" * 25)
-    await mitigation_task_main(localization_fault_summary)
-    logger.info("*" * 25 + "Finished [mitigation agent]" + "*" * 25)
+    logger.info("*" * 25 + " Starting [mitigation agent] for [mitigation] " + "*" * 25)
+    mitigation_agent_exec_stats = await mitigation_task_main(localization_fault_summary)
+    agent_names.extend(mitigation_agent_exec_stats["agent_name"])
+    agent_in_tokens.extend(mitigation_agent_exec_stats["input_tokens"])
+    agent_out_tokens.extend(mitigation_agent_exec_stats["output_tokens"])
+    agent_total_tokens.extend(mitigation_agent_exec_stats["total_tokens"])
+    agent_times.extend(mitigation_agent_exec_stats["time"])
+    agent_steps.extend(mitigation_agent_exec_stats["steps"])
+    agent_retry_attempts.extend(mitigation_agent_exec_stats["num_retry_attempts"])
+    agent_rollback_stack.extend(mitigation_agent_exec_stats["rollback_stack"])
+    agent_oracle_results.extend(mitigation_agent_exec_stats["oracle_results"])
+    logger.info("*" * 25 + " Finished [mitigation agent] " + "*" * 25)
+
+    for lst in [
+        agent_names,
+        agent_in_tokens,
+        agent_out_tokens,
+        agent_total_tokens,
+        agent_times,
+        agent_steps,
+        agent_retry_attempts,
+        agent_rollback_stack,
+        agent_oracle_results,
+    ]:
+        logger.info("list length: " + str(len(lst)))
+
+    agent_output_df["agent_name"] = agent_names
+    agent_output_df["input_tokens"] = agent_in_tokens
+    agent_output_df["output_tokens"] = agent_out_tokens
+    agent_output_df["total_tokens"] = agent_total_tokens
+    agent_output_df["time"] = agent_times
+    agent_output_df["steps"] = agent_steps
+    agent_output_df["num_retry_attempts"] = agent_retry_attempts
+    agent_output_df["rollback_stack"] = agent_rollback_stack
+    agent_output_df["oracle_results"] = agent_oracle_results
+    current_datetime = get_current_datetime_formatted()
+    agent_output_df.to_csv(f"./{current_datetime}_{current_problem}_stratus_output.csv", index=False, header=True)
 
 
 if __name__ == "__main__":

@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 
 import yaml
+from langchain_core.callbacks import UsageMetadataCallbackHandler
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.constants import END
 from langgraph.graph import START
@@ -53,8 +54,8 @@ class RollbackAgent(BaseAgent):
         self.graph_builder.add_edge(self.force_submit_tool_call_node, END)
         self.graph_builder.add_edge(self.post_round_process_node, END)
 
-        memory = MemorySaver()
-        self.graph = self.graph_builder.compile(checkpointer=memory)
+        self.memory_saver = MemorySaver()
+        self.graph = self.graph_builder.compile(checkpointer=self.memory_saver)
 
 
 async def main():
@@ -69,13 +70,23 @@ async def main():
     if rollback_agent_config["sync_tools"] is not None:
         for sync_tool_struct in rollback_agent_config["sync_tools"]:
             sync_tools.append(str_to_tool(sync_tool_struct))
-            tool_descriptions += sync_tool_struct["description"] + "\n\n"
+            tool_descriptions += (
+                f"tool name: {sync_tool_struct["name"]}"
+                + "\n\n"
+                + f"tool descriptions {sync_tool_struct["description"]}"
+                + "\n\n"
+            )
     else:
         sync_tools = None
     if rollback_agent_config["async_tools"] is not None:
         for async_tool_struct in rollback_agent_config["async_tools"]:
             async_tools.append(str_to_tool(async_tool_struct))
-            tool_descriptions += async_tool_struct["description"] + "\n\n"
+            tool_descriptions += (
+                f"tool name: {async_tool_struct["name"]}"
+                + "\n\n"
+                + f"tool description: {async_tool_struct["description"]}"
+                + "\n\n"
+            )
     else:
         async_tools = None
 
@@ -103,7 +114,8 @@ async def main():
     agent.save_agent_graph_to_png()
 
     res = await agent.arun(get_starting_prompts(prompt_path, max_step=max_step))
-    return res
+    agent.clear_memory()
+    return agent, res
 
 
 if __name__ == "__main__":

@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import List
 
 import yaml
+from langchain_core.callbacks import UsageMetadataCallbackHandler
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.constants import END, START
@@ -12,7 +13,6 @@ from clients.stratus.llm_backend.init_backend import get_llm_backend_for_tools
 from clients.stratus.stratus_agent.base_agent import BaseAgent
 from clients.stratus.stratus_agent.state import State
 from clients.stratus.stratus_utils.get_logger import get_logger
-from clients.stratus.stratus_utils.get_starting_prompt import get_starting_prompts
 from clients.stratus.stratus_utils.str_to_tool import str_to_tool
 from clients.stratus.tools.stratus_tool_node import StratusToolNode
 
@@ -97,16 +97,17 @@ class MitigationAgent(BaseAgent):
                     # "submit_tried": False,
                     "submitted": False,
                     # "ans": dict(),
+                    "rollback_stack": "",
                 }
 
             async for event in self.graph.astream(
                 state,
                 # recursion_limit could be as large as possible as we have our own limit.
-                config={"recursion_limit": 10000, "configurable": {"thread_id": "1"}},
+                config={"recursion_limit": 10000, "configurable": {"thread_id": "1"}, "callbacks": [self.callback]},
                 stream_mode="values",
             ):
                 graph_events.append(event)
-                event["messages"][-1].pretty_print()
+                # event["messages"][-1].pretty_print()
             last_state = self.graph.get_state(config=graph_config)
             if last_state.values["submitted"]:
                 logger.info("agent submitted, breaking loop.")
@@ -130,7 +131,10 @@ def build_default_mitigation_agent():
         for sync_tool_struct in mitigation_agent_config["sync_tools"]:
             mitigation_agent_sync_tools.append(str_to_tool(sync_tool_struct))
             mitigation_agent_tool_descriptions += (
-                sync_tool_struct["name"] + "\n\n" + sync_tool_struct["description"] + "\n\n"
+                f"tool name: {sync_tool_struct["name"]}"
+                + "\n\n"
+                + f"tool descriptions {sync_tool_struct["description"]}"
+                + "\n\n"
             )
     else:
         mitigation_agent_sync_tools = None
@@ -138,7 +142,10 @@ def build_default_mitigation_agent():
         for async_tool_struct in mitigation_agent_config["async_tools"]:
             mitigation_agent_async_tools.append(str_to_tool(async_tool_struct))
             mitigation_agent_tool_descriptions += (
-                async_tool_struct["name"] + "\n\n" + async_tool_struct["description"] + "\n\n"
+                f"tool name: {async_tool_struct["name"]}"
+                + "\n\n"
+                + f"tool description: {async_tool_struct["description"]}"
+                + "\n\n"
             )
     else:
         mitigation_agent_async_tools = None
@@ -197,7 +204,9 @@ def generate_run_summary(last_state: StateSnapshot, summary_system_prompt) -> st
 async def single_run_with_predefined_prompts(init_prompts):
     agent, prompt_path, max_step = build_default_mitigation_agent()
     res = await agent.arun(init_prompts)
-    return res
+    logger.info("Clearing agent's memory")
+    agent.clear_memory()
+    return agent, res
 
 
 async def retry_run_with_feedback(feedback_prompts):
@@ -205,7 +214,7 @@ async def retry_run_with_feedback(feedback_prompts):
     res = await agent.arun(feedback_prompts)
     logger.info("Clearing agent's memory")
     agent.clear_memory()
-    return res
+    return agent, res
 
 
 if __name__ == "__main__":

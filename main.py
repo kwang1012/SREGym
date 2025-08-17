@@ -9,6 +9,7 @@ import uvicorn
 from rich.console import Console
 from rich.prompt import Prompt
 
+from clients.stratus.stratus_agent.driver.driver import main as stratus_driver
 from mcp_server.configs.load_all_cfg import mcp_server_cfg
 from mcp_server.srearena_mcp_server import app as mcp_app
 from srearena.conductor.conductor import Conductor
@@ -38,6 +39,8 @@ def driver_loop(conductor: Conductor):
             conductor.problem_id = pid
 
             await conductor.start_problem()
+
+            # await stratus_driver()
 
             # Poll until grading completes
             while conductor.submission_stage != "done":

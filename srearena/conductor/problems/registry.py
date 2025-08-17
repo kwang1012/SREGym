@@ -70,6 +70,7 @@ class ProblemRegistry:
             "scale_pod_zero_social_net": ScalePodSocialNet,
             "assign_to_non_existent_node": AssignNonExistentNode,
             "pod_anti_affinity_deadlock": PodAntiAffinityDeadlock,
+            # --- Chaos Mesh problems (No mitigation oracle)
             "chaos_mesh_container_kill": ChaosMeshContainerKill,
             "chaos_mesh_pod_failure": ChaosMeshPodFailure,
             "chaos_mesh_pod_kill": ChaosMeshPodKill,
@@ -82,6 +83,8 @@ class ProblemRegistry:
             "chaos_mesh_jvm_return": ChaosMeshJVMReturnFault,
             "chaos_mesh_memory_stress": ChaosMeshMemoryStress,
             "chaos_mesh_http_post_tamper": ChaosMeshHttpPostTamper,
+            # ---
+            # --- Astro shop problems with no mitigation oracle
             "astronomy_shop_ad_service_failure": AdServiceFailure,
             "astronomy_shop_ad_service_high_cpu": AdServiceHighCpu,
             "astronomy_shop_ad_service_manual_gc": AdServiceManualGc,
@@ -93,6 +96,7 @@ class ProblemRegistry:
             "astronomy_shop_payment_service_unreachable": PaymentServiceUnreachable,
             "astronomy_shop_product_catalog_service_failure": ProductCatalogServiceFailure,
             "astronomy_shop_recommendation_service_cache_failure": RecommendationServiceCacheFailure,
+            # ---
             "wrong_bin_usage": WrongBinUsage,
             "taint_no_toleration_social_network": lambda: TaintNoToleration(),
             "missing_service_hotel_reservation": lambda: MissingService(
@@ -198,7 +202,9 @@ class ProblemRegistry:
             ),
             "persistent_volume_affinity_violation": PersistentVolumeAffinityViolation,
             "valkey_auth_disruption": ValkeyAuthDisruption,
+            # --- valkey problem w/o mitigation oracle
             "valkey_memory_disruption": ValkeyMemoryDisruption,
+            # ---
             "incorrect_port_assignment": IncorrectPortAssignment,
             "incorrect_image": IncorrectImage,
             "namespace_memory_limit": NamespaceMemoryLimit,

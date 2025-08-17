@@ -18,10 +18,7 @@ async_tools:
   - name: get_previous_rollbackable_cmd
     description: |
       Use this function to get a list of commands you previously executed that could be roll-backed.
-  - name: submit_tool
+  - name: r_submit_tool
     description: |
-      The tool to submit benchmark results
-          
-          Args:
-              ans (str): the answer you would like to submit to the benchmark
+      The tool to submit after you rolled back all the changes.
 prompts_path: rollback_agent_prompts.yaml

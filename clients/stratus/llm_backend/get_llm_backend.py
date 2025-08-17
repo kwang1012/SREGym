@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-MAX_RETRIES = int(os.getenv("MAX_RETRIES", "5"))  # Maximum number of retries for rate-limiting
-INIT_RETRY_DELAY = int(os.getenv("INIT_RETRY_DELAY", "1"))  # Initial delay in seconds
+LLM_QUERY_MAX_RETRIES = int(os.getenv("LLM_QUERY_MAX_RETRIES", "5"))  # Maximum number of retries for rate-limiting
+LLM_QUERY_INIT_RETRY_DELAY = int(os.getenv("LLM_QUERY_INIT_RETRY_DELAY", "1"))  # Initial delay in seconds
 
 
 class LiteLLMBackend:
@@ -114,8 +114,8 @@ class LiteLLMBackend:
         # TODO: check how does function call looks like in langchain
 
         # Retry logic for rate-limiting
-        retry_delay = INIT_RETRY_DELAY
-        for attempt in range(MAX_RETRIES):
+        retry_delay = LLM_QUERY_INIT_RETRY_DELAY
+        for attempt in range(LLM_QUERY_MAX_RETRIES):
             try:
                 completion = llm.invoke(input=prompt_messages)
                 # logger.info(f"llm response: {completion}")
@@ -123,7 +123,7 @@ class LiteLLMBackend:
             except HTTPError as e:
                 if e.response.status_code == 429:  # Rate-limiting error
                     logger.warning(
-                        f"Rate-limited. Retrying in {retry_delay} seconds... (Attempt {attempt + 1}/{MAX_RETRIES})"
+                        f"Rate-limited. Retrying in {retry_delay} seconds... (Attempt {attempt + 1}/{LLM_QUERY_MAX_RETRIES})"
                     )
                     time.sleep(retry_delay)
                     retry_delay *= 2  # Exponential backoff

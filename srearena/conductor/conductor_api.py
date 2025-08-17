@@ -68,6 +68,14 @@ async def get_app():
     return {"app_name": app_inst.app_name, "namespace": app_inst.namespace, "descriptions": str(app_inst.description)}
 
 
+@app.get("/get_problem")
+async def get_problem():
+    if _conductor is None:
+        raise HTTPException(status_code=400, detail="No problem has been started")
+    problem_id = _conductor.problem_id
+    return {"problem_id": problem_id}
+
+
 def run_api(conductor):
     """
     Start the API server and block until request_shutdown() is called.

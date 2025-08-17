@@ -81,11 +81,11 @@ def rollback_command(ctx: Context) -> str:
         The result of trying to roll back the last kubectl command.
     """
     ssid = extract_session_id(ctx)
-    kubctl_tool = get_tools(ssid)
+    kubectl_tool = get_tools(ssid)
     logger.info(f'session {ssid} is using tool "rollback_command".')
-    result = kubctl_tool.rollback_tool.rollback()
+    result = kubectl_tool.rollback_tool.rollback()
     assert isinstance(result, str)
-    return result
+    return f"{result}, action_stack: {kubectl_tool.rollback_tool.action_stack}"
 
 
 @kubectl_mcp.tool()

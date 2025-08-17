@@ -10,6 +10,7 @@ from mcp.client.sse import sse_client
 
 from clients.stratus.configs.langgraph_tool_configs import LanggraphToolConfig
 from clients.stratus.llm_backend.init_backend import get_llm_backend_for_tools
+from clients.stratus.stratus_utils.truncate_by_token import truncate_to_tokens
 from clients.stratus.tools.text_editing.flake8_utils import flake8, format_flake8_output  # type: ignore
 from clients.stratus.tools.text_editing.windowed_file import (  # type: ignore
     FileNotOpened,
@@ -51,16 +52,16 @@ async def get_traces(service: str, last_n_minutes: int, tool_call_id: Annotated[
         },
     )
     await exit_stack.aclose()
-    # traces = result.content[0].text
+    result = result.content[0].text
     # if langgraph_tool_config.use_summaries and len(traces) >= langgraph_tool_config.min_len_to_sum:
     #     logger.info("Using summaries for traces.")
     #     traces = _summarize_traces(traces)
-
+    result = truncate_to_tokens(result)
     return Command(
         update={
             "messages": [
                 ToolMessage(
-                    content=result,
+                    content=str(result),
                     tool_call_id=tool_call_id,
                 ),
             ]

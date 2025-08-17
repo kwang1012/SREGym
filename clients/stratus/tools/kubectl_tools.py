@@ -180,9 +180,10 @@ class RollbackCommand(BaseTool):
         text_result = "\n".join([part.text for part in result])
         return Command(
             update={
+                "rollback_stack": str(text_result),
                 "messages": [
                     ToolMessage(content=text_result, tool_call_id=tool_call_id),
-                ]
+                ],
             }
         )
 

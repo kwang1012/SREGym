@@ -58,7 +58,7 @@ class StratusToolNode:
         new_messages = []
         for i, tool_call in enumerate(message.tool_calls):
             try:
-                logger.info(f"invoking tool: {tool_call['name']}, tool_call: {tool_call}")
+                logger.info(f"[STRATUS_TOOLNODE] invoking tool: {tool_call['name']}, tool_call: {tool_call}")
                 if tool_call["name"] in self.async_tools_by_name:
                     tool_result = asyncio.run(
                         self.async_tools_by_name[tool_call["name"]].ainvoke(
@@ -95,7 +95,7 @@ class StratusToolNode:
                 assert isinstance(
                     tool_result, Command
                 ), f"Tool {tool_call['name']} should return a Command object, but return {type(tool_result)}"
-                logger.info(f"tool_result: {tool_result}")
+                logger.info(f"[STRATUS_TOOLNODE] tool_result: {tool_result}")
                 new_messages += tool_result.update["messages"]
                 to_update = {
                     **to_update,
