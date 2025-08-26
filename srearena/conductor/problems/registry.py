@@ -55,7 +55,7 @@ from srearena.conductor.problems.valkey_memory_disruption import ValkeyMemoryDis
 from srearena.conductor.problems.wrong_bin_usage import WrongBinUsage
 from srearena.conductor.problems.wrong_dns_policy import WrongDNSPolicy
 from srearena.conductor.problems.wrong_service_selector import WrongServiceSelector
-
+from srearena.conductor.problems.rpc_retry_storm import RPCRetryStorm
 
 class ProblemRegistry:
     def __init__(self):
@@ -222,6 +222,7 @@ class ProblemRegistry:
             # "operator_security_context_fault-localization-1": K8SOperatorSecurityContextFaultLocalization,
             # "operator_wrong_update_strategy-detection-1": K8SOperatorWrongUpdateStrategyDetection,
             # "operator_wrong_update_strategy-localization-1": K8SOperatorWrongUpdateStrategyLocalization,
+            "rpc_retry_storm": RPCRetryStorm,
         }
 
     def get_problem_instance(self, problem_id: str):
