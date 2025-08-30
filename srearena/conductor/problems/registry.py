@@ -58,6 +58,7 @@ from srearena.conductor.problems.wrong_service_selector import WrongServiceSelec
 from srearena.conductor.problems.operator_misoperation.security_context_fault import K8SOperatorSecurityContextFault
 from srearena.conductor.problems.operator_misoperation.wrong_update_strategy import K8SOperatorWrongUpdateStrategyFault
 from srearena.conductor.problems.operator_misoperation.invalid_affinity_toleration import K8SOperatorInvalidAffinityTolerationFault
+from srearena.conductor.problems.operator_misoperation.overload_replicas import K8SOperatorOverloadReplicasFault
 
 class ProblemRegistry:
     def __init__(self):
@@ -215,10 +216,9 @@ class ProblemRegistry:
             # K8S operator misoperation -> Refactor later, not sure if they're working
             # They will also need to be updated to the new problem format.
             # "operator_overload_replicas-detection-1": K8SOperatorOverloadReplicasDetection,
-            # "operator_overload_replicas-localization-1": K8SOperatorOverloadReplicasLocalization,
+            "operator_overload_replicas": K8SOperatorOverloadReplicasFault,
             # "operator_non_existent_storage-detection-1": K8SOperatorNonExistentStorageDetection,
             # "operator_non_existent_storage-localization-1": K8SOperatorNonExistentStorageLocalization,
-            # "operator_invalid_affinity_toleration-detection-1": K8SOperatorInvalidAffinityTolerationDetection,
             "operator_invalid_affinity_toleration": K8SOperatorInvalidAffinityTolerationFault,
             "operator_security_context_fault": K8SOperatorSecurityContextFault,
             "operator_wrong_update_strategy_fault": K8SOperatorWrongUpdateStrategyFault,

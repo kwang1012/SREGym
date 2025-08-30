@@ -39,4 +39,4 @@ class K8SOperatorWrongUpdateStrategyFault(Problem):
         print("== Fault Recovery ==")
         injector = K8SOperatorFaultInjector(namespace=self.namespace)
         injector.recover_wrong_update_strategy()
-        print(f"[FAULT RECOVERED] {self.faulty_service}")
+        print(f"[FAULT RECOVERED] {self.faulty_service} wrong update strategy failure\n")

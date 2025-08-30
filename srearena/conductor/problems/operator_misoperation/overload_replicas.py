@@ -19,7 +19,7 @@ from srearena.utils.decorators import mark_fault_injected
 class K8SOperatorOverloadReplicasFault(Problem):
     def __init__(self, faulty_service="tidb-app"):
         app = FleetCast()
-        super().__init__(app=self.app, namespace=self.app.namespace)
+        super().__init__(app= app, namespace=app.namespace)
         self.faulty_service= faulty_service
         self.kubectl = KubeCtl()
         self.app.create_workload()
@@ -34,13 +34,14 @@ class K8SOperatorOverloadReplicasFault(Problem):
         print("== Fault Injection ==")
         injector = K8SOperatorFaultInjector(namespace=self.namespace)
         injector.inject_overload_replicas
-        print(f"Injecting overload replica failure of the TiDB cluster\n")
+        print(f"[FAULT INJECTED] {self.faulty_service} overload replica failure\n")
+
     @mark_fault_injected
     def recover_fault(self):
         print("== Fault Recovery ==")
         injector = K8SOperatorFaultInjector(namespace=self.namespace)
         injector.recover_overload_replicas()
-        print(f"Recovered overload replica failure of the TiDB cluster\n")
+        print(f"[FAULT RECOVERED] {self.faulty_service} overload replica failure\n")
 
 
 
