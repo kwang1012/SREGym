@@ -175,7 +175,7 @@ class BHotelWrkWorkloadManager(StreamWorkloadManager):
         return WorkloadEntry(
             time=start_time,
             number=number,
-            log="\n".join([log for log in logs]),
+            log="\n".join([log for log in logs[7:]]),
             ok=ok,
         )
 
@@ -209,7 +209,7 @@ class BHotelWrkWorkloadManager(StreamWorkloadManager):
                 break
         
         if start_index is not None and end_index is not None:
-            return logs[start_index:end_index + 1]
+            return logs[start_index:end_index]
         
         return []
 

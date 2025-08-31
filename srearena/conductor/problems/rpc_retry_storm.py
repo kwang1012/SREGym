@@ -18,7 +18,7 @@ class RPCRetryStorm(Problem):
         # === Attach evaluation oracles ===
         self.localization_oracle = LocalizationOracle(problem=self, expected=[self.faulty_service])
 
-        # self.mitigation_oracle = RPCRetryStormMitigationOracle(problem=self)
+        self.mitigation_oracle = RPCRetryStormMitigationOracle(problem=self)
 
     @mark_fault_injected
     def inject_fault(self):
