@@ -6,6 +6,12 @@ from srearena.conductor.problems.auth_miss_mongodb import MongoDBAuthMissing
 from srearena.conductor.problems.cart_service_failure import CartServiceFailure
 from srearena.conductor.problems.configmap_drift import ConfigMapDrift
 from srearena.conductor.problems.container_kill import ChaosMeshContainerKill
+from srearena.conductor.problems.cpu_stress import ChaosMeshCPUStress
+from srearena.conductor.problems.duplicate_pvc_mounts import DuplicatePVCMounts
+from srearena.conductor.problems.env_variable_leak import EnvVariableLeak
+from srearena.conductor.problems.env_variable_shadowing import EnvVariableShadowing
+from srearena.conductor.problems.http_abort import ChaosMeshHttpAbort
+from srearena.conductor.problems.http_post_tamper import ChaosMeshHttpPostTamper
 from srearena.conductor.problems.image_slow_load import ImageSlowLoad
 from srearena.conductor.problems.incorrect_image import IncorrectImage
 from srearena.conductor.problems.incorrect_port_assignment import IncorrectPortAssignment
@@ -31,6 +37,8 @@ from srearena.conductor.problems.pod_anti_affinity_deadlock import PodAntiAffini
 from srearena.conductor.problems.pod_failure import ChaosMeshPodFailure
 from srearena.conductor.problems.pod_kill import ChaosMeshPodKill
 from srearena.conductor.problems.product_catalog_failure import ProductCatalogServiceFailure
+from srearena.conductor.problems.pvc_claim_mismatch import PVCClaimMismatch
+from srearena.conductor.problems.read_error import ReadError
 from srearena.conductor.problems.readiness_probe_misconfiguration import ReadinessProbeMisconfiguration
 from srearena.conductor.problems.recommendation_service_cache_failure import RecommendationServiceCacheFailure
 from srearena.conductor.problems.resource_request import ResourceRequestTooLarge, ResourceRequestTooSmall
@@ -164,6 +172,45 @@ class ProblemRegistry:
             "liveness_probe_misconfiguration_hotel_reservation": lambda: LivenessProbeMisconfiguration(
                 app_name="hotel_reservation", faulty_service="recommendation"
             ),
+            "network_policy_block": lambda: NetworkPolicyBlock(faulty_service="payment-service"),
+            "liveness_probe_too_aggressive_astronomy_shop": lambda: LivenessProbeTooAggressive(
+                app_name="astronomy_shop"
+            ),
+            "liveness_probe_too_aggressive_social_network": lambda: LivenessProbeTooAggressive(
+                app_name="social_network"
+            ),
+            "liveness_probe_too_aggressive_hotel_reservation": lambda: LivenessProbeTooAggressive(
+                app_name="hotel_reservation"
+            ),
+            "duplicate_pvc_mounts_astronomy_shop": lambda: DuplicatePVCMounts(
+                app_name="astronomy_shop", faulty_service="frontend"
+            ),
+            "duplicate_pvc_mounts_social_network": lambda: DuplicatePVCMounts(
+                app_name="social_network", faulty_service="jaeger"
+            ),
+            "duplicate_pvc_mounts_hotel_reservation": lambda: DuplicatePVCMounts(
+                app_name="hotel_reservation", faulty_service="frontend"
+            ),
+            "env_variable_shadowing_astronomy_shop": lambda: EnvVariableShadowing(),
+            "rolling_update_misconfigured_social_network": lambda: RollingUpdateMisconfigured(
+                app_name="social_network"
+            ),
+            "rolling_update_misconfigured_hotel_reservation": lambda: RollingUpdateMisconfigured(
+                app_name="hotel_reservation"
+            ),
+            "ingress_misroute": lambda: IngressMisroute(
+                path="/api", correct_service="frontend-service", wrong_service="recommendation-service"
+            ),
+            "persistent_volume_affinity_violation": PersistentVolumeAffinityViolation,
+            "valkey_auth_disruption": ValkeyAuthDisruption,
+            # --- valkey problem w/o mitigation oracle
+            "valkey_memory_disruption": ValkeyMemoryDisruption,
+            # ---
+            "incorrect_port_assignment": IncorrectPortAssignment,
+            "incorrect_image": IncorrectImage,
+            "namespace_memory_limit": NamespaceMemoryLimit,
+            "pvc_claim_mismatch": PVCClaimMismatch,
+            "read_error": ReadError,
             # "missing_service_astronomy_shop": lambda: MissingService(app_name="astronomy_shop", faulty_service="ad"),
             # K8S operator misoperation -> Refactor later, not sure if they're working
             # They will also need to be updated to the new problem format.
