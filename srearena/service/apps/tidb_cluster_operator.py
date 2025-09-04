@@ -21,8 +21,7 @@ class TiDBClusterDeployer:
         self.operator_version = self.metadata["Helm Operator Config"]["version"]
         self.operator_crd_url = self.metadata["Helm Operator Config"]["CRD"]
 
-        # SMART: resolve values.yaml independent of CWD.
-        # Priority: env TIDB_OPERATOR_VALUES -> satellite-app/values.yaml -> tidb-operator/values.yaml -> none
+       
         env_path = os.environ.get("TIDB_OPERATOR_VALUES")
         self.operator_values_path = ""
         if env_path and Path(env_path).expanduser().exists():
@@ -38,7 +37,6 @@ class TiDBClusterDeployer:
                     self.operator_values_path = str(p.resolve())
                     break
 
-        # TiDB connection defaults for SQL init
         self.tidb_service = self.metadata.get("TiDB Service", "basic-tidb")
         self.tidb_port = int(self.metadata.get("TiDB Port", 4000))
         self.tidb_user = self.metadata.get("TiDB User", "root")
@@ -102,7 +100,6 @@ class TiDBClusterDeployer:
         print(f"Deploying TiDB cluster manifest from {self.cluster_config_url}...")
         self.run_cmd(f"kubectl apply -f {self.cluster_config_url} -n {self.namespace_tidb_cluster}")
 
-    # --- SQL helpers you asked to integrate previously ---
 
     def run_sql(self, sql_text: str):
         ns = self.namespace_tidb_cluster
@@ -110,12 +107,10 @@ class TiDBClusterDeployer:
         port = self.tidb_port
         user = self.tidb_user
 
-        # create a short-lived mysql client
         self.run_cmd(f"kubectl -n {ns} delete pod/mysql-client --ignore-not-found")
         self.run_cmd(f"kubectl -n {ns} run mysql-client --image=mysql:8 --restart=Never --command -- sleep 3600 || true")
         self.run_cmd(f"kubectl -n {ns} wait --for=condition=Ready pod/mysql-client --timeout=180s")
 
-        # pipe the SQL
         sql = dedent(sql_text).strip()
         heredoc = f"""kubectl -n {ns} exec -i mysql-client -- bash -lc "cat <<'SQL' | mysql -h {svc} -P {port} -u{user}
 {sql}
@@ -123,7 +118,6 @@ SQL"
 """
         self.run_cmd(heredoc)
 
-        # clean up
         self.run_cmd(f"kubectl -n {ns} delete pod/mysql-client --wait=false || true")
 
     def init_schema_and_seed(self):
@@ -174,7 +168,6 @@ SQL"
         self.install_operator_with_values()
         self.wait_for_operator_ready()
         self.deploy_tidb_cluster()
-        # run schema init at the end
         self.init_schema_and_seed()
         print("-------------TiDB cluster deployment complete.")
 
