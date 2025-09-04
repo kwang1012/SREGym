@@ -45,4 +45,20 @@ class PodReadinessCheck(Oracle):
         except Exception as e:
             print(f"Error during evaluation: {str(e)}")
             return {"success": False}
+        
+
+
+    def getTheValue(self) -> dict:
+        output = self.kubectl.exec_command(
+               f"kubectl get deployment {self.deployment_name} -n {self.namespace} -o yaml"
+              )
+        deployment = yaml.safe_load(output)
+        pd = deployment["spec"].get("pd")
+        storage = deployment["spec"].get("storageClassName")
+        if (storage == "ThisIsAStorageClass"):
+            return {"success": False}
+
+
+       
+
  
