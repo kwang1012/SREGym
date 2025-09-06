@@ -2,6 +2,7 @@
 
 import time
 
+from srearena.conductor.oracles.compound import CompoundedOracle
 from srearena.conductor.oracles.localization import LocalizationOracle
 from srearena.conductor.oracles.mitigation import MitigationOracle
 from srearena.conductor.problems.base import Problem
@@ -20,6 +21,21 @@ class MultipleIndependentFailures(Problem):
         self.app = CompositeApp(apps)
         self.namespaces = [p.namespace for p in problems]
         self.fault_injected = False
+
+        # === Attaching problem's oracles ===
+        localization_oracles = [p.localization_oracle for p in self.problems]
+        if len(localization_oracles) > 0:
+            self.localization_oracle = CompoundedOracle(
+                self,
+                *localization_oracles
+            )
+
+        mitigation_oracles = [p.mitigation_oracle for p in self.problems]
+        if len(mitigation_oracles) > 0:
+            self.mitigation_oracle = CompoundedOracle(
+                self,
+                *mitigation_oracles
+            )
 
     @mark_fault_injected
     def inject_fault(self):
