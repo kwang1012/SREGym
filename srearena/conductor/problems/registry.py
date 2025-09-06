@@ -121,7 +121,7 @@ class ProblemRegistry:
             # "k8s_resource_request_too_large": ResourceRequestTooLarge,
             # "k8s_resource_request_too_small": ResourceRequestTooSmall,
             # "k8s_wrong_dns_policy": WrongDNSPolicy, # AstroShop
-            # "k8s_wrong_service_selector": WrongServiceSelector, # AstroSho
+            # "k8s_wrong_service_selector": WrongServiceSelector, # AstroShop
             # "resource_request_too_large": lambda: ResourceRequestTooLarge(
             #     app_name="hotel_reservation", faulty_service="mongodb-rate"
             # ),
@@ -227,57 +227,15 @@ class ProblemRegistry:
             # "namespace_memory_limit": NamespaceMemoryLimit, # HotelRes
             # "pvc_claim_mismatch": PVCClaimMismatch, # HotelRes
             # "read_error": ReadError, # HotelRes
-            # # # Example MIF problem
-            # # "multiple_independent_failures_example_problem": lambda: MultipleIndependentFailures(
-            # #     problems=[
-            # #         K8STargetPortMisconfig(faulty_service="user-service"),
-            # #         MongoDBRevokeAuth(faulty_service="mongodb-geo"),
-            # #         MongoDBRevokeAuth(faulty_service="mongodb-rate"),
-            # #     ]
-            # # ),
-            # "missing_service_astronomy_shop": lambda: MissingService(app_name="astronomy_shop", faulty_service="ad"),
-            "social_network_mega_problem": lambda: MultipleIndependentFailures(
+            # # Example MIF problem
+            "social_net_hotel_res_astro_shop_concurrent_failures": lambda: MultipleIndependentFailures(
                 problems=[
-                    K8STargetPortMisconfig(faulty_service="user-service"),  # SocialNet
-                    MongoDBAuthMissing(),  # SocialNet
-                    ScalePodSocialNet(),  # SocialNet
-                    AssignNonExistentNode(),  # SocialNet
-                    PodAntiAffinityDeadlock(),  # SocialNet
-                    TaintNoToleration(),  # SocialNet
-                    # PersistentVolumeAffinityViolation(),  # SocialNet # this problem fail to recover
-                    WrongServiceSelector(
-                        app_name="social_network", faulty_service="user-service"
-                    ),
-                    ServiceDNSResolutionFailure(
-                        app_name="social_network", faulty_service="user-service"
-                    ),
-                    WrongDNSPolicy(
-                        app_name="social_network", faulty_service="user-service"
-                    ),
-                    StaleCoreDNSConfig(app_name="social_network"),
-                    SidecarPortConflict(
-                        app_name="social_network", faulty_service="user-service"
-                    ),
-                    EnvVariableLeak(
-                        app_name="social_network", faulty_service="media-mongodb"
-                    ),
-                    ReadinessProbeMisconfiguration(
-                        app_name="social_network", faulty_service="user-service"
-                    ),
-                    LivenessProbeMisconfiguration(
-                        app_name="social_network", faulty_service="user-service"
-                    ),
-                    LivenessProbeTooAggressive(
-                        app_name="social_network"
-                    ),
-                    DuplicatePVCMounts(
-                        app_name="social_network", faulty_service="jaeger"
-                    ),
-                    RollingUpdateMisconfigured(
-                        app_name="social_network"
-                    ),
+                    K8STargetPortMisconfig(faulty_service="user-service"),
+                    MongoDBRevokeAuth(faulty_service="mongodb-geo"),
+                    WrongServiceSelector()
                 ]
             ),
+            # "missing_service_astronomy_shop": lambda: MissingService(app_name="astronomy_shop", faulty_service="ad"),
             # K8S operator misoperation -> Refactor later, not sure if they're working
             # They will also need to be updated to the new problem format.
             # "operator_overload_replicas-detection-1": K8SOperatorOverloadReplicasDetection,
