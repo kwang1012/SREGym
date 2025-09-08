@@ -63,14 +63,13 @@ from srearena.conductor.problems.valkey_memory_disruption import ValkeyMemoryDis
 from srearena.conductor.problems.wrong_bin_usage import WrongBinUsage
 from srearena.conductor.problems.wrong_dns_policy import WrongDNSPolicy
 from srearena.conductor.problems.wrong_service_selector import WrongServiceSelector
-<<<<<<< HEAD
 from srearena.conductor.problems.faulty_image_correlated import FaultyImageCorrelated
 from srearena.conductor.problems.update_incompatible_correlated import UpdateIncompatibleCorrelated
-=======
 from srearena.conductor.problems.missing_env_variable import MissingEnvVariable
 from srearena.conductor.problems.rpc_retry_storm import RPCRetryStorm
+
 from srearena.service.kubectl import KubeCtl
->>>>>>> origin/main
+
 
 
 class ProblemRegistry:
