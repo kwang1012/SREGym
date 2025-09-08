@@ -1,0 +1,11 @@
+
+all:
+  problems:
+    k8s_target_port-misconfig:
+      - noop
+      - detection
+      - localization
+      - mitigation
+    # auth_miss_mongodb:
+    #   - noop
+    #   - mitigation
