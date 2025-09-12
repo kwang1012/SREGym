@@ -624,7 +624,7 @@ class KubeCtl:
         result = {}
         for line in out.split("\n"):
             if line:
-                pod_name, cpu, _ = line.split()
+                pod_name, cpu, _ = line.split(None, 2)
                 cpu = cpu.replace("m", "")
                 result[pod_name] = cpu
         return result
