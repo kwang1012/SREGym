@@ -115,8 +115,11 @@ class Prometheus:
             os.environ["PROMETHEUS_PORT"] = str(self.port)
             time.sleep(3)  # Wait a bit for the port-forward to establish
 
-            if self.port_forward_process.poll() is None:
+            if self.port_forward_process.wait():
+                print(f"Port forwarding process returned with exit code {self.port_forward_process.returncode}.")
                 print(f"Port forwarding established at {self.port}.")
+                stdout, stderr = self.port_forward_process.communicate()
+                print(f"Port forward stdout: {stdout}, stderr: {stderr}")
                 os.environ["PROMETHEUS_PORT"] = str(self.port)
                 break
             else:
