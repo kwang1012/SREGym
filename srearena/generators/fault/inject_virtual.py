@@ -1702,6 +1702,20 @@ class VirtualizationFaultInjector(FaultInjector):
         self.kubectl.exec_command(f"kubectl apply -f {modified_yaml_path}")
         self.kubectl.exec_command(f"kubectl rollout restart ds {daemon_set_name} -n {self.namespace}")
         self.kubectl.exec_command(f"kubectl rollout status ds {daemon_set_name} -n {self.namespace} --timeout=60s")
+        
+    def recover_daemon_set_image_replacement(self, daemon_set_name: str, original_image: str):
+        daemon_set_yaml = self._get_daemon_set_yaml(daemon_set_name)
+        if "spec" in daemon_set_yaml and "template" in daemon_set_yaml["spec"]:
+            template_spec = daemon_set_yaml["spec"]["template"]["spec"]
+            if "containers" in template_spec:
+                for container in template_spec["containers"]:
+                    if "image" in container and container["image"] != original_image:
+                        container["image"] = original_image
+                        modified_yaml_path = self._write_yaml_to_file(daemon_set_name, daemon_set_yaml)
+                        self.kubectl.exec_command(f"kubectl apply -f {modified_yaml_path}")
+                        self.kubectl.exec_command(f"kubectl rollout restart ds {daemon_set_name} -n {self.namespace}")
+                        self.kubectl.exec_command(f"kubectl rollout status ds {daemon_set_name} -n {self.namespace} --timeout=60s")
+                        return
 
     ############# HELPER FUNCTIONS ################
     def _wait_for_pods_ready(self, microservices: list[str], timeout: int = 30):

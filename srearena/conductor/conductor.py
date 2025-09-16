@@ -9,6 +9,7 @@ from srearena.conductor.oracles.detection import DetectionOracle
 from srearena.conductor.problems.registry import ProblemRegistry
 from srearena.conductor.utils import is_ordered_subset
 from srearena.generators.fault.inject_remote_os import RemoteOSFaultInjector
+from srearena.generators.fault.inject_virtual import VirtualizationFaultInjector
 from srearena.service.apps.app_registry import AppRegistry
 from srearena.service.khaos import KhaosController
 from srearena.service.kubectl import KubeCtl
@@ -166,30 +167,12 @@ class Conductor:
     def fix_kubernetes(self):
         print("Fixing Kubernetes...")
         print("[FIX] Imbalance leftover if any")
-        # fix possible interruption of imbalance problem
-        daemon_set_yaml = self.kubectl.exec_command(f"kubectl get ds kube-proxy -n kube-system -o yaml")
-        daemon_set_yaml = yaml.safe_load(daemon_set_yaml)
-        if "spec" in daemon_set_yaml and "template" in daemon_set_yaml["spec"]:
-            template_spec = daemon_set_yaml["spec"]["template"]["spec"]
-            if "containers" in template_spec:
-                for container in template_spec["containers"]:
-                    if "image" in container:
-                        if not container["image"].startswith("registry.k8s.io/kube-proxy:v1.31.13"):
-                            container["image"] = "registry.k8s.io/kube-proxy:v1.31.13"
-                            file_path = f"/tmp/kube-proxy_healthy.yaml"
-                            with open(file_path, "w") as file:
-                                yaml.dump(daemon_set_yaml, file)
-                            self.kubectl.exec_command(f"kubectl apply -f {file_path}")
-                            self.kubectl.exec_command(f"kubectl rollout restart ds kube-proxy -n kube-system")
-                            self.kubectl.exec_command(f"kubectl rollout status ds kube-proxy -n kube-system --timeout=60s")
-                            break
+        injector = VirtualizationFaultInjector(namespace="kube-system")
+        injector.recover_daemon_set_image_replacement(daemon_set_name="kube-proxy", original_image="registry.k8s.io/kube-proxy:v1.31.13")
+        
         print("[FIX] KubeletCrash leftover if any")
         injector = RemoteOSFaultInjector()
-        info = injector.get_host_info()
-        if info:
-            for host, user in info.items():
-                if injector.exist_script_on_host(host, user, "kill_kubelet.sh"):
-                    injector.clean_up_script_on_host(host, user, "kill_kubelet.sh")
+        injector.recover_kubelet_crash()
 
 
     def deploy_app(self):
