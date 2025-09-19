@@ -7,7 +7,8 @@ from kubernetes import client
 from srearena.service.helm import Helm
 from srearena.service.kubectl import KubeCtl
 
-class ChaosInjector():
+
+class ChaosInjector:
     def __init__(self, namespace: str):
         self.namespace = namespace
         self.kubectl = KubeCtl()
@@ -42,8 +43,11 @@ class ChaosInjector():
         release_exists = Helm.exists_release(chaos_configs["release_name"], chaos_configs["namespace"])
         if not release_exists:
             Helm.install(**chaos_configs)
+            self.kubectl.wait_for_ready("chaos-mesh")
         else:
-            print(f"[ChaosInjector] Helm release '{chaos_configs['release_name']}' already exists in namespace '{chaos_configs['namespace']}', skipping install.")
+            print(
+                f"[ChaosInjector] Helm release '{chaos_configs['release_name']}' already exists in namespace '{chaos_configs['namespace']}', skipping install."
+            )
 
     def create_chaos_experiment(self, experiment_yaml: dict, experiment_name: str):
         try:
