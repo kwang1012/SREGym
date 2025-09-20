@@ -2,11 +2,14 @@ import shutil
 import time
 from pathlib import Path
 
-import yaml
 
+
+import yaml
 from srearena.conductor.oracles.detection import DetectionOracle
 from srearena.conductor.problems.registry import ProblemRegistry
 from srearena.conductor.utils import is_ordered_subset
+from srearena.generators.fault.inject_remote_os import RemoteOSFaultInjector
+from srearena.generators.fault.inject_virtual import VirtualizationFaultInjector
 from srearena.service.apps.app_registry import AppRegistry
 from srearena.service.khaos import KhaosController
 from srearena.service.kubectl import KubeCtl
@@ -97,7 +100,7 @@ class Conductor:
 
         self.dependency_check(["kubectl", "helm"])
         print(f"[Session Start] Problem ID: {self.problem_id}")
-
+        self.fix_kubernetes()
         self.get_tasklist()
 
         self.undeploy_app()  # Cleanup any leftovers
@@ -171,6 +174,20 @@ class Conductor:
             self.problem.recover_fault()
             self.undeploy_app()
             return snapshot
+
+        return dict(self.results)
+    
+    
+    def fix_kubernetes(self):
+        print("Fixing Kubernetes...")
+        print("[FIX] Imbalance leftover if any")
+        injector = VirtualizationFaultInjector(namespace="kube-system")
+        injector.recover_daemon_set_image_replacement(daemon_set_name="kube-proxy", original_image="registry.k8s.io/kube-proxy:v1.31.13")
+        
+        print("[FIX] KubeletCrash leftover if any")
+        injector = RemoteOSFaultInjector()
+        injector.recover_kubelet_crash()
+
 
     def deploy_app(self):
         """Kubectl + Prometheus + problem.app deployment."""

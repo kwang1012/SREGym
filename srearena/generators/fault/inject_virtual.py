@@ -1683,6 +1683,39 @@ class VirtualizationFaultInjector(FaultInjector):
         deployment_rollout_command = f"kubectl rollout restart deployment -l configmap={configmap} -n {self.namespace}"
         self.kubectl.exec_command(deployment_rollout_command)
         self.kubectl.wait_for_ready(self.namespace)
+        
+    def inject_daemon_set_image_replacement(self, daemon_set_name: str, new_image: str):
+        daemon_set_yaml = self._get_daemon_set_yaml(daemon_set_name)
+        
+        # print(f"Daemon set yaml: {daemon_set_yaml}")
+        
+        # Replace the image in all containers
+        if "spec" in daemon_set_yaml and "template" in daemon_set_yaml["spec"]:
+            template_spec = daemon_set_yaml["spec"]["template"]["spec"]
+            if "containers" in template_spec:
+                for container in template_spec["containers"]:
+                    if "image" in container:
+                        container["image"] = new_image
+        
+        modified_yaml_path = self._write_yaml_to_file(daemon_set_name, daemon_set_yaml) # backup the yaml
+        
+        self.kubectl.exec_command(f"kubectl apply -f {modified_yaml_path}")
+        self.kubectl.exec_command(f"kubectl rollout restart ds {daemon_set_name} -n {self.namespace}")
+        self.kubectl.exec_command(f"kubectl rollout status ds {daemon_set_name} -n {self.namespace} --timeout=60s")
+        
+    def recover_daemon_set_image_replacement(self, daemon_set_name: str, original_image: str):
+        daemon_set_yaml = self._get_daemon_set_yaml(daemon_set_name)
+        if "spec" in daemon_set_yaml and "template" in daemon_set_yaml["spec"]:
+            template_spec = daemon_set_yaml["spec"]["template"]["spec"]
+            if "containers" in template_spec:
+                for container in template_spec["containers"]:
+                    if "image" in container and container["image"] != original_image:
+                        container["image"] = original_image
+                        modified_yaml_path = self._write_yaml_to_file(daemon_set_name, daemon_set_yaml)
+                        self.kubectl.exec_command(f"kubectl apply -f {modified_yaml_path}")
+                        self.kubectl.exec_command(f"kubectl rollout restart ds {daemon_set_name} -n {self.namespace}")
+                        self.kubectl.exec_command(f"kubectl rollout status ds {daemon_set_name} -n {self.namespace} --timeout=60s")
+                        return
 
     def inject_gogc_env_variable_patch(self, gogc_value: str):
         """Set GOGC environment variable for all deployments via patch method"""
@@ -1892,6 +1925,10 @@ class VirtualizationFaultInjector(FaultInjector):
     def _get_service_yaml(self, service_name: str):
         deployment_yaml = self.kubectl.exec_command(f"kubectl get service {service_name} -n {self.namespace} -o yaml")
         return yaml.safe_load(deployment_yaml)
+    
+    def _get_daemon_set_yaml(self, daemon_set_name: str):
+        daemon_set_yaml = self.kubectl.exec_command(f"kubectl get ds {daemon_set_name} -n {self.namespace} -o yaml")
+        return yaml.safe_load(daemon_set_yaml)
 
     def _change_node_selector(self, deployment_yaml: dict, node_name: str):
         if "spec" in deployment_yaml and "template" in deployment_yaml["spec"]:
@@ -1906,6 +1943,12 @@ class VirtualizationFaultInjector(FaultInjector):
         with open(file_path, "w") as file:
             yaml.dump(yaml_content, file)
         return file_path
+    
+    def scale_pods_to(self, replicas: int, microservices: list[str]):
+        """Inject a fault to scale pods to zero for a service."""
+        for service in microservices:
+            self.kubectl.exec_command(f"kubectl scale deployment {service} --replicas={replicas} -n {self.namespace}")
+            print(f"Scaled deployment {service} to {replicas} replicas | namespace: {self.namespace}")
 
     def _wait_for_dns_policy_propagation(
         self, service: str, external_ns: str, expect_external: bool, sleep: int = 2, max_wait: int = 120
