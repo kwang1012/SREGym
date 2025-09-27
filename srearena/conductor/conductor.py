@@ -191,6 +191,9 @@ class Conductor:
             self.logger.info(f"[STAGE] Done, recover fault")
 
             self.transient_issue_generator.stop_continuous_injection()
+
+            if self.transient_config['switch']:
+                self.transient_issue_generator.stop_continuous_injection()
             self.problem.recover_fault()
             self.logger.info(f"[STAGE] Undeploy app")
             self.undeploy_app()
@@ -294,7 +297,8 @@ class Conductor:
             if not scopes:
                 return []
             return [getattr(PodScope, s) if isinstance(s, str) else s for s in scopes]
-
+        
+        self.transient_config['switch'] = config.get('switch', True)
         self.transient_config['min_duration'] = config.get('min_duration', 40)
         self.transient_config['max_duration'] = config.get('max_duration', 60)
         self.transient_config['fault_types'] = parse_fault_types(config.get('fault_types', ['FAIL_SLOW', 'FAIL_STOP']))

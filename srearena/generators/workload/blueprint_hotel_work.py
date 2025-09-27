@@ -9,7 +9,7 @@ from rich.console import Console
 from srearena.generators.workload.base import WorkloadEntry
 from srearena.generators.workload.stream import StreamWorkloadManager
 from srearena.paths import TARGET_MICROSERVICES
-from srearena.generators.noise.chaos_injector import ChaosInjector
+from srearena.generators.noise.transient_issues.chaos_injector import ChaosInjector
 
 # Mimicked the Wrk2 class
 
