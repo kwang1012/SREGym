@@ -161,29 +161,10 @@ async def main():
     except RuntimeError:
         pass
 
-    # Start dashboard in a separate process; construct server inside the child
+    # disable auto-run dashboard
+    '''
     p = Process(target=run_dashboard_server, daemon=True)
     p.start()
-    
-    '''
-    import os, subprocess
-    
-    dash_path = os.path.join(os.path.dirname(__file__), "dashboard", "dashboard_app.py")
-    dash_cmd = ["python3", dash_path]
-    env = {**os.environ, "PYTHONUNBUFFERED": "1"} 
-
-    proc = subprocess.Popen(
-        dash_cmd,
-        stdout=subprocess.DEVNULL,  #
-        stderr=subprocess.DEVNULL,
-        env=env,
-    )
-
-    proc.terminate()  
-    try:
-        proc.wait(timeout=10)
-    except subprocess.TimeoutExpired:
-        proc.kill()
     '''
     
     conductor = Conductor()
