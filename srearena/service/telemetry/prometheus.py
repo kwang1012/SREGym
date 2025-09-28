@@ -104,7 +104,7 @@ class Prometheus:
                 time.sleep(3)
                 continue
 
-            command = f"kubectl port-forward svc/prometheus-server {self.port}:80 -n observe"
+            command = f"kubectl port-forward svc/prometheus-server {self.port}:9090 -n observe"
             self.port_forward_process = subprocess.Popen(
                 command,
                 shell=True,
@@ -115,7 +115,7 @@ class Prometheus:
             os.environ["PROMETHEUS_PORT"] = str(self.port)
             time.sleep(3)  # Wait a bit for the port-forward to establish
 
-            if self.port_forward_process.wait():
+            if self.is_port_in_use(self.port):
                 print(f"Port forwarding process returned with exit code {self.port_forward_process.returncode}.")
                 print(f"Port forwarding established at {self.port}.")
                 stdout, stderr = self.port_forward_process.communicate()

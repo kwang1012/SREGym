@@ -1,12 +1,17 @@
 
 
 import subprocess
-
+import os
+from pathlib import Path
 
 class JaegerTiDB:
     def __init__(self):
         self.namespace= "observe"
-        self.config_file = "jaeger.yaml"
+        base_dir = Path(__file__).parent
+        self.config_file = base_dir / "jaeger.yaml"
+        self.port = 16686  # Jaeger UI port
+        os.environ["JAEGER_BASE_URL"] = f"http://localhost:{self.port}"
+
     def run_cmd(self, cmd: str) -> str:
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
         if result.returncode != 0:
@@ -17,6 +22,7 @@ class JaegerTiDB:
         """Deploy Jaeger with TiDB as the storage backend."""
         self.run_cmd(f"kubectl apply -f {self.config_file} -n {self.namespace}")
         print("Jaeger deployed successfully.")
+        
 
 
     def port_forward(self):
@@ -26,7 +32,9 @@ class JaegerTiDB:
                 ["kubectl", "port-forward", "svc/jaeger-out", "16686:16686", "-n", self.namespace],
                 check=True
             )
-
+    def main(self):
+        self.deploy()
+        self.port_forward()
 
 if __name__ == "__main__":
     jaeger = JaegerTiDB()
