@@ -8,7 +8,6 @@ from kubernetes import client
 from srearena.generators.noise.transient_issues.chaos_injector import ChaosInjector
 from srearena.service.kubectl import KubeCtl
 
-
 class FaultType(Enum):
     """Fault type enumeration"""
     FAIL_STOP = "fail-stop"  # Stop-type faults
@@ -144,7 +143,7 @@ class TransientIssuesGenerator:
                           PodScope.NON_TARGET_SERVICE, PodScope.ALL_PODS, PodScope.NON_TARGET_NAMESPACE]
             }
         }
-
+        self.cleanup_all_experiments()
 
     ### Injection and cleanup
     def inject_transient_issue(self, fault_types: List[FaultType] = None, 
@@ -281,6 +280,7 @@ class TransientIssuesGenerator:
 
     def cleanup_all_experiments(self):
         """Cleanup all active experiments"""
+        print('here')
         experiment_names = list(self.active_experiments.keys())
         for name in experiment_names:
             self.cleanup_experiment(name)
@@ -304,7 +304,6 @@ class TransientIssuesGenerator:
         if self._injection_running:
             print("⚠️ Continuous injection already running, please stop current injection first")
             return False
-        
         def injection_loop():
             print(f"🚀 Continuous transient issue injection started")
             print(f"   Allowed fault types: {[ft.value for ft in fault_types] if fault_types else 'All types'}")
