@@ -144,6 +144,7 @@ class TransientIssuesGenerator:
                           PodScope.NON_TARGET_SERVICE, PodScope.ALL_PODS, PodScope.NON_TARGET_NAMESPACE]
             }
         }
+        self.cleanup_all_experiments()
 
 
     ### Injection and cleanup
