@@ -23,6 +23,8 @@ class JaegerTiDB:
     def deploy(self):
         """Deploy Jaeger with TiDB as the storage backend."""
         self.run_cmd(f"kubectl apply -f {self.config_file} -n {self.namespace}")
+        self.wait_for_service("jaeger-out", timeout=120)
+        self.start_port_forward()
         print("Jaeger deployed successfully.")
 
     def is_port_in_use(self, port: int) -> bool:
@@ -45,65 +47,58 @@ class JaegerTiDB:
             time.sleep(3)
         raise RuntimeError(f"Service {service} not found within {timeout}s")
 
-    def start_port_forward(self, service: str = "jaeger-out", timeout: int = 30):
-        """Start port-forwarding Jaeger UI to localhost:16686 and keep it alive."""
-        print(f"[debug] Entering port forward")
-
-        self.wait_for_service(service)
-
+    def start_port_forward(self):
+        """Starts port-forwarding to access Prometheus."""
+        print("Start port-forwarding for Prometheus.")
         if self.port_forward_process and self.port_forward_process.poll() is None:
             print("Port-forwarding already active.")
             return
 
-        if self.is_port_in_use(self.port):
-            raise RuntimeError(f"Port {self.port} is already in use on localhost.")
-
-        command = [
-            "kubectl", "-n", "observe",
-            "port-forward", "svc/jaeger-out", "16686:16686"
-        ]
-
-        self.port_forward_process = subprocess.Popen(
-            command,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        print(f"[debug] starting Jaeger port-forward: {' '.join(command)}")
-
-
-        t0 = time.time()
-        while time.time() - t0 < timeout:
+        for attempt in range(3):
             if self.is_port_in_use(self.port):
-                print(f"Jaeger UI available at http://localhost:{self.port}")
-                return
-            if self.port_forward_process.poll() is not None:
-                raise RuntimeError(
-                    f"kubectl port-forward exited early (code {self.port_forward_process.returncode})"
-                )
-            time.sleep(1)
+                print(f"Port {self.port} is already in use. Attempt {attempt + 1} of 3. Retrying in 3 seconds...")
+                time.sleep(3)
+                continue
 
-        raise RuntimeError("Port-forward did not establish within timeout")
+            command = f"kubectl port-forward svc/jaeger-out {self.port}:16686 -n observe"
+            self.port_forward_process = subprocess.Popen(
+                command,
+                shell=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            os.environ["JAEGER_PORT"] = str(self.port)
+            time.sleep(3)  # Wait a bit for the port-forward to establish
+
+            if self.port_forward_process.poll() is None:
+                print(f"Port forwarding established at {self.port}.")
+                os.environ["JAEGER_PORT"] = str(self.port)
+                break
+            else:
+                print("Port forwarding failed. Retrying...")
+        else:
+            print("Failed to establish port forwarding after multiple attempts.")
 
     def stop_port_forward(self):
-        """Stop the kubectl port-forward process."""
+        """Stops the kubectl port-forward command and cleans up resources."""
         if self.port_forward_process:
             self.port_forward_process.terminate()
             try:
                 self.port_forward_process.wait(timeout=5)
             except subprocess.TimeoutExpired:
-                print("Force killing Jaeger port-forward...")
+                print("Port-forward process did not terminate in time, killing...")
                 self.port_forward_process.kill()
-            self.port_forward_process = None
-            print("Jaeger port-forward stopped.")
 
-    def main(self):
-        self.deploy()
-        self.start_port_forward()
-        
+            if self.port_forward_process.stdout:
+                self.port_forward_process.stdout.close()
+            if self.port_forward_process.stderr:
+                self.port_forward_process.stderr.close()
 
-        print("Jaeger deployment and port-forward complete.")
+            print("Port forwarding stopped.")
 
 
+    
 if __name__ == "__main__":
     jaeger = JaegerTiDB()
-    jaeger.main()
+
