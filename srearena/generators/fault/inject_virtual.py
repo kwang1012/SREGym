@@ -1808,7 +1808,7 @@ class VirtualizationFaultInjector(FaultInjector):
                 f"kubectl delete configmap app-routing-config -n {self.namespace} --ignore-not-found=true"
             )
 
-            print(f"RBAC fault recovered for {service}: Restored original deployment and cleaned up resources\n")
+            print(f"RBAC fault recovered for {service}")
 
         self.kubectl.wait_for_ready(self.namespace)
 
