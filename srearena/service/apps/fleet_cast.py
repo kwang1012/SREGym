@@ -11,7 +11,7 @@ from srearena.observer.logstash.jaeger.jaeger import Jaeger
 from srearena.paths import FLEET_CAST_METADATA
 from srearena.service.apps import tidb_prometheus
 from srearena.service.apps.base import Application
-from srearena.service.apps.cluster_session import ClusterSession
+from srearena.service.apps.cluster_session import TiDBClusterDeployHelper
 from srearena.service.apps.tidb_cluster_operator import TiDBClusterDeployer
 from srearena.service.helm import Helm
 from srearena.service.kubectl import KubeCtl
@@ -89,7 +89,7 @@ class FleetCast(Application):
         print("Deploying TiDB Cluster with Operator...")
         base_dir = Path(__file__).parent.parent
         meta_path = base_dir / "metadata" / "tidb_metadata.json"
-        ClusterSession.running_cluster()
+        TiDBClusterDeployHelper.running_cluster()
         print("---DEPLOYED TiDB CLUSTER---")
 
         Helm.add_repo("fleetcast", "https://lilygn.github.io/FleetCast")

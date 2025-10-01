@@ -4,7 +4,7 @@ from pathlib import Path
 from srearena.service.apps.tidb_cluster_operator import TiDBClusterDeployer
 
 
-class ClusterSession:
+class TiDBClusterDeployHelper:
     _ready = False
 
     @classmethod
