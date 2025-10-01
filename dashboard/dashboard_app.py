@@ -815,7 +815,7 @@ class SREArenaDashboardServer:
                     },
                 ),
                 # Timer component
-                dcc.Interval(id="interval-component", interval=1000, n_intervals=0),  # Update every 3 seconds
+                dcc.Interval(id="interval-component", interval=5000, n_intervals=0),  # Update every 3 seconds
             ],
             style={
                 "font-family": "Arial, sans-serif",
@@ -850,12 +850,14 @@ class SREArenaDashboardServer:
             print(f"<<<<<<<<<< Try update rows: {n}, children: {len(current_children) if current_children else 0}")
 
             # Collect realtime cluster data outside of lock (can be slow)
-            realtime_state = self._collect_cluster_data(self.namespace)
+            
 
             # Try to enter critical section without blocking
             if not self._state_lock.acquire(blocking=False):
                 return dash.no_update, None
             try:  
+                
+                realtime_state = self._collect_cluster_data(self.namespace)
                 # Drain all pending logs under the state lock to preserve ordering
                 new_logs = self._drain_log_queue()
                 print(f"<<<<<<<<<< Entered critical section, Fetched New logs: {len(new_logs)}, children: {len(current_children) if current_children else 0}")

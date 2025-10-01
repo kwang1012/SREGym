@@ -66,7 +66,7 @@ async_tools:
       The tool to submit benchmark results
           
           Args:
-              ans (str): the answer you would like to submit to the benchmark
+              ans (str): the answer you would like to submit to the benchmark. You should submit a python-formatted list of string(s) to indicate the faulty components. And you should use the single quotes to wrap the string(s) in the list.
 prompts_path: localization_agent_prompts.yaml
 
 
