@@ -236,19 +236,7 @@ class ProblemRegistry:
             # ad hoc:
             "kubelet_crash": KubeletCrash,
             "workload_imbalance": WorkloadImbalance,
-            # ==================== K8S OPERATOR MISOPERATION (COMMENTED OUT) ==================
-            # K8S operator misoperation -> Refactor later, not sure if they're working
-            # They will also need to be updated to the new problem format.
-            # "operator_overload_replicas-detection-1": K8SOperatorOverloadReplicasDetection,
-            # "operator_overload_replicas-localization-1": K8SOperatorOverloadReplicasLocalization,
-            # "operator_non_existent_storage-detection-1": K8SOperatorNonExistentStorageDetection,
-            # "operator_non_existent_storage-localization-1": K8SOperatorNonExistentStorageLocalization,
-            # "operator_invalid_affinity_toleration-detection-1": K8SOperatorInvalidAffinityTolerationDetection,
-            # "operator_invalid_affinity_toleration-localization-1": K8SOperatorInvalidAffinityTolerationLocalization,
-            # "operator_security_context_fault-detection-1": K8SOperatorSecurityContextFaultDetection,
-            # "operator_security_context_fault-localization-1": K8SOperatorSecurityContextFaultLocalization,
-            # "operator_wrong_update_strategy-detection-1": K8SOperatorWrongUpdateStrategyDetection,
-            # "operator_wrong_update_strategy-localization-1": K8SOperatorWrongUpdateStrategyLocalization,
+            # ==================== K8S OPERATOR MISOPERATION ==================
             "operator_overload_replicas": K8SOperatorOverloadReplicasFault,
             "operator_non_existent_storage": K8SOperatorNonExistentStorageFault,
             "operator_invalid_affinity_toleration": K8SOperatorInvalidAffinityTolerationFault,
