@@ -1,18 +1,18 @@
 """Adopted from previous project"""
 
+import json
 import logging
 import os
 import time
-import json
 from typing import Any, Dict, Optional
 
 import litellm
 from dotenv import load_dotenv
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_ibm import ChatWatsonx
 from langchain_litellm import ChatLiteLLM
 from langchain_openai import ChatOpenAI
-from langchain_google_genai import ChatGoogleGenerativeAI
 from litellm.utils import trim_messages
 from requests.exceptions import HTTPError
 
@@ -57,7 +57,7 @@ class LiteLLMBackend:
         self.max_tokens = max_tokens
         self.extra_headers = extra_headers
         litellm.drop_params = True
-        litellm.modify_params = True # for Anthropic
+        litellm.modify_params = True  # for Anthropic
 
     def inference(
         self,
@@ -97,15 +97,15 @@ class LiteLLMBackend:
         else:
             raise ValueError(f"messages must be either a string or a list of dicts, but got {type(messages)}")
 
-        '''
+        """
         messsage_content_all = ""
         for message in prompt_messages:
             messsage_content_all += message.content + "\n"
             # print(f"[[PROMPT]] {message.content}")
         arena_logger = logging.getLogger("srearena-global")
         arena_logger.info(f"[PROMPT] {messsage_content_all}")
-        '''
-        
+        """
+
         if self.provider == "watsonx":
             llm = ChatWatsonx(
                 model_id=self.model_name,
@@ -113,6 +113,14 @@ class LiteLLMBackend:
                 project_id=os.environ["WX_PROJECT_ID"],
                 apikey=self.api_key,
                 temperature=self.temperature,
+            )
+        # FIXME: openai client is broken, but we can just use LiteLLM to use openai
+        elif self.provider == "openai":
+            llm = ChatLiteLLM(
+                model=self.model_name,
+                temperature=self.temperature,
+                top_p=self.top_p,
+                api_key=self.api_key,
             )
         elif self.provider == "litellm":
             llm = ChatLiteLLM(
@@ -142,14 +150,16 @@ class LiteLLMBackend:
         # Retry logic for rate-limiting
         retry_delay = LLM_QUERY_INIT_RETRY_DELAY
         trim_message = False
-        
+
         for attempt in range(LLM_QUERY_MAX_RETRIES):
             try:
                 # trim the first ten message who are AI messages and user messages
                 if trim_message:
                     arena_logger = logging.getLogger("srearena-global")
                     new_prompt_messages = trim_messages(prompt_messages)
-                    arena_logger.info(f"[WARNING] Trimming the AI messages and user messages from {len(prompt_messages)} to {len(new_prompt_messages)}")
+                    arena_logger.info(
+                        f"[WARNING] Trimming the AI messages and user messages from {len(prompt_messages)} to {len(new_prompt_messages)}"
+                    )
                 completion = llm.invoke(input=prompt_messages)
                 # logger.info(f">>> llm response: {completion}")
                 return completion
@@ -163,7 +173,7 @@ class LiteLLMBackend:
                 # else:
                 #     logger.error(f"HTTP error occurred: {e}")
                 #     raise
-                
+
             except litellm.RateLimitError as e:
                 provider_delay = _extract_retry_delay_seconds_from_exception(e)
                 if provider_delay is not None and provider_delay > 0:
@@ -172,7 +182,7 @@ class LiteLLMBackend:
                         f"[WARNING] Rate-limited by provider. Retrying in {provider_delay} seconds... (Attempt {attempt + 1}/{LLM_QUERY_MAX_RETRIES})"
                     )
                     time.sleep(provider_delay)
-                else: # actually this fallback should not happen
+                else:  # actually this fallback should not happen
                     arena_logger = logging.getLogger("srearena-global")
                     arena_logger.info(
                         f"Rate-limited. Retrying in {retry_delay} seconds... (Attempt {attempt + 1}/{LLM_QUERY_MAX_RETRIES})"
@@ -181,14 +191,14 @@ class LiteLLMBackend:
                     retry_delay *= 2  # Exponential backoff
             except IndexError as e:
                 arena_logger = logging.getLogger("srearena-global")
-                arena_logger.info(
-                    f"[ERROR] IndexError occurred on Gemini Server Side: {e}, keep calm for a while..."
-                )
+                arena_logger.info(f"[ERROR] IndexError occurred on Gemini Server Side: {e}, keep calm for a while...")
                 trim_message = True
                 time.sleep(30)
                 if attempt == range(LLM_QUERY_MAX_RETRIES) - 1:
                     arena_logger = logging.getLogger("srearena-global")
-                    arena_logger.info(f"[WARNING] Max retries exceeded due to index error. Unable to complete the request.")
+                    arena_logger.info(
+                        f"[WARNING] Max retries exceeded due to index error. Unable to complete the request."
+                    )
                     # return an error
                     return {"messages": []}
             except Exception as e:
@@ -228,7 +238,7 @@ def _parse_duration_to_seconds(duration: Any) -> Optional[float]:
 
 def _extract_retry_delay_seconds_from_exception(exc: BaseException) -> Optional[float]:
     """Extract retry delay seconds from JSON details RetryInfo only.
-    
+
     Returns 60.0 if no RetryInfo found in error details.
     """
     candidates: list[Any] = []
