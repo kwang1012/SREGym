@@ -757,3 +757,5 @@ srearena/conductor/tasklist.yml
 # HTMLs
 *.html
 *.csv
+kubeconfig.yaml
+
