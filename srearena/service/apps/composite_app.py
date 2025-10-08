@@ -8,6 +8,7 @@ from srearena.service.apps.base import Application
 
 class CompositeApp:
     def __init__(self, apps: list[Application]):
+        self.namespace = "Multiple namespaces"
         self.apps = {}
         for app in apps:
             if app.name in self.apps.keys():
@@ -16,6 +17,8 @@ class CompositeApp:
             self.apps[app.name] = app
         print(f"[CompositeApp] Apps: {self.apps}")
         self.name = "CompositeApp"
+        self.app_name = "CompositeApp"
+        self.description = f"Composite application containing {len(self.apps)} apps: {', '.join(self.apps.keys())}"
 
     def deploy(self):
         # FIXME: this can be optimized to parallel deploy later
