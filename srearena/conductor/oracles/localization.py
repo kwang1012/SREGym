@@ -3,30 +3,42 @@ from srearena.conductor.oracles.utils import is_exact_match, is_subset
 
 
 class LocalizationOracle(Oracle):
-    def __init__(self, problem, expected: list[str]):
+    def __init__(self, problem, expected: list[str] | str):
         super().__init__(problem)
-        self.expected = expected
+        # Normalize expected to list of strings
+        if isinstance(expected, str):
+            self.expected = [expected]
+        elif isinstance(expected, list):
+            # Flatten if nested and ensure all items are strings
+            flattened = []
+            for item in expected:
+                if isinstance(item, list):
+                    flattened.extend([str(x) for x in item])
+                else:
+                    flattened.append(str(item))
+            self.expected = flattened
+        else:
+            self.expected = [str(expected)]
 
     def evaluate(self, solution) -> dict:
         print("== Localization Evaluation ==")
         results = {}
 
-        # Normalize string input to list
+        # Normalize solution to list of strings
         if isinstance(solution, str):
-            solution = [solution]
-        elif not isinstance(solution, list):
+            # Check if it's a comma-separated list
+            if "," in solution:
+                solution = [s.strip() for s in solution.split(",")]
+            else:
+                solution = [solution]
+        elif isinstance(solution, list):
+            # Ensure all items are strings
+            solution = [str(item) for item in solution]
+        else:
             results["accuracy"] = 0.0
             results["success"] = False
             results["is_subset"] = False
             print("❌ Invalid format: expected string or list of strings")
-            return results
-
-        # Safety check: ensure all items are strings
-        if not all(isinstance(item, str) for item in solution):
-            results["accuracy"] = 0.0
-            results["success"] = False
-            results["is_subset"] = False
-            print("❌ Invalid content: all items must be strings")
             return results
 
         is_exact = is_exact_match(solution, self.expected)

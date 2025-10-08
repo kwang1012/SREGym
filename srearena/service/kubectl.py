@@ -40,6 +40,22 @@ class KubeCtl:
     def list_nodes(self):
         """Return a list of all running nodes."""
         return self.core_v1_api.list_node()
+    
+    def get_concise_deployments_info(self, namespace=None):
+        """Return a concise info of a deployment."""
+        cmd = f"kubectl get deployment {f'-n {namespace}' if namespace else ''} -o wide"
+        result = self.exec_command(cmd)
+        return result
+
+    def get_concise_pods_info(self, namespace=None):
+        """Return a concise info of a pod."""
+        cmd = f"kubectl get pod {f'-n {namespace}' if namespace else ''} -o wide"
+        result = self.exec_command(cmd)
+        return result
+    
+    def list_deployments(self, namespace):
+        """Return a list of all deployments within a specified namespace."""
+        return self.apps_v1_api.list_namespaced_deployment(namespace)
 
     def get_cluster_ip(self, service_name, namespace):
         """Retrieve the cluster IP address of a specified service within a namespace."""

@@ -12,19 +12,21 @@ class IncorrectImage(Problem):
         self.app = AstronomyShop()
         self.kubectl = KubeCtl()
         self.namespace = self.app.namespace
-        self.faulty_services = ["product-catalog"]
+        self.faulty_service = ["product-catalog"]
         self.injector = ApplicationFaultInjector(namespace=self.namespace)
         super().__init__(app=self.app, namespace=self.namespace)
 
-        self.localization_oracle = LocalizationOracle(problem=self, expected=self.faulty_services)
-        self.mitigation_oracle = IncorrectImageMitigationOracle(problem=self, actual_images={"product-catalog": "app-image:latest"})
+        self.localization_oracle = LocalizationOracle(problem=self, expected=self.faulty_service)
+        self.mitigation_oracle = IncorrectImageMitigationOracle(
+            problem=self, actual_images={"product-catalog": "app-image:latest"}
+        )
 
         self.app.create_workload()
 
     @mark_fault_injected
     def inject_fault(self):
         print("== Fault Injection ==")
-        for service in self.faulty_services:
+        for service in self.faulty_service:
             self.injector.inject_incorrect_image(
                 deployment_name=service, namespace=self.namespace, bad_image="app-image:latest"
             )
@@ -33,7 +35,7 @@ class IncorrectImage(Problem):
     @mark_fault_injected
     def recover_fault(self):
         print("== Fault Recovery ==")
-        for service in self.faulty_services:
+        for service in self.faulty_service:
             self.injector.recover_incorrect_image(
                 deployment_name=service,
                 namespace=self.namespace,

@@ -30,7 +30,7 @@ def submit(ans: str) -> dict[str, str]:
     url = langgraph_tool_config.benchmark_submit_url
     headers = {"Content-Type": "application/json"}
     # Match curl behavior: send "\"yes\"" when ans is "yes"
-    payload = {"solution": f'"{ans}"'}
+    payload = {"solution": f'{ans}'}
 
     try:
         response = requests.post(url, json=payload, headers=headers)

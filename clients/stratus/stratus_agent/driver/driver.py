@@ -543,18 +543,18 @@ async def main():
 
     # run mitigation task 1 time for mitigation
     # it includes retry logics
-    # logger.info("*" * 25 + " Starting [mitigation agent] for [mitigation] " + "*" * 25)
-    # mitigation_agent_exec_stats = await mitigation_task_main(localization_fault_summary)
-    # agent_names.extend(mitigation_agent_exec_stats["agent_name"])
-    # agent_in_tokens.extend(mitigation_agent_exec_stats["input_tokens"])
-    # agent_out_tokens.extend(mitigation_agent_exec_stats["output_tokens"])
-    # agent_total_tokens.extend(mitigation_agent_exec_stats["total_tokens"])
-    # agent_times.extend(mitigation_agent_exec_stats["time"])
-    # agent_steps.extend(mitigation_agent_exec_stats["steps"])
-    # agent_retry_attempts.extend(mitigation_agent_exec_stats["num_retry_attempts"])
-    # agent_rollback_stack.extend(mitigation_agent_exec_stats["rollback_stack"])
-    # agent_oracle_results.extend(mitigation_agent_exec_stats["oracle_results"])
-    # logger.info("*" * 25 + " Finished [mitigation agent] " + "*" * 25)
+    logger.info("*" * 25 + " Starting [mitigation agent] for [mitigation] " + "*" * 25)
+    mitigation_agent_exec_stats = await mitigation_task_main(localization_fault_summary)
+    agent_names.extend(mitigation_agent_exec_stats["agent_name"])
+    agent_in_tokens.extend(mitigation_agent_exec_stats["input_tokens"])
+    agent_out_tokens.extend(mitigation_agent_exec_stats["output_tokens"])
+    agent_total_tokens.extend(mitigation_agent_exec_stats["total_tokens"])
+    agent_times.extend(mitigation_agent_exec_stats["time"])
+    agent_steps.extend(mitigation_agent_exec_stats["steps"])
+    agent_retry_attempts.extend(mitigation_agent_exec_stats["num_retry_attempts"])
+    agent_rollback_stack.extend(mitigation_agent_exec_stats["rollback_stack"])
+    agent_oracle_results.extend(mitigation_agent_exec_stats["oracle_results"])
+    logger.info("*" * 25 + " Finished [mitigation agent] " + "*" * 25)
 
     for lst in [
         agent_names,

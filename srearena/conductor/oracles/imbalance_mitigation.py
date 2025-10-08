@@ -15,7 +15,7 @@ class ImbalanceMitigationOracle(Oracle):
 
         kubectl = self.problem.kubectl
         namespace = self.problem.namespace
-        deployment_names = self.problem.faulty_services
+        deployment_names = self.problem.faulty_service
         results = {}
 
         results["success"] = True

@@ -67,4 +67,7 @@ class ChaosInjector:
             result = self.kubectl.exec_command(command)
             print(f"Cleaned up chaos experiment: {result}")
         except Exception as e:
+            chaos_yaml_path = f"/tmp/{experiment_name}.yaml"
+            command = f"kubectl delete -f {chaos_yaml_path} --force --grace-period=0"
+            result = self.kubectl.exec_command(command)
             raise RuntimeError(f"Error cleaning up chaos experiment: {e}") from e

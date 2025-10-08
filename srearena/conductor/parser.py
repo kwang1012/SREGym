@@ -2,7 +2,7 @@
 
 import ast
 import re
-
+import logging
 
 class ResponseParsingError(Exception):
     def __init__(self, message):
@@ -12,7 +12,7 @@ class ResponseParsingError(Exception):
 
 class ResponseParser:
     def __init__(self):
-        pass
+        self.logger = logging.getLogger("srearena-global")
 
     def parse(self, response: str) -> dict:
         """Parses the response string to extract the API name and arguments.
@@ -147,6 +147,7 @@ class ResponseParser:
 
                 return args, kwargs
             except Exception as e:
+                self.logger.info(f"[ERROR] Error parsing response: {str(e)}")
                 raise ResponseParsingError(f"Error parsing response: {str(e)}")
 
         raise ResponseParsingError("No API call found!")

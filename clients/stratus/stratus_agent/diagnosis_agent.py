@@ -71,6 +71,11 @@ class DiagnosisAgent(BaseAgent):
 
         if len(starting_prompts) == 0:
             raise ValueError("No prompts used to start the conversation!")
+        
+        all_init_prompts = ""
+        for prompt in starting_prompts:
+            all_init_prompts += prompt.content + "\n"
+        self.arena_logger.info(f"[PROMPT] \n {all_init_prompts}")
 
         graph_events = []
         while True:
@@ -109,6 +114,8 @@ class DiagnosisAgent(BaseAgent):
             if last_state.values["submitted"]:
                 logger.info("agent submitted, breaking loop.")
                 break
+            
+            # print(f"================{last_state.values['num_steps']}===============")
 
         return last_state
 

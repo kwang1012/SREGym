@@ -32,6 +32,7 @@ class BaseAgent:
         self.process_tool_call_node = "process_tool_call"
         self.post_round_process_node = "post_round_process"
         self.callback = UsageMetadataCallbackHandler()
+        self.arena_logger = logging.getLogger("srearena-global")
 
     def llm_inference_step(self, messages, tools):
         return self.llm.inference(messages=messages, tools=tools)
@@ -42,6 +43,7 @@ class BaseAgent:
             + self.tool_descs
             + "Choose a tool from the list and output the tool name. Justify your tool choice. In the next step, you will generate a tool call for this tool"
         )
+        self.arena_logger.info(f"[PROMPT] Framework prompt: \n {human_prompt.content}")
         return {
             "messages": [human_prompt],
         }
@@ -49,12 +51,18 @@ class BaseAgent:
     def llm_thinking_step(self, state: State):
         # planning step, not providing tool
         ai_message = self.llm_inference_step(state["messages"], tools=None)
+        self.arena_logger.info(f"[LLM] \n {ai_message.content}")
+        if ai_message.content == "Server side error":
+            return {
+                "messages": [],
+            }
         return {
             "messages": [ai_message],
         }
 
     def llm_tool_call_prompt_inject_step(self, state: State):
         human_prompt = HumanMessage(content="Now generate a tool call according to your last chosen tool.")
+        self.arena_logger.info(f"[PROMPT] \n {human_prompt.content}")
         return {
             "messages": [human_prompt],
         }
@@ -70,6 +78,10 @@ class BaseAgent:
                 ai_message = (self.llm_inference_step(state["messages"], tools=self.sync_tools),)
             else:
                 ai_message = self.llm_inference_step(state["messages"], tools=[*self.sync_tools, *self.async_tools])
+        if ai_message.content == "Server side error":
+            return {
+                "messages": [],
+            }
         return {
             "messages": [ai_message],
         }
@@ -82,6 +94,7 @@ class BaseAgent:
     def post_round_process(self, state: State):
         logger.info("agent finished a round")
         logger.info("currently only incrementing step")
+        self.arena_logger.info("[SPLIT]")
         return {
             "num_steps": state["num_steps"] + 1,
         }
@@ -90,14 +103,21 @@ class BaseAgent:
         human_prompt = HumanMessage(
             content="You have reached your step limit, please submit your results by generating a `submit` tool's tool call."
         )
+        self.arena_logger.info("[WARNING] Agent has not solved the problem until the step limit, force submission.")
+        self.arena_logger.info(f"[PROMPT] \n {human_prompt.content}")
         return {"messages": [human_prompt]}
 
     def llm_force_submit_tool_call_step(self, state: State):
-        return {"messages": self.llm_inference_step(state["messages"], tools=[self.submit_tool])}
+        result = self.llm_inference_step(state["messages"], tools=[self.submit_tool])
+        self.arena_logger.info(f"[LLM] \n {result.content}")
+        return {"messages": result}
 
     def save_agent_graph_to_png(self):
-        with open("./agent_graph.png", "wb") as png:
-            png.write(self.graph.get_graph().draw_mermaid_png())
+        try: # in case the service times out
+            with open("./agent_graph.png", "wb") as png:
+                png.write(self.graph.get_graph().draw_mermaid_png())
+        except Exception as e:
+            logger.error(f"Error saving agent graph to PNG: {e}")
 
     def clear_memory(self):
         if not hasattr(self, "memory_saver"):

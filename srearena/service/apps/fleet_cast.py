@@ -8,7 +8,7 @@ from pathlib import Path
 
 from srearena.generators.workload.locust import LocustWorkloadManager
 from srearena.observer import tidb_prometheus
-from srearena.observer.cluster_session import TiDBClusterDeployHelper
+from srearena.observer.tidb_cluster_deploy_helper import TiDBClusterDeployHelper
 from srearena.observer.logstash.jaeger.jaeger import Jaeger
 from srearena.paths import FLEET_CAST_METADATA
 from srearena.service.apps.base import Application

@@ -13,13 +13,16 @@ class FaultyImageCorrelated(Problem):
         self.app = HotelReservation()
         self.kubectl = KubeCtl()
         self.namespace = self.app.namespace
-        self.faulty_services = ["frontend", "geo", "profile", "rate", "recommendation", "reservation", "user", "search"]
+        self.faulty_service = ["frontend", "geo", "profile", "rate", "recommendation", "reservation", "user", "search"]
         self.injector = ApplicationFaultInjector(namespace=self.namespace)
         super().__init__(app=self.app, namespace=self.namespace)
 
-        self.localization_oracle = LocalizationOracle(problem=self, expected=self.faulty_services)
+        self.localization_oracle = LocalizationOracle(problem=self, expected=[self.faulty_service])
         # not really the incorrect image problem, just reuse the incorrect image function
-        self.mitigation_oracle = IncorrectImageMitigationOracle(problem=self, actual_images={service: "jackcuii/hotel-reservation:latest" for service in self.faulty_services})
+        self.mitigation_oracle = IncorrectImageMitigationOracle(
+            problem=self,
+            actual_images={service: "jackcuii/hotel-reservation:latest" for service in self.faulty_service},
+        )
 
         self.app.create_workload()
 
@@ -27,7 +30,7 @@ class FaultyImageCorrelated(Problem):
     def inject_fault(self):
         print("== Fault Injection ==")
         # not really the incorrect image problem, just reuse the incorrect image function
-        for service in self.faulty_services:
+        for service in self.faulty_service:
             self.injector.inject_incorrect_image(
                 deployment_name=service, namespace=self.namespace, bad_image="jackcuii/hotel-reservation:latest"
             )
@@ -36,7 +39,7 @@ class FaultyImageCorrelated(Problem):
     @mark_fault_injected
     def recover_fault(self):
         print("== Fault Recovery ==")
-        for service in self.faulty_services:
+        for service in self.faulty_service:
             self.injector.recover_incorrect_image(
                 deployment_name=service,
                 namespace=self.namespace,
