@@ -6,6 +6,8 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
+mcp_server_port = os.getenv("MCP_SERVER_PORT", "8001")
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
@@ -28,7 +30,7 @@ class ObservabilityClient:
             if observability_url is not None:
                 self.observability_server_url = observability_url
             else:
-                self.observability_server_url = "http://localhost:8000"
+                self.observability_server_url = f"http://localhost:{mcp_server_port}"
 
         logger.info(f"observability endpoint is: {self.observability_server_url}")
 

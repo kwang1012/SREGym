@@ -22,7 +22,7 @@ from clients.stratus.tools.stateful_async_tool_node import StatefulAsyncToolNode
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-KUBECTL_TOOLS_MCP_URL = "http://127.0.0.1:8000/kubectl_mcp_tools/sse"
+KUBECTL_TOOLS_MCP_URL = f"http://127.0.0.1:{os.getenv("MCP_SERVER_PORT", "8001")}/kubectl_mcp_tools/sse"
 
 
 def route_tools(state: State):

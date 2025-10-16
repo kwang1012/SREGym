@@ -5,7 +5,6 @@ from pydantic import BaseModel, Field
 
 load_dotenv()
 
-
 # FIXME: name of class is misleading for now
 class LanggraphToolConfig(BaseModel):
     prometheus_mcp_url: str = Field(
@@ -22,15 +21,15 @@ class LanggraphToolConfig(BaseModel):
     )
     benchmark_submit_url: str = Field(
         description="url for the submission result destination, default to http://localhost:8000/submit",
-        default=f"http://localhost:8000/submit",
+        default=f"http://localhost:{os.getenv("API_PORT", "8000")}/submit",
     )
     benchmark_app_info_url: str = Field(
         description="url for getting benchmark application information, default to http://localhost:8000/get_app",
-        default=f"http://localhost:8000/get_app",
+        default=f"http://localhost: {os.getenv("API_PORT", "8000")}/get_app",
     )
     benchmark_current_problem: str = Field(
         description="url for getting current benchmark problem, default to http://localhost:8000/get_problem",
-        default=f"http://localhost:8000/get_problem",
+        default=f"http://localhost:{os.getenv("API_PORT", "8000")}/get_problem",
     )
 
     min_len_to_sum: int = Field(
