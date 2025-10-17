@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import traceback
 
 import requests
 from fastmcp import FastMCP
@@ -38,6 +39,7 @@ def submit(ans: str) -> dict[str, str]:
         response = requests.post(url, json=payload, headers=headers)
         logger.info(f"[submit_mcp] Response status: {response.status_code}, text: {response.text}")
         return {"status": str(response.status_code), "text": str(response.text)}
+
     except Exception as e:
         logger.error(f"[submit_mcp] HTTP submission failed: {e}")
         return {"status": "N/A", "text": f"[submit_mcp] HTTP submission failed: {e}"}
@@ -47,11 +49,34 @@ def submit(ans: str) -> dict[str, str]:
 async def localization(
     resource_type: str,
     resource_name: str,
+    namespace: str,
 ) -> dict[str, str]:
     try:
-        uid = await get_resource_uid(resource_type, resource_name)
-        logger.info(f"[localization_mcp]: Retrieved UID: {uid}")
-        return {"uid": str(uid)}
+        cmd = [
+            "kubectl",
+            "get",
+            resource_type,
+            resource_name,
+            "-n",
+            namespace,
+            "-o",
+            "jsonpath={.metadata.uid}",
+        ]
+        logger.info(f"[localization_mcp] Running command: {' '.join(cmd)}")
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await proc.communicate()
+        if proc.returncode != 0:
+            err_msg = stderr.decode().strip()
+            logger.error(f"[localization_mcp] Error retrieving UID: {err_msg}")
+            return {"uid": f"Error: {err_msg}"}
+        uid = stdout.decode().strip()
+        logger.info(f"[localization_mcp] Retrieved UID: {uid}")
+        return {"uid": uid}
     except Exception as e:
-        logger.error(f"[localization_mcp] HTTP call failed: {e}")
-        return {"error": f"[localization_mcp] call failed: {e}"}
+        logger.error(f"[localization_mcp] Exception occurred: {e}")
+        logger.error(traceback.format_exc())
+        return {"uid": f"Exception: {e}"}
