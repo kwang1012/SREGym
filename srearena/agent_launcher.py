@@ -1,16 +1,19 @@
 import os
+import subprocess
 import sys
 import threading
-import subprocess
-from typing import Dict, Optional
 from datetime import datetime
+from typing import Dict, Optional
+
 from .agent_registry import AgentRegistration
+
 
 class AgentProcess:
     def __init__(self, name: str, proc: subprocess.Popen):
         self.name = name
         self.proc = proc
         self.started_at = datetime.utcnow()
+
 
 class AgentLauncher:
     def __init__(self):
@@ -34,8 +37,8 @@ class AgentLauncher:
             env=env,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            text=True,              
-            bufsize=1,              
+            text=True,
+            bufsize=1,
             universal_newlines=True,
         )
         ap = AgentProcess(reg.name, proc)
@@ -49,7 +52,7 @@ class AgentLauncher:
             return
         for line in proc.stdout:
             try:
-                sys.stdout.write(f"[{name}] {line}")
+                sys.stdout.write(f"[{line}")
                 sys.stdout.flush()
             except Exception:
                 break
