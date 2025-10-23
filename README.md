@@ -33,22 +33,30 @@ See a complete problem list with descriptions [here](https://docs.google.com/spr
 We recommend [uv](https://github.com/astral-sh/uv) for managing dependencies. You can also use a standard `pip install -e .` to install the dependencies.
 
 ```bash
-git clone --recurse-submodules <CLONE_PATH_TO_THE_REPO>
+git clone --recurse-submodules https://github.com/xlab-uiuc/SREArena
 cd SREArena
-which python3.12 # finds the python interpreter path
-uv venv -p <python_interpreter_path>
-source .venv/bin/activate
 uv sync
-pre-commit install
+uv run pre-commit install
 ```
 
 <h2 id="🚀quickstart">🚀 Setup Your Cluster</h2>
 
-<!-- TODO: Add instructions for both local cluster and remote cluster -->
 Choose either a) or b) to set up your cluster and then proceed to the next steps.
 
-### a) Local simulated cluster
-SREArena can be run on a local simulated cluster using [kind](https://kind.sigs.k8s.io/) on your local machine.
+### a) Kubernetes Cluster (Recommended)
+SREArena supports any remote kubernetes cluster that your `kubectl` context is set to, whether it's a cluster from a cloud provider or one you build yourself. 
+
+We have some Ansible playbooks to setup clusters on providers like [CloudLab](https://www.cloudlab.us/) and our own machines. Follow this [README](./scripts/ansible/README.md) to set up your own cluster.
+
+<h2 id="⚙️usage">⚙️ Usage</h2>
+
+SREArena can be used in the following ways:
+- [Run agent on SREArena](#run-agent-on-srearena)
+- [Add new applications to SREArena](#how-to-add-new-applications-to-srearena)
+- [Add new problems to SREArena](#how-to-add-new-problems-to-srearena)
+
+### b) Emulated cluster
+SREArena can be run on an emulated cluster using [kind](https://kind.sigs.k8s.io/) on your local machine. However, not all problems are supported.
 
 ```bash
 # For x86 machines
@@ -61,18 +69,6 @@ kind create cluster --config kind/kind-config-arm.yaml
 If you're running into issues, consider building a Docker image for your machine by following this [README](kind/README.md). Please also open an issue.
 
 When using kind, each node pulls images from docker hub independently, which can easily hit the rate limitation. You can uncomment `containerdConfigPatches` in the corresponding kind config file to pull images from our exclusive image registry without rate limiting.
-
-### b) Remote cluster
-SREArena supports any remote kubernetes cluster that your `kubectl` context is set to, whether it's a cluster from a cloud provider or one you build yourself. 
-
-We have some Ansible playbooks to setup clusters on providers like [CloudLab](https://www.cloudlab.us/) and our own machines. Follow this [README](./scripts/ansible/README.md) to set up your own cluster.
-
-<h2 id="⚙️usage">⚙️ Usage</h2>
-
-SREArena can be used in the following ways:
-- [Run agent on SREArena](#run-agent-on-srearena)
-- [Add new applications to SREArena](#how-to-add-new-applications-to-srearena)
-- [Add new problems to SREArena](#how-to-add-new-problems-to-srearena)
 
 
 ### Run agent on SREArena
@@ -369,7 +365,7 @@ export no_proxy=localhost
 
 You can run the dashboard manually, using the command.
 ```
-python3 dashboard/dashboard_app.py
+python dashboard/dashboard_app.py
 ```
 The dashboard will be hosted at localhost:11451 by default.
 
