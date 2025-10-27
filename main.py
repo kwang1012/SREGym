@@ -9,7 +9,6 @@ from datetime import datetime
 
 import uvicorn
 from rich.console import Console
-from rich.prompt import Prompt
 
 from dashboard.dashboard_app import SREArenaDashboardServer
 from dashboard.proxy import LogProxy
@@ -145,7 +144,8 @@ def main():
     time.sleep(5)
     """
 
-    agent_name = Prompt.ask("[bold cyan]What would you like to call your agent?[/]", default="arena")
+    # Get agent name from environment variable or default to "agent"
+    agent_name = os.environ.get("SREARENA_AGENT", "agent")
     conductor = Conductor()
     conductor.register_agent(agent_name)
 
