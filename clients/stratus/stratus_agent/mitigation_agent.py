@@ -1,7 +1,7 @@
 import asyncio
 from pathlib import Path
 from typing import List
-
+import logging
 import yaml
 from langchain_core.callbacks import UsageMetadataCallbackHandler
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -12,11 +12,12 @@ from langgraph.types import StateSnapshot
 from clients.stratus.llm_backend.init_backend import get_llm_backend_for_tools
 from clients.stratus.stratus_agent.base_agent import BaseAgent
 from clients.stratus.stratus_agent.state import State
-from clients.stratus.stratus_utils.get_logger import get_logger
 from clients.stratus.stratus_utils.str_to_tool import str_to_tool
 from clients.stratus.tools.stratus_tool_node import StratusToolNode
 
-logger = get_logger()
+logger = logging.getLogger("all.stratus.mitigation")
+logger.propagate = True
+logger.setLevel(logging.DEBUG)
 
 
 class MitigationAgent(BaseAgent):
@@ -24,6 +25,8 @@ class MitigationAgent(BaseAgent):
         super().__init__(**kwargs)
         self.tool_node = None
         self.max_step = kwargs.get("max_step", 20)
+        self.loop_count = 0
+        self.local_logger = logging.getLogger("all.stratus.mitigation")
 
     def build_agent(self):
         self.tool_node = StratusToolNode(async_tools=self.async_tools, sync_tools=self.sync_tools)
@@ -75,17 +78,23 @@ class MitigationAgent(BaseAgent):
         if len(starting_prompts) == 0:
             raise ValueError("No prompts used to start the conversation!")
 
+        # Log starting prompts in full to arena logger
+        all_init_prompts = ""
+        for prompt in starting_prompts:
+            all_init_prompts += prompt.content + "\n"
+        self.arena_logger.info(f"[PROMPT] \n {all_init_prompts}")
+
         graph_events = []
         while True:
             graph_config = {"configurable": {"thread_id": "1"}}
+            logger.info(f"{'-' * 20} [Loop {self.loop_count}] {'-' * 20}")
             last_state = self.graph.get_state(config=graph_config)
-            # logger.info("last state: %s", last_state)
             if len(last_state.values) != 0:
-                logger.info("There were last states.")
+                logger.debug(f"[Loop {self.loop_count}] There were last {len(last_state.values)} states.")
                 # this is all the previous msgs the agent had, we just inherit them in the next graph traversal
                 state = last_state.values
             else:
-                logger.info("There were no states.")
+                logger.debug(f"[Loop {self.loop_count}] There were no states.")
                 # fresh agent start, init state here
                 state = {
                     "messages": starting_prompts,
@@ -106,12 +115,15 @@ class MitigationAgent(BaseAgent):
                 config={"recursion_limit": 10000, "configurable": {"thread_id": "1"}, "callbacks": [self.callback]},
                 stream_mode="values",
             ):
+                if (not graph_events) or event["messages"] != graph_events[-1]["messages"]:
+                    event["messages"][-1].pretty_print()
                 graph_events.append(event)
-                # event["messages"][-1].pretty_print()
             last_state = self.graph.get_state(config=graph_config)
             if last_state.values["submitted"]:
-                logger.info("agent submitted, breaking loop.")
+                logger.info(f"[Loop {self.loop_count}] Agent submitted, breaking loop.")
                 break
+            
+            self.loop_count += 1
 
         return last_state
 

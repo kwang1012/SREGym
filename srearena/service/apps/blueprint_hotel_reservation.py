@@ -1,5 +1,5 @@
 import time
-
+import logging
 from srearena.generators.workload.blueprint_hotel_work import BHotelWrk, BHotelWrkWorkloadManager
 from srearena.observer.trace_api import TraceAPI
 from srearena.paths import BLUEPRINT_HOTEL_RES_METADATA, FAULT_SCRIPTS, TARGET_MICROSERVICES
@@ -7,6 +7,10 @@ from srearena.service.apps.base import Application
 from srearena.service.kubectl import KubeCtl
 
 
+local_logger = logging.getLogger("all.application")
+local_logger.propagate = True
+local_logger.setLevel(logging.DEBUG)
+    
 class BlueprintHotelReservation(Application):
     def __init__(self):
         super().__init__(BLUEPRINT_HOTEL_RES_METADATA)
@@ -27,7 +31,7 @@ class BlueprintHotelReservation(Application):
 
     def deploy(self):
         """Deploy the Kubernetes configurations."""
-        print(f"Deploying Kubernetes configurations in namespace: {self.namespace}")
+        local_logger.info(f"Deploying Kubernetes configurations in namespace: {self.namespace}")
         self.create_namespace()
         self.kubectl.apply_configs(self.namespace, self.k8s_deploy_path)
         self.kubectl.wait_for_ready(self.namespace)

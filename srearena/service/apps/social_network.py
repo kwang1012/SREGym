@@ -9,7 +9,11 @@ from srearena.service.apps.base import Application
 from srearena.service.apps.helpers import get_frontend_url
 from srearena.service.helm import Helm
 from srearena.service.kubectl import KubeCtl
+import logging
 
+local_logger = logging.getLogger("all.srearena.social_network")
+local_logger.propagate = True
+local_logger.setLevel(logging.DEBUG)
 
 class SocialNetwork(Application):
     def __init__(self):
@@ -40,9 +44,9 @@ class SocialNetwork(Application):
                 f"-n {self.namespace}"
             )
             create_result = self.kubectl.exec_command(create_sec_command)
-            print(f"TLS secret created: {create_result.strip()}")
+            local_logger.debug(f"TLS secret created: {create_result.strip()}")
         else:
-            print("TLS secret already exists. Skipping creation.")
+            local_logger.debug("TLS secret already exists. Skipping creation.")
 
     def deploy(self):
         """Deploy the Helm configurations with architecture-aware image selection."""

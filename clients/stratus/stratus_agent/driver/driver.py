@@ -30,8 +30,10 @@ from clients.stratus.tools.submit_tool import manual_submit_tool
 from clients.stratus.weak_oracles.base_oracle import BaseOracle, OracleResult
 from clients.stratus.weak_oracles.cluster_state_oracle import ClusterStateOracle
 from clients.stratus.weak_oracles.workload_oracle import WorkloadOracle
-
-logger = get_logger()
+import logging
+logger = logging.getLogger("all.stratus.driver")
+logger.propagate = True
+logger.setLevel(logging.DEBUG)
 
 
 def get_current_datetime_formatted():
@@ -65,11 +67,11 @@ def get_app_info():
     url = ltc.benchmark_app_info_url
     try:
         response = requests.get(url)
-        logger.info(f"Response status: {response.status_code}, text: {response.text}")
+        logger.debug(f"Agent gets response: status: {response.status_code}, text: {response.text}")
         app_info_str = str(response.text)
-        logger.info(f"app info as str: {app_info_str}")
+        logger.debug(f"App info as str: {app_info_str} ")
         app_info = literal_eval(app_info_str)
-        logger.info(f"app info: {app_info}")
+        logger.debug(f"App info: {app_info}")
         return app_info
     except Exception as e:
         logger.error(f"[get_app_info] HTTP submission failed: {e}")
@@ -474,9 +476,10 @@ async def main():
     # here, running the file's main function should suffice.
     # 1 for noop diagnosis
     current_problem = get_curr_problem()
-    logger.info("*" * 25 + f" Testing {current_problem} ! " + "*" * 25)
-    logger.info("*" * 25 + f" Testing {current_problem} ! " + "*" * 25)
-    logger.info("*" * 25 + f" Testing {current_problem} ! " + "*" * 25)
+
+    # logger.info("*" * 25 + f" Testing {current_problem} ! " + "*" * 25)
+    # logger.info("*" * 25 + f" Testing {current_problem} ! " + "*" * 25)
+    # logger.info("*" * 25 + f" Testing {current_problem} ! " + "*" * 25)
     agent_output_df = pd.DataFrame()
     agent_names = []
     agent_in_tokens = []

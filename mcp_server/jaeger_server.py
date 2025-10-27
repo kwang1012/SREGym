@@ -4,10 +4,9 @@ from datetime import datetime, timedelta
 
 from fastmcp import FastMCP
 
-from clients.stratus.stratus_utils.get_logger import get_logger
 from mcp_server.utils import ObservabilityClient
 
-logger = get_logger()
+logger = logging.getLogger("all.mcp.jaeger_server")
 logger.info("Starting Jaeger MCP Server")
 mcp = FastMCP("Jaeger MCP Server")
 
@@ -22,7 +21,7 @@ def get_services() -> str:
         str: String of a list of service names available in Grafana or error information.
     """
 
-    logger.info("[ob_mcp] get_services called, getting jaeger services")
+    logger.debug("[ob_mcp] get_services called, getting jaeger services")
     jaeger_url = os.environ.get("JAEGER_BASE_URL", None)
     if jaeger_url is None:
         err_msg = "JAEGER_BASE_URL environment variable is not set!"
@@ -32,9 +31,9 @@ def get_services() -> str:
     try:
         url = f"{jaeger_url}/api/services"
         response = jaeger_client.make_request("GET", url)
-        logger.info(f"[ob_mcp] get_services status code: {response.status_code}")
-        logger.info(f"[ob_mcp] get_services result: {response}")
-        logger.info(f"[ob_mcp] result: {response.json()}")
+        logger.debug(f"[ob_mcp] get_services status code: {response.status_code}")
+        logger.debug(f"[ob_mcp] get_services result: {response}")
+        logger.debug(f"[ob_mcp] result: {response.json()}")
         services = str(response.json()["data"])
         return services if services else "None"
     except Exception as e:
@@ -54,7 +53,7 @@ def get_operations(service: str) -> str:
         str: String of a list of operation names associated with the specified service or error information.
     """
 
-    logger.info("[ob_mcp] get_operations called, getting jaeger operations")
+    logger.debug("[ob_mcp] get_operations called, getting jaeger operations")
     jaeger_url = os.environ.get("JAEGER_BASE_URL", None)
     if jaeger_url is None:
         err_msg = "JAEGER_BASE_URL environment variable is not set!"
@@ -65,7 +64,7 @@ def get_operations(service: str) -> str:
         url = f"{jaeger_url}/api/operations"
         params = {"service": service}
         response = jaeger_client.make_request("GET", url, params=params)
-        logger.info(f"[ob_mcp] get_operations: {response.status_code}")
+        logger.debug(f"[ob_mcp] get_operations: {response.status_code}")
         operations = str(response.json()["data"])
         return operations if operations else "None"
     except Exception as e:
@@ -86,7 +85,7 @@ def get_traces(service: str, last_n_minutes: int) -> str:
         str: String of Jaeger traces or error information
     """
 
-    logger.info("[ob_mcp] get_traces called, getting jaeger traces")
+    logger.debug("[ob_mcp] get_traces called, getting jaeger traces")
     jaeger_url = os.environ.get("JAEGER_BASE_URL", None)
     if jaeger_url is None:
         err_msg = "JAEGER_BASE_URL environment variable is not set!"
@@ -98,7 +97,7 @@ def get_traces(service: str, last_n_minutes: int) -> str:
         start_time = datetime.now() - timedelta(minutes=last_n_minutes)
         start_time = int(start_time.timestamp() * 1_000_000)
         end_time = int(datetime.now().timestamp() * 1_000_000)
-        logger.info(f"[ob_mcp] get_traces start_time: {start_time}, end_time: {end_time}")
+        logger.debug(f"[ob_mcp] get_traces start_time: {start_time}, end_time: {end_time}")
         params = {
             "service": service,
             "start": start_time,
@@ -106,7 +105,7 @@ def get_traces(service: str, last_n_minutes: int) -> str:
             "limit": 20,
         }
         response = jaeger_client.make_request("GET", url, params=params)
-        logger.info(f"[ob_mcp] get_traces: {response.status_code}")
+        logger.debug(f"[ob_mcp] get_traces: {response.status_code}")
         traces = str(response.json()["data"])
         return traces if traces else "None"
     except Exception as e:

@@ -12,7 +12,7 @@ from mcp_server.kubectl_server_helper.rollback_tool import RollbackCommand, Roll
 from mcp_server.kubectl_server_helper.utils import cleanup_kubernetes_yaml, parse_text
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("all.mcp.kubectl_cmd_runner")
 
 
 class KubectlCmdRunner:
@@ -32,7 +32,7 @@ class KubectlCmdRunner:
             if self.config.forbid_unsafe_commands and not self._is_kubectl_command_safe(command):
                 return "Command Rejected: Unsafe command detected. Please check the command and try again."
 
-            logger.info(f"Dry-run result: {dry_run_result.status}, description: {dry_run_result.description}")
+            logger.debug(f"Dry-run result: {dry_run_result.status}, description: {dry_run_result.description}")
 
             if dry_run_result.status == DryRunStatus.NOEFFECT:
                 result = self._execute_kubectl_command(command)
@@ -139,14 +139,14 @@ class KubectlCmdRunner:
         return False
 
     def _execute_kubectl_command(self, command: str):
-        logger.info(f"Executing command: {command}")
+        logger.debug(f"Executing command: {command}")
         result = KubeCtl.exec_command(command)
         if result.returncode == 0:
             output = parse_text(result.stdout, 1000)
-            logger.info(f"Kubectl MCP Tool command execution:\n{output}")
+            logger.debug(f"Kubectl MCP Tool command execution:\n{output}")
             return result.stdout
         else:
-            logger.error(f"Error executing kubectl command:\n{result.stderr}")
+            logger.warning(f"Error executing kubectl command:\n{result.stderr}")
             raise RuntimeError(f"Error executing kubectl command:\n{result.stderr}")
 
     def _gen_rollback_commands(self, command: str, dry_run_result: DryRunResult) -> RollbackNode:
@@ -242,9 +242,9 @@ class KubectlCmdRunner:
 
         return_value = RollbackNode(action=command, rollback=rollback_commands, cluster_state=full_state_file)
 
-        logger.info(f"Generated rollback action {rollback_commands} for '{command}'.")
+        logger.debug(f"Generated rollback action {rollback_commands} for '{command}'.")
         if self.config.validate_rollback:
-            logger.info(f"Namespace state stored in: {full_state_file}")
+            logger.debug(f"Namespace state stored in: {full_state_file}")
 
         return return_value
 
@@ -258,7 +258,7 @@ class KubectlCmdRunner:
         else:
             state_cmd = f"kubectl get {resource_type} {namespace_flag} -o yaml"
 
-        logger.info(f"Capturing cluster state with: {state_cmd}")
+        logger.debug(f"Capturing cluster state with: {state_cmd}")
 
         cluster_state = KubeCtl.exec_command_result(state_cmd)
 

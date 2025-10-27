@@ -9,7 +9,7 @@ from mcp_server.kubectl_server_helper.kubectl_tool_set import KubectlToolSet
 from mcp_server.kubectl_server_helper.sliding_lru_session_cache import SlidingLRUSessionCache
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("all.mcp.kubectl_mcp_tools")
 
 sessionCache = SlidingLRUSessionCache(
     max_size=kubectl_session_cfg.session_cache_size, ttl_seconds=kubectl_session_cfg.session_ttl
@@ -43,7 +43,7 @@ def get_tools(session_id: str) -> KubectlToolSet:
     if tool is not None:
         return tool
 
-    logger.info(f"Creating a new kubectl tool for session {session_id}.")
+    logger.debug(f"Creating a new kubectl tool for session {session_id}.")
     tool = KubectlToolSet(session_id)
     sessionCache[session_id] = tool
     return tool
@@ -63,7 +63,7 @@ def exec_kubectl_cmd_safely(cmd: str, ctx: Context) -> str:
     """
     ssid = extract_session_id(ctx)
     kubctl_tool = get_tools(ssid)
-    logger.info(f'session {ssid} is using tool "exec_kubectl_cmd_safely"; Command: {cmd}.')
+    logger.debug(f'session {ssid} is using tool "exec_kubectl_cmd_safely"; Command: {cmd}.')
     result = kubctl_tool.cmd_runner.exec_kubectl_cmd_safely(cmd)
     assert isinstance(result, str)
     return result
@@ -82,7 +82,7 @@ def rollback_command(ctx: Context) -> str:
     """
     ssid = extract_session_id(ctx)
     kubectl_tool = get_tools(ssid)
-    logger.info(f'session {ssid} is using tool "rollback_command".')
+    logger.debug(f'session {ssid} is using tool "rollback_command".')
     result = kubectl_tool.rollback_tool.rollback()
     assert isinstance(result, str)
     return f"{result}, action_stack: {kubectl_tool.rollback_tool.action_stack}"
@@ -103,6 +103,6 @@ def get_previous_rollbackable_cmd(ctx: Context) -> str:
     """
     ssid = extract_session_id(ctx)
     kubctl_tool = get_tools(ssid)
-    logger.info(f'session {ssid} is using tool "get_previous_rollbackable_cmd".')
+    logger.debug(f'session {ssid} is using tool "get_previous_rollbackable_cmd".')
     cmds = kubctl_tool.rollback_tool.get_previous_rollbackable_cmds()
     return "\n".join([f"{i + 1}. {cmd}" for i, cmd in enumerate(cmds)])

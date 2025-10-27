@@ -42,7 +42,8 @@ class Conductor:
         self.results = {}
 
         self.tasklist = None
-        self.logger = logging.getLogger("srearena-global")
+        self.logger = logging.getLogger("srearena-global") # this is for dashboard
+        self.local_logger = logging.getLogger("all.srearena.conductor")
 
         self.transient_config = {
             "switch": True,
@@ -60,6 +61,7 @@ class Conductor:
     def dependency_check(self, binaries: list[str]):
         for b in binaries:
             if shutil.which(b) is None:
+                self.local_logger.error(f"Required dependency '{b}' not found.")
                 raise RuntimeError(f"[❌] Required dependency '{b}' not found.")
 
     def get_tasklist(self):
@@ -69,21 +71,27 @@ class Conductor:
         with open(tasklist_path, "r") as f:
             tasklist = yaml.safe_load(f)
             if not tasklist:
-                raise RuntimeError("Badly formatted tasklist.yml")
+                msg = "Badly formatted tasklist.yml"
+                self.local_logger.error(msg)
+                raise RuntimeError(msg)
             problems = tasklist["all"]["problems"]
 
         if self.problem_id not in (problems if problems else []):
-            print("problem_id not found in tasklist. Currently assuming that all tasks will be run.")
+            self.local_logger.warning("problem_id not found in tasklist. Currently assuming that all tasks will be run.")
             self.tasklist = ["noop", "detection", "localization", "mitigation", "done"]
         else:
             problem_tasklist = problems[self.problem_id]
             if not problem_tasklist:
-                raise RuntimeError(f"No tasks specified for {self.problem_id}")
+                msg = f"No tasks specified for {self.problem_id}"
+                self.local_logger.error(msg)
+                raise RuntimeError(msg)
 
             if not is_ordered_subset(problem_tasklist, ["detection", "localization", "mitigation"]):
-                raise RuntimeError(f"Task list for {self.problem_id} is either out of order or has an unknown step")
+                msg = f"Task list for {self.problem_id} is either out of order or has an unknown step"
+                self.local_logger.error(msg)
+                raise RuntimeError(msg)
 
-            print(f"Tasklist specified for {self.problem_id}. Configured tasks to run: {problem_tasklist}")
+            self.local_logger.info(f"Tasklist specified for {self.problem_id}. Configured tasks to run: {problem_tasklist}")
 
             problem_tasklist.append("done")
             problem_tasklist.insert(0, "noop")
@@ -99,21 +107,27 @@ class Conductor:
         self.app = self.problem.app
         self.detection_oracle = DetectionOracle(self.problem)
         self.results = {}
-
+        
         self.dependency_check(["kubectl", "helm"])
-        print(f"[Session Start] Problem ID: {self.problem_id}")
+        self.local_logger.debug(f"Dependency check passed: kubectl, helm")
+        
+        self.local_logger.info(f"[Session Start] Problem ID: {self.problem_id}")
         self.logger.info(f"[STAGE] Start testing on problem: {self.problem_id}")
 
         self.fix_kubernetes()
 
         self.get_tasklist()
 
+        self.local_logger.info("Undeploying app leftovers...")
         self.undeploy_app()  # Cleanup any leftovers
+        self.local_logger.info("App leftovers undeployed.")
+        self.local_logger.info("Deploying app...")
         self.deploy_app()
+        self.local_logger.info("App deployed.")
 
         self.submission_stage = self.tasklist[0]  # always noop
 
-        print(f"✅ Deployment complete. Ready for submission. Current stage is: {self.tasklist[0]}")
+        self.local_logger.info(f"✅ Deployment complete. Ready for submission. Current stage is: {self.tasklist[0]}")
 
     async def submit(self, wrapped_cmd: str) -> dict:
         """
@@ -131,8 +145,10 @@ class Conductor:
 
         # NO-OP
         if self.submission_stage == "noop":
+            self.local_logger.info("Start Eval for Noop", extra={"sol": sol})
             r = self.detection_oracle.evaluate(sol)
             self.results["NOOP Detection"] = r
+            self.logger.info(f"[EVAL] NOOP Detection {"Succeed" if self.results["NOOP Detection"]["success"] else "Failed"}\n")
             if r.get("reason") == "Invalid Format":
                 return dict(self.results)
 
@@ -146,6 +162,7 @@ class Conductor:
 
         # DETECTION
         if self.submission_stage == "detection":
+            self.local_logger.info("Start Eval for Detection", extra={"sol": sol})
             r = self.detection_oracle.evaluate(sol)
             self.results["Detection"] = r
             self.results["TTD"] = time.time() - self.execution_start_time
@@ -155,6 +172,7 @@ class Conductor:
 
         # LOCALIZATION
         if self.submission_stage == "localization":
+            self.local_logger.info("Start Eval for Localization", extra={"sol": sol})
             r = self.problem.localization_oracle.evaluate(sol)
             self.results["Localization"] = r
             self.results["TTL"] = time.time() - self.execution_start_time
@@ -164,6 +182,7 @@ class Conductor:
 
         # MITIGATION
         if self.submission_stage == "mitigation":
+            self.local_logger.info("Start Eval for Mitigation", extra={"sol": sol})
             r = self.problem.mitigation_oracle.evaluate()
             self.results["Mitigation"] = r
             self.results["TTM"] = time.time() - self.execution_start_time
@@ -174,17 +193,17 @@ class Conductor:
         next_stage_idx = self.tasklist.index(self.submission_stage) + 1
 
         if self.tasklist[next_stage_idx] == "localization" and not self.problem.localization_oracle:
-            print("⏩ Localization oracle is not attached. Skipping localization.")
+            self.local_logger.info("⏩ Localization oracle is not attached. Skipping localization.")
             next_stage_idx += 1
 
         if self.tasklist[next_stage_idx] == "mitigation" and not self.problem.mitigation_oracle:
-            print("⏩ Mitigation oracle is not attached. Skipping mitigation.")
+            self.local_logger.info("⏩ Mitigation oracle is not attached. Skipping mitigation.")
             next_stage_idx += 1
 
         self.submission_stage = self.tasklist[next_stage_idx]
 
         if self.submission_stage != "done":
-            print(f"👉 Next task: {self.submission_stage}")
+            self.local_logger.info(f"👉 Next task: {self.submission_stage}")
             self.logger.info(f"[STAGE] Go to stage {self.submission_stage}")
             return dict(self.results)
         else:
@@ -203,21 +222,23 @@ class Conductor:
         return dict(self.results)
 
     def fix_kubernetes(self):
-        print("Fixing Kubernetes...")
-        print("[FIX] Imbalance leftover if any")
+        self.local_logger.info("Fixing Kubernetes... to normal state.")
+        self.local_logger.info("[FIX] Imbalance leftover if any")
+        
         injector = VirtualizationFaultInjector(namespace="kube-system")
         injector.recover_daemon_set_image_replacement(
             daemon_set_name="kube-proxy", original_image="registry.k8s.io/kube-proxy:v1.31.13"
         )
 
-        print("[FIX] KubeletCrash leftover if any")
+        self.local_logger.info("[FIX] KubeletCrash leftover if any")
         injector = RemoteOSFaultInjector()
         injector.recover_kubelet_crash()
+        self.local_logger.info("Fix Kubernetes completed.")
 
     def deploy_app(self):
         """Kubectl + Prometheus + problem.app deployment."""
         self.submission_stage = "setup"
-        print("Setting up metrics-server…")
+        self.local_logger.info("[DEPLOY] Setting up metrics-server…")
         self.kubectl.exec_command(
             "kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/"
             "releases/latest/download/components.yaml"
@@ -231,10 +252,10 @@ class Conductor:
         )
         self.kubectl.wait_for_ready("kube-system")
 
-        print("Deploying Khaos DaemonSet...")
+        self.local_logger.info("[DEPLOY] Deploying Khaos DaemonSet...")
         self.khaos.ensure_deployed()
 
-        print("Setting up OpenEBS…")
+        self.local_logger.info("[DEPLOY] Setting up OpenEBS…")
         self.kubectl.exec_command("kubectl apply -f https://openebs.github.io/charts/openebs-operator.yaml")
         self.kubectl.exec_command(
             "kubectl patch storageclass openebs-hostpath "
@@ -242,11 +263,12 @@ class Conductor:
         )
         self.kubectl.wait_for_ready("openebs")
 
-        print("Deploying Prometheus…")
+        self.local_logger.info("[DEPLOY] Deploying Prometheus…")
         self.prometheus.deploy()
-
+        
         self.logger.info(f"[ENV] Set up neccesary components: metrics-server, Khaos, OpenEBS, Prometheus")
-        print("Deploying and starting workload")
+        
+        self.local_logger.info("[DEPLOY] Deploying and starting workload")
         self.problem.app.deploy()
         self.logger.info(f"[ENV] Deploy application: {self.problem.app.name}")
 
@@ -284,7 +306,7 @@ class Conductor:
             with open(config_path, "r") as f:
                 config = yaml.safe_load(f)
         except Exception as e:
-            print(f"[❌] Failed to load configuration: {e}")
+            self.local_logger.error(f"[❌] Failed to load configuration: {e}")
             return
 
         # Parse configuration and convert to required types

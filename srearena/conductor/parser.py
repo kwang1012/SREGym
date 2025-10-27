@@ -13,6 +13,7 @@ class ResponseParsingError(Exception):
 class ResponseParser:
     def __init__(self):
         self.logger = logging.getLogger("srearena-global")
+        self.local_logger = logging.getLogger("all.srearena.conductor")
 
     def parse(self, response: str) -> dict:
         """Parses the response string to extract the API name and arguments.
@@ -24,9 +25,13 @@ class ResponseParser:
             dict: The parsed API name and arguments.
         """
         code_block = self.extract_codeblock(response)
+        self.local_logger.debug(f"Extracted code block from submit: {code_block}")
         context = self.extract_context(response)
+        self.local_logger.debug(f"Extracted context from submit: {context}")
         api_name = self.parse_api_name(code_block)
+        self.local_logger.debug(f"Parsed API name from submit: {api_name}")
         args, kwargs = self.parse_args(code_block, is_shell_command=api_name == "exec_shell")
+        self.local_logger.debug(f"Parsed args and kwargs from submit: {args}, {kwargs}")
         return {
             "api_name": api_name,
             "args": args,
@@ -148,8 +153,15 @@ class ResponseParser:
                 return args, kwargs
             except Exception as e:
                 self.logger.info(f"[ERROR] Error parsing response: {str(e)}")
+                
+                if args_str:
+                    self.local_logger.error(f"Error parsing response: {str(e)} content to be parsed: func({args_str})")
+                else:
+                    self.local_logger.error(f"Error parsing response: {str(e)} content to be parsed: func()")
+                
                 raise ResponseParsingError(f"Error parsing response: {str(e)}")
 
+        self.local_logger.error("No API call found!")
         raise ResponseParsingError("No API call found!")
 
     def eval_ast_node(self, node):

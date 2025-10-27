@@ -6,12 +6,17 @@ import yaml
 from kubernetes import client, config
 from rich.console import Console
 
+import logging
 from srearena.generators.workload.base import WorkloadEntry
 from srearena.generators.workload.stream import StreamWorkloadManager
 from srearena.paths import TARGET_MICROSERVICES
 from srearena.generators.noise.transient_issues.chaos_injector import ChaosInjector
 
 # Mimicked the Wrk2 class
+
+local_logger = logging.getLogger("all.infra.workload")
+local_logger.propagate = True
+local_logger.setLevel(logging.DEBUG)
 
 class BHotelWrk:
     """
@@ -36,20 +41,20 @@ class BHotelWrk:
         configmap_template['data']['MULTIPLIER'] = str(self.multiplier)
 
         try:
-            print(f"Checking for existing ConfigMap '{config_name}'...")
+            local_logger.info(f"Checking for existing ConfigMap '{config_name}'...")
             api_instance.delete_namespaced_config_map(name=config_name, namespace=namespace)
-            print(f"ConfigMap '{config_name}' deleted.")
+            local_logger.info(f"ConfigMap '{config_name}' deleted.")
         except client.exceptions.ApiException as e:
             if e.status != 404:
-                print(f"Error deleting ConfigMap '{config_name}': {e}")
+                local_logger.error(f"Error deleting ConfigMap '{config_name}': {e}")
                 return
 
         try:
-            print(f"Creating ConfigMap '{config_name}'...")
+            local_logger.info(f"Creating ConfigMap '{config_name}'...")
             api_instance.create_namespaced_config_map(namespace=namespace, body=configmap_template)
-            print(f"ConfigMap '{config_name}' created successfully.")
+            local_logger.info(f"ConfigMap '{config_name}' created successfully.")
         except client.exceptions.ApiException as e:
-            print(f"Error creating ConfigMap '{config_name}': {e}")
+            local_logger.error(f"Error creating ConfigMap '{config_name}': {e}")
 
 
     def create_bhotelwrk_job(self, job_name, namespace):
@@ -61,7 +66,7 @@ class BHotelWrk:
         try:
             existing_job = api_instance.read_namespaced_job(name=job_name, namespace=namespace)
             if existing_job:
-                print(f"Job '{job_name}' already exists. Deleting it...")
+                local_logger.info(f"Job '{job_name}' already exists. Deleting it...")
                 api_instance.delete_namespaced_job(
                     name=job_name,
                     namespace=namespace,
@@ -70,14 +75,14 @@ class BHotelWrk:
                 self.wait_for_job_deletion(job_name, namespace)
         except client.exceptions.ApiException as e:
             if e.status != 404:
-                print(f"Error checking for existing job: {e}")
+                local_logger.error(f"Error checking for existing job: {e}")
                 return
 
         try:
             response = api_instance.create_namespaced_job(namespace=namespace, body=job_template)
-            print(f"Job created: {response.metadata.name}")
+            local_logger.info(f"Job created: {response.metadata.name}")
         except client.exceptions.ApiException as e:
-            print(f"Error creating job: {e}")
+            local_logger.error(f"Error creating job: {e}")
 
     def start_workload(self,
                        namespace,
@@ -94,12 +99,12 @@ class BHotelWrk:
         try:
             existing_job = api_instance.read_namespaced_job(name=job_name, namespace=namespace)
             if existing_job:
-                print(f"Stopping job '{job_name}'...")
+                local_logger.info(f"Stopping job '{job_name}'...")
                 api_instance.patch_namespaced_job(name=job_name, namespace=namespace, body={"spec": {"suspend": True}})
                 time.sleep(5)
         except client.exceptions.ApiException as e:
             if e.status != 404:
-                print(f"Error checking for existing job: {e}")
+                local_logger.error(f"Error checking for existing job: {e}")
                 return
 
     def wait_for_job_deletion(self, job_name, namespace, sleep=2, max_wait=60):
@@ -171,7 +176,7 @@ class BHotelWrkWorkloadManager(StreamWorkloadManager):
             start_time = datetime.strptime(start_time, "%Y-%m-%dT%H:%M:%S.%fZ").timestamp()
             number = int(logs[2].split(": ")[1])
         except Exception as e:
-            print(f"Error parsing log: {e}")
+            local_logger.error(f"Error parsing log: {e}")
             number = 0
             start_time = -1
 
@@ -193,7 +198,7 @@ class BHotelWrkWorkloadManager(StreamWorkloadManager):
             logs = self.core_v1_api.read_namespaced_pod_log(pods.items[0].metadata.name, namespace)
             logs = logs.split("\n")
         except Exception as e:
-            print(f"Error retrieving logs from {self.job_name} : {e}")
+            local_logger.error(f"Error retrieving logs from {self.job_name} : {e}")
             return []
 
         extracted_logs = self._extract_target_logs(logs, startlog="Finished all requests", endlog="End of latency distribution")
@@ -229,19 +234,19 @@ class BHotelWrkWorkloadManager(StreamWorkloadManager):
         # Schedule CPU stress injection after 60 seconds
         self.cpu_stress_timer = threading.Timer(60.0, self._inject_cpu_stress)
         self.cpu_stress_timer.start()
-        print("CPU stress injection scheduled for 60 seconds after workload start")
+        local_logger.info("CPU stress injection scheduled for 60 seconds after workload start")
         
         # Schedule CPU stress recovery after 90 seconds
         self.cpu_recovery_timer = threading.Timer(90.0, self._recover_cpu_stress)
         self.cpu_recovery_timer.start()
-        print("CPU stress recovery scheduled for 90 seconds after workload start")
+        local_logger.info("CPU stress recovery scheduled for 90 seconds after workload start")
 
     def _inject_cpu_stress(self):
         """
         Inject CPU stress using the symptom fault injector.
         """
         try:
-            print("Injecting CPU stress...")
+            local_logger.info("Injecting CPU stress...")
             # You may need to adjust deployment_name and microservice based on your setup
             experiment_name = f"cpu-stress-all-pods"
             chaos_experiment = {
@@ -266,33 +271,33 @@ class BHotelWrkWorkloadManager(StreamWorkloadManager):
             }
             self.cpu_containment_injector.create_chaos_experiment(chaos_experiment, experiment_name)
             start_time = datetime.now().strftime("%Y/%m/%d %H:%M:%S")
-            print(f"[{start_time}] Injecting CPU stress...")
+            local_logger.info(f"[{start_time}] Injecting CPU stress...")
             self.current_experiment_name = experiment_name  # Save the current experiment name
-            print("CPU stress injection completed")
+            local_logger.info("CPU stress injection completed")
         except Exception as e:
-            print(f"Error injecting CPU stress: {e}")
+            local_logger.error(f"Error injecting CPU stress: {e}")
 
     def _recover_cpu_stress(self):
         """
         Recover from CPU stress by deleting the ChaosMesh experiment.
         """
         try:
-            print("Recovering from CPU stress...")
+            local_logger.info("Recovering from CPU stress...")
             
             if hasattr(self, 'current_experiment_name'):
                 self.cpu_containment_injector.delete_chaos_experiment(self.current_experiment_name)
-                print("CPU stress recovery completed for all pods")
+                local_logger.info("CPU stress recovery completed for all pods")
             else:
-                print("No active CPU stress experiment found")
+                local_logger.error("No active CPU stress experiment found")
                 
         except Exception as e:
-            print(f"Error recovering from CPU stress: {e}")
+            local_logger.error(f"Error recovering from CPU stress: {e}")
 
     def start(self):
-        print("== Start Workload ==")
+        local_logger.info("Start Workload with Blueprint Hotel Worklnload Manager")
         self.create_task()
         self._schedule_cpu_containment()
 
     def stop(self):
-        print("== Stop Workload ==")
+        local_logger.info("Stop Workload with Blueprint Hotel Workload Manager")
         self.wrk.stop_workload(job_name=self.job_name, namespace=self.namespace)
