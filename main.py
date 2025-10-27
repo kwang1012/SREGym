@@ -1,5 +1,7 @@
 import asyncio
 import csv
+import logging
+import os
 import sys
 import threading
 import time
@@ -7,17 +9,17 @@ from datetime import datetime
 
 import uvicorn
 from rich.console import Console
-from rich.prompt import Prompt
-from dashboard.proxy import LogProxy
-from dashboard.dashboard_app import SREArenaDashboardServer
-from multiprocessing import Process, set_start_method
-import logging
 
-from clients.stratus.stratus_agent.driver.driver import main as stratus_driver
+from dashboard.dashboard_app import SREArenaDashboardServer
+from dashboard.proxy import LogProxy
 from mcp_server.configs.load_all_cfg import mcp_server_cfg
 from mcp_server.srearena_mcp_server import app as mcp_app
+from srearena.agent_launcher import AgentLauncher
+from srearena.agent_registry import get_agent
 from srearena.conductor.conductor import Conductor
 from srearena.conductor.conductor_api import request_shutdown, run_api
+
+LAUNCHER = AgentLauncher()
 
 
 def get_current_datetime_formatted():
@@ -40,12 +42,14 @@ def driver_loop(conductor: Conductor):
         all_results = []
         for pid in conductor.problems.get_problem_ids():
             console.log(f"\n🔍 Starting problem: {pid}")
-            
+
             conductor.problem_id = pid
 
             await conductor.start_problem()
-
-            #await stratus_driver()
+            agent_to_start = os.environ.get("SREARENA_AGENT", "stratus")
+            reg = get_agent(agent_to_start)
+            if reg:
+                await LAUNCHER.ensure_started(reg)
 
             # Poll until grading completes
             while conductor.submission_stage != "done":
@@ -105,14 +109,16 @@ def _run_driver_and_shutdown(conductor: Conductor):
     request_shutdown()
 
 
-
 def run_dashboard_server():
     """Entry point for multiprocessing child: construct Dash in child process."""
     # Silence child process stdout/stderr and noisy loggers
-    import os, sys, logging
+    import logging
+    import os
+    import sys
+
     try:
-        sys.stdout = open(os.devnull, 'w')
-        sys.stderr = open(os.devnull, 'w')
+        sys.stdout = open(os.devnull, "w")
+        sys.stderr = open(os.devnull, "w")
     except Exception:
         pass
     server = SREArenaDashboardServer(host="127.0.0.1", port=11451, debug=False)
@@ -121,11 +127,11 @@ def run_dashboard_server():
 
 
 def main():
-     # set up the logger
-    logging.getLogger('srearena-global').setLevel(logging.INFO)
-    logging.getLogger('srearena-global').addHandler(LogProxy())
-    
-    '''
+    # set up the logger
+    logging.getLogger("srearena-global").setLevel(logging.INFO)
+    logging.getLogger("srearena-global").addHandler(LogProxy())
+
+    """
     try:
         set_start_method("spawn")
     except RuntimeError:
@@ -136,9 +142,10 @@ def main():
     p.start()
     
     time.sleep(5)
-    '''
-    
-    agent_name = Prompt.ask("[bold cyan]What would you like to call your agent?[/]", default="arena")
+    """
+
+    # Get agent name from environment variable or default to "agent"
+    agent_name = os.environ.get("SREARENA_AGENT", "agent")
     conductor = Conductor()
     conductor.register_agent(agent_name)
 

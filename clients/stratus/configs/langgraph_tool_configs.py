@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 load_dotenv()
 
+
 # FIXME: name of class is misleading for now
 class LanggraphToolConfig(BaseModel):
     prometheus_mcp_url: str = Field(

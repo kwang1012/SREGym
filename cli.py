@@ -7,11 +7,11 @@ setup and grading, but still gives you the PromptToolkit+Rich UI.
 """
 
 import asyncio
-from gc import disable
 import json
-from multiprocessing import Process, set_start_method
-import sys
 import logging
+import sys
+from multiprocessing import Process, set_start_method
+
 from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.patch_stdout import patch_stdout
@@ -141,10 +141,13 @@ class HumanAgent:
 def run_dashboard_server():
     """Entry point for multiprocessing child: construct Dash in child process."""
     # Silence child process stdout/stderr and noisy loggers
-    import os, sys, logging
+    import logging
+    import os
+    import sys
+
     try:
-        sys.stdout = open(os.devnull, 'w')
-        sys.stderr = open(os.devnull, 'w')
+        sys.stdout = open(os.devnull, "w")
+        sys.stderr = open(os.devnull, "w")
     except Exception:
         pass
     server = SREArenaDashboardServer(host="127.0.0.1", port=11451, debug=False)
@@ -153,10 +156,10 @@ def run_dashboard_server():
 
 async def main():
     # set up the logger
-    logging.getLogger('srearena-global').setLevel(logging.INFO)
-    logging.getLogger('srearena-global').addHandler(LogProxy())
-    
     '''
+    logging.getLogger("srearena-global").setLevel(logging.INFO)
+    logging.getLogger("srearena-global").addHandler(LogProxy())
+
     try:
         set_start_method("spawn")
     except RuntimeError:
@@ -168,8 +171,8 @@ async def main():
     '''
     
     init_logger()
-    
-    '''
+
+    """
     import os, subprocess
     
     dash_path = os.path.join(os.path.dirname(__file__), "dashboard", "dashboard_app.py")
@@ -188,8 +191,8 @@ async def main():
         proc.wait(timeout=10)
     except subprocess.TimeoutExpired:
         proc.kill()
-    '''
-    
+    """
+
     conductor = Conductor()
     agent = HumanAgent(conductor)
     conductor.register_agent()  # no-op but for symmetry

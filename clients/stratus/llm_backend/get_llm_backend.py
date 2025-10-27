@@ -7,6 +7,7 @@ import time
 from typing import Any, Dict, Optional
 
 import litellm
+import openai
 from dotenv import load_dotenv
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -99,16 +100,18 @@ class LiteLLMBackend:
         else:
             raise ValueError(f"messages must be either a string or a list of dicts, but got {type(messages)}")
 
-        """
-        messsage_content_all = ""
-        for message in prompt_messages:
-            messsage_content_all += message.content + "\n"
-            # print(f"[[PROMPT]] {message.content}")
-        arena_logger = logging.getLogger("srearena-global")
-        arena_logger.info(f"[PROMPT] {messsage_content_all}")
-        """
-
-        if self.provider == "watsonx":
+        if self.provider == "openai":
+            # Some models (o1, o3, gpt-5) don't support top_p and temperature
+            model_config = {
+                "model": self.model_name,
+            }
+            # Only add temperature and top_p for models that support them
+            # Reasoning models (o1, o3) and newer models (gpt-5) don't support these params
+            if not any(prefix in self.model_name.lower() for prefix in ["o1", "o3", "gpt-5"]):
+                model_config["temperature"] = self.temperature
+                model_config["top_p"] = self.top_p
+            llm = ChatOpenAI(**model_config)
+        elif self.provider == "watsonx":
             llm = ChatWatsonx(
                 model_id=self.model_name,
                 url=self.url,
@@ -164,18 +167,32 @@ class LiteLLMBackend:
                 completion = llm.invoke(input=prompt_messages)
                 # logger.info(f">>> llm response: {completion}")
                 return completion
-            except HTTPError as e:
-                # if e.response.status_code == 429 or e.response.status_code == 502 or e.response.status_code == 400:  # Rate-limiting error
+            except openai.BadRequestError as e:
+                # BadRequestError indicates malformed request (e.g., missing tool responses)
+                # Don't retry as the request itself is invalid
+                logger.error(f"Bad request error - request is malformed: {e}")
+                logger.error(f"Error details: {e.response.json() if hasattr(e, 'response') else 'No response details'}")
+                logger.error("This often happens when tool_calls don't have matching tool response messages.")
+                logger.error(
+                    f"Last few messages: {prompt_messages[-3:] if len(prompt_messages) >= 3 else prompt_messages}"
+                )
+                raise
+            except (openai.RateLimitError, HTTPError) as e:
+                # Rate-limiting errors - retry with exponential backoff
                 logger.warning(
                     f"Rate-limited. Retrying in {retry_delay} seconds... (Attempt {attempt + 1}/{LLM_QUERY_MAX_RETRIES})"
                 )
-                
+
                 arena_logger = logging.getLogger("srearena-global")
                 arena_logger.info(
                     f"[WARNING] HTTP error occurred: {e}. Retrying in {retry_delay} seconds... (Attempt {attempt + 1}/{LLM_QUERY_MAX_RETRIES})"
                 )
                 time.sleep(retry_delay)
                 retry_delay *= 2  # Exponential backoff
+            except openai.APIError as e:
+                # Other OpenAI API errors
+                logger.error(f"OpenAI API error occurred: {e}")
+                raise
                 # else:
                 #     logger.error(f"HTTP error occurred: {e}")
                 #     raise
@@ -195,15 +212,15 @@ class LiteLLMBackend:
                     )
                     time.sleep(retry_delay)
                     retry_delay *= 2  # Exponential backoff
-                
-                trim_message = True # reduce overhead
-            except litellm.ServiceUnavailableError as e: # 503
+
+                trim_message = True  # reduce overhead
+            except litellm.ServiceUnavailableError as e:  # 503
                 arena_logger = logging.getLogger("srearena-global")
                 arena_logger.info(
                     f"[WARNING] Service unavailable (mostly 503). Retrying in 60 seconds... (Attempt {attempt + 1}/{LLM_QUERY_MAX_RETRIES})"
                 )
                 time.sleep(60)
-                trim_message = True # reduce overhead
+                trim_message = True  # reduce overhead
             except IndexError as e:
                 arena_logger = logging.getLogger("srearena-global")
                 arena_logger.info(
@@ -259,7 +276,7 @@ def _extract_retry_delay_seconds_from_exception(exc: BaseException) -> Optional[
     Returns 60.0 if no RetryInfo found in error details.
     """
     candidates: list[Any] = []
-    
+
     print(f"exc: {exc}")
 
     # response.json() or response.text
