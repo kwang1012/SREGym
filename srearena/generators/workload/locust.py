@@ -11,6 +11,12 @@ from srearena.generators.workload.stream import STREAM_WORKLOAD_EPS, StreamWorkl
 from srearena.paths import BASE_DIR
 from srearena.service.kubectl import KubeCtl
 
+
+import logging
+local_logger = logging.getLogger("all.infra.workload")
+local_logger.propagate = True
+local_logger.setLevel(logging.DEBUG)
+
 class LocustWorkloadManager(StreamWorkloadManager):
     def __init__(self, namespace: str, locust_url: str):
         super().__init__()
@@ -174,16 +180,18 @@ class LocustWorkloadManager(StreamWorkloadManager):
         return grouped_logs
 
     def start(self):
-        print("== Start Workload ==")
-        print("AstronomyShop has a built-in load generator.")
-        print("Creating locust-fetcher pod...")
+        local_logger.info("Start Workload with Locust")
+        local_logger.info("AstronomyShop has a built-in load generator.")
+        local_logger.info("Creating locust-fetcher pod...")
         self.create_fetcher()
+        local_logger.debug("Workload started")
 
     def stop(self):
-        print("== Stop Workload ==")
-        print("AstronomyShop's built-in load generator is automatically managed.")
-        print("Removing locust-fetcher pod if it exists...")
+        local_logger.info("Stop Workload with Locust")
+        local_logger.info("AstronomyShop's built-in load generator is automatically managed.")
+        local_logger.info("Removing locust-fetcher pod if it exists...")
         self.remove_fetcher()
+        local_logger.debug("Workload stopped")
         
         
     def change_users(self, number: int, namespace: str):

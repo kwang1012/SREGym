@@ -4,7 +4,7 @@ import os
 import logging
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("all.mcp.kubectl_tool_cfg")
 
 parent_parent_dir = Path(__file__).resolve().parent.parent
 output_parent_dir = parent_parent_dir / "data"
@@ -65,10 +65,10 @@ class KubectlToolCfg(BaseModel):
     def validate_output_dir(cls, v):
         output_dir = v
         if not os.path.exists(output_dir):
-            logger.info(f"creating output directory {v}")
+            logger.debug(f"creating output directory {v}")
             os.makedirs(output_dir, exist_ok=True)
         else:
-            logger.info(f"Directory {v} exists already")
+            logger.debug(f"Directory {v} exists already")
 
         if not os.access(output_dir, os.W_OK):
             raise PermissionError(f"Output directory {output_dir} is not writable.")

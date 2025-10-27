@@ -22,7 +22,7 @@ from rich.panel import Panel
 from dashboard.proxy import LogProxy
 from dashboard.dashboard_app import SREArenaDashboardServer
 from threading import Thread
-
+from logger import init_logger
 from srearena.conductor.conductor import Conductor
 from srearena.service.shell import Shell
 
@@ -156,6 +156,7 @@ async def main():
     logging.getLogger('srearena-global').setLevel(logging.INFO)
     logging.getLogger('srearena-global').addHandler(LogProxy())
     
+    '''
     try:
         set_start_method("spawn")
     except RuntimeError:
@@ -164,6 +165,9 @@ async def main():
     # Start dashboard in a separate process; construct server inside the child
     p = Process(target=run_dashboard_server, daemon=True)
     p.start()
+    '''
+    
+    init_logger()
     
     '''
     import os, subprocess

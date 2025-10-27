@@ -14,7 +14,10 @@ from clients.stratus.stratus_utils.get_starting_prompt import get_starting_promp
 from clients.stratus.stratus_utils.str_to_tool import str_to_tool
 from clients.stratus.tools.stratus_tool_node import StratusToolNode
 
-logger = get_logger()
+import logging
+logger = logging.getLogger("all.stratus.diagnosis")
+logger.propagate = True
+logger.setLevel(logging.DEBUG)
 
 
 class DiagnosisAgent(BaseAgent):
@@ -22,6 +25,8 @@ class DiagnosisAgent(BaseAgent):
         super().__init__(**kwargs)
         self.tool_node = None
         self.max_step = kwargs.get("max_step", 20)
+        self.loop_count = 0
+        self.local_logger = logging.getLogger("all.stratus.diagnosis")
 
     def build_agent(self):
         self.tool_node = StratusToolNode(async_tools=self.async_tools, sync_tools=self.sync_tools)
@@ -78,16 +83,19 @@ class DiagnosisAgent(BaseAgent):
         self.arena_logger.info(f"[PROMPT] \n {all_init_prompts}")
 
         graph_events = []
+
         while True:
             graph_config = {"configurable": {"thread_id": "1"}}
+            
+            logger.info(f"{'-' * 20} [Loop {self.loop_count}] {'-' * 20}")
             last_state = self.graph.get_state(config=graph_config)
             # logger.info("last state: %s", last_state)
             if len(last_state.values) != 0:
-                logger.info("There were last states.")
+                logger.debug(f"[Loop {self.loop_count}] There were last {len(last_state.values)} states.")
                 # this is all the previous msgs the agent had, we just inherit them in the next graph traversal
                 state = last_state.values
             else:
-                logger.info("There were no states.")
+                logger.debug(f"[Loop {self.loop_count}] There were no states.")
                 # fresh agent start, init state here
                 state = {
                     "messages": starting_prompts,
@@ -101,6 +109,7 @@ class DiagnosisAgent(BaseAgent):
                     # "ans": dict(),
                     "rollback_stack": "",
                 }
+                
 
             async for event in self.graph.astream(
                 state,
@@ -108,12 +117,16 @@ class DiagnosisAgent(BaseAgent):
                 config={"recursion_limit": 10000, "configurable": {"thread_id": "1"}, "callbacks": [self.callback]},
                 stream_mode="values",
             ):
+                if (not graph_events) or event["messages"][-1] != graph_events[-1]["messages"][-1]:
+                    #print(f"Last message: {graph_events[-1]['messages']}")
+                    event["messages"][-1].pretty_print()
                 graph_events.append(event)
-                event["messages"][-1].pretty_print()
             last_state = self.graph.get_state(config=graph_config)
             if last_state.values["submitted"]:
-                logger.info("agent submitted, breaking loop.")
+                logger.info(f"[Loop {self.loop_count}] Agent submitted, breaking loop.")
                 break
+            
+            self.loop_count += 1
             
             # print(f"================{last_state.values['num_steps']}===============")
 

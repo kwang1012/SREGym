@@ -1,5 +1,5 @@
 import time
-
+import logging
 from srearena.generators.workload.wrk2 import Wrk2, Wrk2WorkloadManager
 from srearena.observer.trace_api import TraceAPI
 from srearena.paths import FAULT_SCRIPTS, HOTEL_RES_METADATA, TARGET_MICROSERVICES
@@ -7,6 +7,10 @@ from srearena.service.apps.base import Application
 from srearena.service.apps.helpers import get_frontend_url
 from srearena.service.kubectl import KubeCtl
 
+
+local_logger = logging.getLogger("all.application")
+local_logger.propagate = True
+local_logger.setLevel(logging.DEBUG)
 
 class HotelReservation(Application):
     def __init__(self):
@@ -73,7 +77,7 @@ class HotelReservation(Application):
 
     def deploy(self):
         """Deploy the Kubernetes configurations."""
-        print(f"Deploying Kubernetes configurations in namespace: {self.namespace}")
+        self.local_logger.info(f"Deploying Kubernetes configurations in namespace: {self.namespace}")
         self.create_namespace()
         self.create_configmaps()
         self.kubectl.apply_configs(self.namespace, self.k8s_deploy_path)
@@ -100,7 +104,7 @@ class HotelReservation(Application):
             self._remove_pv_finalizers(pv)
             delete_command = f"kubectl delete pv {pv}"
             delete_result = self.kubectl.exec_command(delete_command)
-            print(f"Deleted PersistentVolume {pv}: {delete_result.strip()}")
+            local_logger.info(f"Deleted PersistentVolume {pv}: {delete_result.strip()}")
         time.sleep(5)
 
         if hasattr(self, "wrk"):

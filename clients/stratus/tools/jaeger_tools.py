@@ -19,7 +19,7 @@ from clients.stratus.tools.text_editing.windowed_file import (  # type: ignore
 )
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("all.stratus.tools.jaeger")
 
 langgraph_tool_config = LanggraphToolConfig()
 
@@ -149,7 +149,7 @@ async def get_services(tool_call_id: Annotated[str, InjectedToolCallId]) -> Comm
     result = await session.call_tool("get_services")
     await exit_stack.aclose()
     # services = result.content[0].text
-    logger.info(f"Result from get_services mcp tools: f{result}")
+    logger.debug(f"Result from get_services mcp tools: f{result}")
     return Command(
         update={
             "messages": [

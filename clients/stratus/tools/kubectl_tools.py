@@ -9,7 +9,7 @@ from langgraph.types import Command
 from pydantic import BaseModel, Field, PrivateAttr
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("all.stratus.tools")
 
 
 class ExecKubectlCmdSafelyInput(BaseModel):
@@ -44,8 +44,8 @@ class ExecKubectlCmdSafely(BaseTool):
         command: str,
         tool_call_id: Annotated[str, InjectedToolCallId],
     ) -> Command:
-        logger.info(f"tool_call_id in {self.name}: {tool_call_id}")
-        logger.info(
+        logger.debug(f"tool_call_id in {self.name}: {tool_call_id}")
+        logger.debug(
             f"calling mcp exec_kubectl_cmd_safely from " f'langchain exec_kubectl_cmd_safely, with command: "{command}"'
         )
         async with self._client:
@@ -111,14 +111,14 @@ class ExecReadOnlyKubectlCmd(BaseTool):
         command: str,
         tool_call_id: Annotated[str, InjectedToolCallId],
     ) -> Command:
-        logger.info(f"tool_call_id in {self.name}: {tool_call_id}")
+        logger.debug(f"tool_call_id in {self.name}: {tool_call_id}")
         is_read_only = False
         for c in kubectl_read_only_cmds:
             if command.startswith(c):
                 is_read_only = True
                 break
         if not is_read_only:
-            logger.info(
+            logger.debug(
                 f"Agent is trying to exec a non read-only command {command} " f"with tool exec_read_only_kubectl_cmd"
             )
             text_result = (
@@ -126,12 +126,12 @@ class ExecReadOnlyKubectlCmd(BaseTool):
                 f"Available Read-only Commands: {kubectl_read_only_cmds}."
             )
         elif command.startswith("kubectl logs -f"):
-            logger.info(f"agent calling interactive read-only command")
+            logger.debug(f"agent calling interactive read-only command")
             text_result = (
                 f"Your command {command} is an _interactive_ read-only kubectl command. " f"It is not supported!"
             )
         else:
-            logger.info(
+            logger.debug(
                 f"calling mcp exec_kubectl_cmd_safely from "
                 f'langchain exec_read_only_kubectl_cmd, with command: "{command}"'
             )
@@ -173,8 +173,8 @@ class RollbackCommand(BaseTool):
         self,
         tool_call_id: Annotated[str, InjectedToolCallId],
     ) -> Command:
-        logger.info(f"tool_call_id in {self.name}: {tool_call_id}")
-        logger.info(f"calling langchain rollback_command")
+        logger.debug(f"tool_call_id in {self.name}: {tool_call_id}")
+        logger.debug(f"calling langchain rollback_command")
         async with self._client:
             result = await self._client.call_tool("rollback_command")
         text_result = "\n".join([part.text for part in result])
@@ -217,8 +217,8 @@ class GetPreviousRollbackableCmd(BaseTool):
         self,
         tool_call_id: Annotated[str, InjectedToolCallId],
     ) -> Command:
-        logger.info(f"tool_call_id in {self.name}: {tool_call_id}")
-        logger.info(f"calling langchain get_previous_rollbackable_cmd")
+        logger.debug(f"tool_call_id in {self.name}: {tool_call_id}")
+        logger.debug(f"calling langchain get_previous_rollbackable_cmd")
         async with self._client:
             result = await self._client.call_tool("get_previous_rollbackable_cmd")
         if len(result) == 0:

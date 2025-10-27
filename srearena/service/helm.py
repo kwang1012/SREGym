@@ -2,10 +2,12 @@
 
 import subprocess
 import time
-
+import logging
 from srearena.service.kubectl import KubeCtl
 
-
+local_logger = logging.getLogger("all.infra.helm")
+local_logger.propagate = True
+local_logger.setLevel(logging.DEBUG)
 class Helm:
     @staticmethod
     def install(**args):
@@ -19,13 +21,15 @@ class Helm:
             extra_args (List[str)]: Extra arguments for the helm install command
             remote_chart (bool): Whether the chart is remote (from a Helm repo)
         """
-        print("== Helm Install ==")
+        
         release_name = args.get("release_name")
         chart_path = args.get("chart_path")
         namespace = args.get("namespace")
         version = args.get("version")
         extra_args = args.get("extra_args")
         remote_chart = args.get("remote_chart", False)
+        
+        local_logger.info(f"Helm Install: {release_name} in namespace {namespace}")
 
         if not remote_chart:
             # Install dependencies for chart before installation
@@ -58,7 +62,7 @@ class Helm:
                 f"Stdout (for context):\n{stdout}"
             )
         else:
-            print(output.decode("utf-8"))
+            local_logger.debug(output.decode("utf-8"))
 
     @staticmethod
     def uninstall(**args):
@@ -68,12 +72,13 @@ class Helm:
             release_name (str): Name of the release
             namespace (str): Namespace to uninstall the chart
         """
-        print("== Helm Uninstall ==")
         release_name = args.get("release_name")
         namespace = args.get("namespace")
+        
+        local_logger.info(f"Helm Uninstall: {release_name} in namespace {namespace}")
 
         if not Helm.exists_release(release_name, namespace):
-            print(f"Release {release_name} does not exist. Skipping uninstall.")
+            local_logger.warning(f"Release {release_name} does not exist. Skipping uninstall.")
             return
 
         command = f"helm uninstall {release_name} -n {namespace}"
@@ -89,7 +94,7 @@ class Helm:
                 f"Stdout (for context):\n{stdout}"
             )
         else:
-            print(output.decode("utf-8"))
+            local_logger.debug(output.decode("utf-8"))
 
     @staticmethod
     def exists_release(release_name: str, namespace: str) -> bool:
@@ -107,7 +112,7 @@ class Helm:
         output, error = process.communicate()
 
         if error:
-            print(error.decode("utf-8"))
+            local_logger.error(error.decode("utf-8"))
             return False
         else:
             return release_name in output.decode("utf-8")
@@ -144,12 +149,14 @@ class Helm:
             values_file (str): Path to the values.yaml file
             set_values (dict): Key-value pairs for --set options
         """
-        print("== Helm Upgrade ==")
+        
         release_name = args.get("release_name")
         chart_path = args.get("chart_path")
         namespace = args.get("namespace")
         values_file = args.get("values_file")
         set_values = args.get("set_values", {})
+
+        local_logger.info(f"Helm Upgrade: {release_name} in namespace {namespace}")
 
         command = [
             "helm",
@@ -171,7 +178,7 @@ class Helm:
         output, error = process.communicate()
 
         if error:
-            print("Error during helm upgrade:")
+            local_logger.error("Error during helm upgrade:")
             stderr = error.decode("utf-8").strip()
             stdout = output.decode("utf-8").strip()
             raise RuntimeError(
@@ -180,8 +187,8 @@ class Helm:
                 f"Stdout (for context):\n{stdout}"
             )
         else:
-            print("Helm upgrade successful!")
-            print(output.decode("utf-8"))
+            local_logger.info("Helm upgrade successful!")
+            local_logger.debug(output.decode("utf-8"))
 
     @staticmethod
     def add_repo(name: str, url: str):
@@ -191,13 +198,13 @@ class Helm:
             name (str): Name of the repository
             url (str): URL of the repository
         """
-        print(f"== Helm Repo Add: {name} ==")
+        local_logger.info(f"Helm Repo Add: {name} with url {url}")
         command = f"helm repo add {name} {url}"
         process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output, error = process.communicate()
 
         if error:
-            print(f"Error adding helm repo {name}: {error.decode('utf-8')}")
+            local_logger.error(f"Error adding helm repo {name}: {error.decode('utf-8')}")
             stderr = error.decode("utf-8").strip()
             stdout = output.decode("utf-8").strip()
             raise RuntimeError(
@@ -206,7 +213,7 @@ class Helm:
                 f"Stdout (for context):\n{stdout}"
             )
         else:
-            print(f"Helm repo {name} added successfully: {output.decode('utf-8')}")
+            local_logger.info(f"Helm repo {name} added successfully: {output.decode('utf-8')}")
 
 
 # Example usage
