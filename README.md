@@ -8,10 +8,6 @@
 [⚙️Usage](#⚙️usage) |
 [📂Project Structure](#📂project-structure) |
 [![Slack](https://img.shields.io/badge/-Slack-4A154B?style=flat-square&logo=slack&logoColor=white)](https://join.slack.com/t/SREGym/shared_invite/zt-3gvqxpkpc-RvCUcyBEMvzvXaQS9KtS_w)
-<!-- [📄How to Cite](#📄how-to-cite) -->
-
-<!-- [![ArXiv Link](https://img.shields.io/badge/arXiv-2501.06706-red?logo=arxiv)](https://arxiv.org/pdf/2501.06706)
-[![ArXiv Link](https://img.shields.io/badge/arXiv-2407.12165-red?logo=arxiv)](https://arxiv.org/pdf/2407.12165) -->
 </div>
 
 
@@ -31,7 +27,9 @@ See a complete problem list with descriptions [here](https://docs.google.com/spr
 - [kubectl](https://kubernetes.io/docs/tasks/tools/)
 - [uv](https://github.com/astral-sh/uv)
 
-We highly recommend [k9s](https://k9scli.io/) to observe the cluster. 
+### Recommendations
+- [MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector) to test MCP tools.
+- [k9s](https://k9scli.io/) to observe the cluster.
 
 ```bash
 git clone --recurse-submodules https://github.com/xlab-uiuc/SREGym
@@ -343,24 +341,7 @@ If you're running VLLM and the LLM agent locally, Privoxy will by default proxy 
 
 ```bash
 export no_proxy=localhost
-``` 
-
-<!-- <h2 id="📄how-to-cite">📄 How to Cite</h2>
-
-```bibtex
-@misc{chen2024aiopslab,
-  title = {SREGym: A Holistic Framework to Evaluate AI Agents for Enabling Autonomous Clouds},
-  author = {Chen, Yinfang and Shetty, Manish and Somashekar, Gagan and Ma, Minghua and Simmhan, Yogesh and Mace, Jonathan and Bansal, Chetan and Wang, Rujia and Rajmohan, Saravan},
-  year = {2025},
-  url = {https://arxiv.org/abs/2501.06706} 
-}
-@inproceedings{shetty2024building,
-  title = {Building AI Agents for Autonomous Clouds: Challenges and Design Principles},
-  author = {Shetty, Manish and Chen, Yinfang and Somashekar, Gagan and Ma, Minghua and Simmhan, Yogesh and Zhang, Xuchao and Mace, Jonathan and Vandevoorde, Dax and Las-Casas, Pedro and Gupta, Shachee Mishra and Nath, Suman and Bansal, Chetan and Rajmohan, Saravan},
-  year = {2024},
-  booktitle = {Proceedings of 15th ACM Symposium on Cloud Computing},
-}
-``` -->
+```
 
 ### Dashboard
 
