@@ -136,7 +136,7 @@ Add a new entry to `agents.yaml` following this format to register your custom a
 
 There are at most 4 phases in each problem of SREGym:
 
-1. **NOOP Detection**: We have deployed the application, but there is no incident happening. The agent should detect no incident in the cluster. After agent submission for this problem, the fault is injected.
+1. **NO-OP Detection**: We have deployed the application, but there is no incident happening. The agent should detect no incident in the cluster. After agent submission for this problem, the fault is injected.
 
    **Expected submission**: "Yes" or "No" to indicate incident.
 
@@ -150,11 +150,13 @@ There are at most 4 phases in each problem of SREGym:
 
 4. **Incident Mitigation**: The agent should try to mitigate the incident and bring the cluster back online.
 
-   **Expected submission**: empty submission to indicate that the agent is satisfied with the cluster.
+   **Expected submission**: No arguments for mitigation problems. *NOTE*: Not all problems are evaluated for mitigation.
 
 #### Configuring Task Lists
 
-SREGym will evaluate all problems and tasks in the task list (`tasklist.yaml`). By default, it contains every problem and task, and follows this format for each problem:
+By default, SREGym runs the common evaluation with all available problems and tasks. If you want to run a **custom evaluation** with a specific subset of problems or tasks, you can configure this using [`tasklist.yaml`](./SREGym/conductor/tasklist.yml).
+
+The task list follows this format for each problem:
 ```yaml
 k8s_target_port-misconfig:
   - detection
@@ -162,9 +164,9 @@ k8s_target_port-misconfig:
   - mitigation
 ```
 
-To configure what tasks you want the conductor to run on a particular problem, edit its entry (identified by problem_id) in [`tasklist.yml`](./SREGym/conductor/tasklist.yml). Specify any task(s) of `detection`, `localization` or `mitigation` (in this order) to tell the conductor to run them. `noop` is automatically assumed to be the starting stage of a problem.
+To create a custom evaluation, edit `tasklist.yaml` and specify which problems and tasks you want to run. For each problem (identified by `problem_id`), list any combination of `detection`, `localization`, or `mitigation` tasks (in this order). The `noop` phase is automatically included as the starting stage.
 
-If no entry exists for a problem, all tasks will run by default. Note that `localization` and `mitigation` may be skipped if the problem has a corresponding oracle attached.
+**Note:** If no entry exists for a problem in `tasklist.yaml`, all tasks will run by default. Additionally, `localization` and `mitigation` may be skipped if the problem does not have a corresponding oracle attached.
 
 ### MCP Tools
 
