@@ -9,11 +9,11 @@ from urllib3.util.retry import Retry
 mcp_server_port = os.getenv("MCP_SERVER_PORT", "8001")
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("all.mcp.utils")
 
 REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", 120))
 RETRY_TOTAL = int(os.getenv("RETRY_TOTAL", 3))
-RETRY_BACKOFF_FACTOR = float(os.getenv("RETRY_BACKOFF_FACTOR", 0.3))
+RETRY_BACKOFF_FACTOR = float(os.getenv("RETRY_BACKOFF_FACWTOR", 0.3))
 
 
 class ObservabilityClient:
@@ -32,7 +32,7 @@ class ObservabilityClient:
             else:
                 self.observability_server_url = f"http://localhost:{mcp_server_port}"
 
-        logger.info(f"observability endpoint is: {self.observability_server_url}")
+        logger.debug(f"observability endpoint is: {self.observability_server_url}")
 
         # This is almost always NOP because we don't have such setting
         self.jaeger_service_account_token = os.environ.get("GRAFANA_SERVICE_ACCOUNT_TOKEN", "NOP")

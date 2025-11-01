@@ -1,5 +1,5 @@
 """
-SREArena CLI client. Use this for debugging and platform development work—
+SREGym CLI client. Use this for debugging and platform development work—
 otherwise use main.py.
 
 This version talks directly to the in-process Conductor for both environment
@@ -7,11 +7,12 @@ setup and grading, but still gives you the PromptToolkit+Rich UI.
 """
 
 import asyncio
-from gc import disable
 import json
-from multiprocessing import Process, set_start_method
-import sys
 import logging
+import sys
+from multiprocessing import Process, set_start_method
+from threading import Thread
+
 from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.patch_stdout import patch_stdout
@@ -19,24 +20,22 @@ from prompt_toolkit.styles import Style
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
-from dashboard.proxy import LogProxy
-from dashboard.dashboard_app import SREArenaDashboardServer
-from threading import Thread
 
-from srearena.conductor.conductor import Conductor
-from srearena.service.shell import Shell
+from dashboard.dashboard_app import SREGymDashboardServer
+from dashboard.proxy import LogProxy
+from logger import init_logger
+from sregym.conductor.conductor import Conductor
+from sregym.service.shell import Shell
 
 WELCOME = """
-# SREArena
-- Type your commands or actions below.
+# SREGym
+- This CLI is used by benchmark developers to test new problems.
 """
 
 OPTIONS = """
-- Use `start <problem_id>` to begin a new problem.
-- Use `deploy <app_name>` / `undeploy <app_name>` to manage standalone apps.
-- Use `list` to see deployed apps.
-- Use `options` to re-print this list.
-- Use `exit` to quit.
+- Use `start <problem_id>` to run your selected problem.
+- Tools like `get_logs`, `get_metrics`, and `get_traces` are available in this CLI.
+- Use the `submit()` function in the console to test an agent submission.
 """
 
 WARNING = (
@@ -76,11 +75,6 @@ class HumanAgent:
                 sys.exit(0)
             if cmd[0].lower() == "options":
                 self.console.print(Markdown(OPTIONS), justify="center")
-                continue
-            if cmd[0].lower() == "list":
-                apps = self.conductor.get_deployed_apps()
-                text = "\n".join(apps) if apps else "No apps deployed"
-                self.console.print(Panel(text, title="Deployed Apps"))
                 continue
             if cmd[0].lower() == "start" and len(cmd) == 2:
                 pid = cmd[1]
@@ -127,7 +121,7 @@ class HumanAgent:
     async def _prompt(self) -> str:
         loop = asyncio.get_running_loop()
         style = Style.from_dict({"prompt": "ansigreen bold"})
-        prompt_txt = [("class:prompt", "SREArena> ")]
+        prompt_txt = [("class:prompt", "SREGym> ")]
         with patch_stdout():
             try:
                 return await loop.run_in_executor(
@@ -141,21 +135,25 @@ class HumanAgent:
 def run_dashboard_server():
     """Entry point for multiprocessing child: construct Dash in child process."""
     # Silence child process stdout/stderr and noisy loggers
-    import os, sys, logging
+    import logging
+    import os
+    import sys
+
     try:
-        sys.stdout = open(os.devnull, 'w')
-        sys.stderr = open(os.devnull, 'w')
+        sys.stdout = open(os.devnull, "w")
+        sys.stderr = open(os.devnull, "w")
     except Exception:
         pass
-    server = SREArenaDashboardServer(host="127.0.0.1", port=11451, debug=False)
+    server = SREGymDashboardServer(host="127.0.0.1", port=11451, debug=False)
     server.run(threaded=False)
 
 
 async def main():
     # set up the logger
-    logging.getLogger('srearena-global').setLevel(logging.INFO)
-    logging.getLogger('srearena-global').addHandler(LogProxy())
-    
+    """
+    logging.getLogger("sregym-global").setLevel(logging.INFO)
+    logging.getLogger("sregym-global").addHandler(LogProxy())
+
     try:
         set_start_method("spawn")
     except RuntimeError:
@@ -164,8 +162,11 @@ async def main():
     # Start dashboard in a separate process; construct server inside the child
     p = Process(target=run_dashboard_server, daemon=True)
     p.start()
-    
-    '''
+    """
+
+    init_logger()
+
+    """
     import os, subprocess
     
     dash_path = os.path.join(os.path.dirname(__file__), "dashboard", "dashboard_app.py")
@@ -184,8 +185,8 @@ async def main():
         proc.wait(timeout=10)
     except subprocess.TimeoutExpired:
         proc.kill()
-    '''
-    
+    """
+
     conductor = Conductor()
     agent = HumanAgent(conductor)
     conductor.register_agent()  # no-op but for symmetry

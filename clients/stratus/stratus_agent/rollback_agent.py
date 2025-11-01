@@ -14,14 +14,17 @@ from clients.stratus.stratus_utils.get_starting_prompt import get_starting_promp
 from clients.stratus.stratus_utils.str_to_tool import str_to_tool
 from clients.stratus.tools.stratus_tool_node import StratusToolNode
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("all.stratus.rollback")
+logger.propagate = True
+logger.setLevel(logging.DEBUG)
 
 
 class RollbackAgent(BaseAgent):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.tool_node = None
+        self.loop_count = 0
+        self.local_logger = logging.getLogger("all.stratus.rollback")
 
     def build_agent(self):
         self.tool_node = StratusToolNode(
