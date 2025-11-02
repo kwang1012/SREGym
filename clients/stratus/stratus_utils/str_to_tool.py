@@ -8,7 +8,7 @@ from fastmcp.client import SSETransport
 from langchain_core.tools import BaseTool
 
 from clients.stratus.stratus_utils.get_logger import get_logger
-from clients.stratus.tools.jaeger_tools import get_dependency_graph, get_operations, get_services, get_traces
+from clients.stratus.tools.jaeger_tools import get_operations, get_services, get_traces
 from clients.stratus.tools.kubectl_tools import (
     ExecKubectlCmdSafely,
     ExecReadOnlyKubectlCmd,
@@ -39,8 +39,6 @@ def str_to_tool(tool_struct: dict[str, str]):
         return get_services
     elif tool_struct["name"] == "get_operations":
         return get_operations
-    elif tool_struct["name"] == "get_dependency_graph":
-        return get_dependency_graph
     elif tool_struct["name"] == "get_metrics":
         return get_metrics
     elif tool_struct["name"] == "submit_tool":
