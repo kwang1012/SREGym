@@ -1,12 +1,17 @@
 import os
 import shlex
 import subprocess
+import sys
 from pathlib import Path
 from time import sleep
 
 # we added the ssh key to the ssh agent such that all of all the keys are carried with the ssh connection.
-SREGYM_DIR = Path(os.environ.get("SREGYM_DIR", "/users/lilygn/SREGym/sregym")).resolve()
-LOCAL_ENV = Path("/Users/lilygniedz/Documents/SREArena/SREArena/.env")  # your local .env
+
+SREGYM_DIR = Path("/users/lilygn/SREGym").resolve()
+LOCAL_ENV = Path("/Users/lilygniedz/Documents/SREArena/SREArena/.env")
+
+SREGYM_ROOT = Path("/users/lilygn/SREGym").resolve()
+KIND_DIR = SREGYM_ROOT / "kind"
 REMOTE_ENV = "/users/lilygn/SREGym/.env"
 ENV = {
     **os.environ,
@@ -17,13 +22,21 @@ ENV = {
 }
 TIMEOUT = 1800
 
+# commands = [
+#     f"cd {shlex.quote(str(SREGYM_DIR))}",
+#     "uv venv -p $(which python3.12)",
+#     "source .venv/bin/activate",
+#     "uv sync",
+#     "cd ..",
+#     #"cd SREGym",
+# ]
 commands = [
-    f"cd {shlex.quote(str(SREGYM_DIR))}",
-    "uv venv -p $(which python3.12)",
+    "cd /users/lilygn/SREGym",
+    'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"',
+    "command -v uv >/dev/null 2>&1 || brew install uv || python3 -m pip install --user uv",
+    'uv venv -p "$(command -v python3.12 || command -v python3)"',
     "source .venv/bin/activate",
     "uv sync",
-    "cd ..",
-    "cd SREGym",
 ]
 
 scripts = [
@@ -35,6 +48,52 @@ scripts = [
 ]
 
 
+def _read_nodes(path: str = "nodes.txt") -> list[str]:
+    with open(path) as f:
+        return [ln.strip() for ln in f if ln.strip() and not ln.startswith("#")]
+
+
+def _run(cmd: list[str]):
+    print("$", " ".join(shlex.quote(x) for x in cmd))
+    subprocess.run(cmd)
+
+
+def scp_scripts_to_all(nodes_file: str = "nodes.txt"):
+    """scp -r LOCAL_COPY_SRC -> ~/scripts on each node."""
+    LOCAL_COPY_SRC = "/Users/lilygniedz/Documents/SREArena/SREArena/tests/scripts"
+
+    if not Path(LOCAL_COPY_SRC).exists():
+        raise FileNotFoundError(f"LOCAL_COPY_SRC not found: {LOCAL_COPY_SRC}")
+    for host in _read_nodes(nodes_file):
+        print(f"\n=== [SCP] {host} ===")
+        _run(["scp", "-r", "-o", "StrictHostKeyChecking=no", LOCAL_COPY_SRC, f"{host}:~"])
+
+
+REMOTE_SELF_PATH = "scripts/automating_tests.py"
+
+
+def run_installations_all(nodes_file: str = "nodes.txt"):
+    """SSH each node and run this file with --installations."""
+    for host in _read_nodes(nodes_file):
+        print(f"\n=== [SSH install] {host} ===")
+        _run(["ssh", host, f"bash -lc 'python3 {REMOTE_SELF_PATH} --installations'"])
+
+
+def run_setup_env_all(nodes_file: str = "nodes.txt"):
+    """SSH each node and run this file with --setup-env."""
+    for host in _read_nodes(nodes_file):
+        print(f"\n=== [SSH setup-env] {host} ===")
+        _run(
+            [
+                "ssh",
+                host,
+                # add eval brew shellenv before running python
+                'bash -lc \'eval "$($(brew --prefix 2>/dev/null || echo /home/linuxbrew/.linuxbrew)/bin/brew shellenv)"; '
+                "cd ~ && python3 scripts/automating_tests.py --setup-env'",
+            ]
+        )
+
+
 def run_shell_command(path: Path):
     """Run a shell script with Bash: ensure exec bit, then 'bash <script>'."""
     print(f"\n==> RUN: {path}")
@@ -43,9 +102,9 @@ def run_shell_command(path: Path):
         return
 
     try:
-        cmd = f"set -euo pipefail; chmod +x {shlex.quote(str(path))} || true; bash {shlex.quote(str(path))}"
+        cmd = f"chmod +x {shlex.quote(str(path))}; bash {shlex.quote(str(path))}"
         subprocess.run(
-            ["bash", "-lc", cmd],
+            ["bash", "-c", cmd],
             env=ENV,
             stdin=subprocess.DEVNULL,
             timeout=TIMEOUT,
@@ -94,9 +153,26 @@ def _brew_exists() -> bool:
 
 
 def run_submit(nodes_file: str = "nodes.txt"):
-    TMUX_CMD = "tmux new-session -d -s showcase_tmux2 'python3 scripts/auto_submit.py 2>&1 | tee submission_log.txt; sleep infinity;'"
-    TMUX_CMD2 = "tmux new-session -d -s main_tmux 'bash -c \"cd /users/lilygn/SREGym && /users/lilygn/SREGym/.venv/bin/python3 main.py 2>&1 | tee global_benchmark_log.txt;\" sleep infinity;'"
+    TMUX_CMD = (
+        "tmux kill-session -t showcase_tmux2 2>/dev/null || true; "
+        "tmux new-session -d -s showcase_tmux2 -c /users/$USER/scripts "
+        "'python3 auto_submit.py 2>&1 | tee -a ~/submission_log.txt; sleep infinity'"
+    )
+
+    # TMUX_CMD = "tmux new-session -d -s showcase_tmux2 'cd /users/lilygn/scripts && python3 auto_submit.py 2>&1 | tee submission_log.txt; sleep infinity;'"
+    # TMUX_CMD2 = "tmux new-session -d -s main_tmux 'bash -c \"cd /users/lilygn/SREGym && /users/lilygn/SREGym/.venv/bin/python3 main.py 2>&1 | tee global_benchmark_log.txt;\" sleep infinity;'"
     # TMUX_CMD2 = "tmux new-session -d -s main_tmux 'echo $PATH; sleep infinity;'"
+    TMUX_CMD2 = (
+        "tmux new-session -d -s main_tmux "
+        "'env -i PATH=/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:/usr/local/bin:/usr/bin:/bin "
+        "HOME=$HOME TERM=$TERM "
+        'bash -lc "echo PATH=\\$PATH; '
+        "command -v kubectl; kubectl version --client --short || true; "
+        "command -v helm || true; "
+        "cd /users/lilygn/SREGym && "
+        "/users/lilygn/SREGym/.venv/bin/python3 main.py 2>&1 | tee -a global_benchmark_log.txt; "
+        "sleep infinity\"'"
+    )
 
     with open(nodes_file) as f:
         nodes = [ln.strip() for ln in f if ln.strip() and not ln.startswith("#")]
@@ -143,7 +219,7 @@ def install_git():
 
 
 def clone(nodes_file: str = "nodes.txt", user: str = "lilygn", repo: str = "git@github.com:xlab-uiuc/SREGym.git"):
-    REMOTE_CMD = f"git clone {repo}"
+    REMOTE_CMD = f'GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no" git clone --recurse-submodules {repo}'
 
     with open(nodes_file) as f:
         nodes = [ln.strip() for ln in f if ln.strip() and not ln.startswith("#")]
@@ -159,14 +235,31 @@ def clone(nodes_file: str = "nodes.txt", user: str = "lilygn", repo: str = "git@
             f"{REMOTE_CMD}",
         ]
 
-        subprocess.run(
-            ["scp", "-o", "StrictHostKeyChecking=no", str(LOCAL_ENV), f"{host}:/users/lilygn/SREGym/.env"], check=True
-        )
-
+        # try:
+        #     #subprocess.run(cmd, check=True)
+        #     subprocess.run(
+        #     ["scp", "-o", "StrictHostKeyChecking=no", str(LOCAL_ENV), f"{host}:$HOME/SREGym/.env"], check=True
+        # )
+        #     subprocess.run(
+        #         ["ssh", "-o", "StrictHostKeyChecking=no", host, "sed -i '/^API_KEY.*/d' /users/lilygn/SREGym/.env"],
+        #         check=True,
+        #     )
+        # except subprocess.CalledProcessError:
+        #     print(f"FAILED: {host}")
         try:
             subprocess.run(cmd, check=True)
             subprocess.run(
-                ["ssh", "-o", "StrictHostKeyChecking=no", host, "sed -i '/^API_KEY.*/d' /users/lilygn/SREGym/.env"],
+                ["scp", "-o", "StrictHostKeyChecking=accept-new", str(LOCAL_ENV), f"{host}:~/SREGym/.env"], check=True
+            )
+            subprocess.run(
+                [
+                    "ssh",
+                    "-A",
+                    "-o",
+                    "StrictHostKeyChecking=accept-new",
+                    host,
+                    "sed -i '/^API_KEY.*/d' ~/SREGym/.env || true",
+                ],
                 check=True,
             )
         except subprocess.CalledProcessError:
@@ -181,6 +274,7 @@ def _brew_shellenv_cmd() -> str:
 
 def _install_brew_if_needed():
     if _brew_exists():
+        print("------Homebrew already installed.")
         return
     print("Homebrew not found — installing non-interactively for Linux/macOS…")
     cmd = r'NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"'
@@ -212,14 +306,60 @@ def install_python():
         print(f"Error installing Python: exit {e.returncode}")
 
 
+def _resolve_kind_config() -> str | None:
+    kind_dir = SREGYM_ROOT / "kind"
+    prefs = [
+        kind_dir / "kind-config-x86.yaml",
+        kind_dir / "kind-config-arm.yaml",
+    ]
+    for p in prefs:
+        if p.is_file():
+            return str(p)
+    if kind_dir.is_dir():
+        for p in sorted(kind_dir.glob("*.yaml")):
+            if p.is_file():
+                return str(p)
+    return None
+
+
 def create_cluster():
-    try:
-        subprocess.run(["kind", "create", "cluster", "--config", "kind/kind-config-x86.yaml"], check=True)
-        print("Kubernetes cluster created successfully.")
-    except subprocess.TimeoutExpired:
-        print("Timed out creating Kubernetes cluster.")
-    except subprocess.CalledProcessError as e:
-        print(f"Error creating Kubernetes cluster: exit {e.returncode}")
+    cfg = _resolve_kind_config()
+    if cfg:
+        subprocess.run(
+            ["bash", "-lc", f"kind delete cluster || true; kind create cluster --config {shlex.quote(cfg)}"],
+            check=True,
+            cwd=str(SREGYM_ROOT),
+        )
+    else:
+        subprocess.run(
+            ["bash", "-lc", "kind delete cluster || true; kind create cluster"],
+            check=True,
+            cwd=str(SREGYM_ROOT),
+        )
+
+
+# def create_cluster():
+#     try:
+#         subprocess.run(["kind", "create", "cluster", "--config", "kind/kind-config-x86.yaml"], check=True, cwd="/users/lilygn/SREGym",)
+#         print("Kubernetes cluster created successfully.")
+#     except subprocess.TimeoutExpired:
+#         print("Timed out creating Kubernetes cluster.")
+#     except subprocess.CalledProcessError as e:
+#         print(f"Error creating Kubernetes cluster: exit {e.returncode}")
+
+
+def install_kubectl():
+    _install_brew_if_needed()
+
+    print("installed brew")
+    for node in _read_nodes("nodes.txt"):
+        print(f"\n=== [Install kubectl] {node} ===")
+        cmd = (
+            f"ssh -o StrictHostKeyChecking=no {node} "
+            "'cd ~/scripts && chmod +x kubectl.sh && brew install kubectl helm'"
+        )
+        subprocess.run(cmd, shell=True, check=True)
+    print("Kubectl installed successfully on all nodes.")
 
 
 def set_up_environment():
@@ -254,9 +394,22 @@ def set_up_environment():
         print(f"Setup failed with return code {e.returncode}")
 
 
+if __name__ == "__main__" and "--installations" in sys.argv:
+    installations()
+    sys.exit(0)
+
+if __name__ == "__main__" and "--setup-env" in sys.argv:
+    set_up_environment()
+    sys.exit(0)
+
 if __name__ == "__main__":
-    # installations()
+    # scp_scripts_to_all("nodes.txt")
     # clone()
+    # run_installations_all("nodes.txt")
+    # run_setup_env_all("nodes.txt")
+
+    install_kubectl()
     run_submit()
 
-    # set_up_environment()
+# if __name__ == "__main__":
+#     run_submit()
