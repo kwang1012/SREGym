@@ -131,16 +131,16 @@ def installations():
 
 
 def _brew_exists() -> bool:
-    for p in (
-        "/home/linuxbrew/.linuxbrew/bin/brew",
-        "/opt/homebrew/bin/brew",
-        "/usr/local/bin/brew",
-    ):
-        if Path(p).exists():
-            return True
+    # for p in (
+    #     "/home/linuxbrew/.linuxbrew/bin/brew",
+    #     "/opt/homebrew/bin/brew",
+    #     "/usr/local/bin/brew",
+    # ):
+    #     if Path(p).exists():
+    #         return True
     try:
         subprocess.run(
-            ["bash", "-lc", "command -v brew"],
+            "brew",
             env=ENV,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
@@ -277,14 +277,18 @@ def _install_brew_if_needed():
         print("------Homebrew already installed.")
         return
     print("Homebrew not found — installing non-interactively for Linux/macOS…")
-    cmd = r'NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"'
-    subprocess.run(
-        ["bash", "-lc", cmd],
-        env=ENV,
-        stdin=subprocess.DEVNULL,
-        timeout=TIMEOUT,
-        check=True,
-    )
+    for node in _read_nodes("nodes.txt"):
+        print(f"\n=== [Install Homebrew] {node} ===")
+        remote_cmd = 'NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"'
+        cmd = f"ssh -o StrictHostKeyChecking=no {node} '{remote_cmd}'"
+
+        subprocess.run(
+            ["bash", "-lc", cmd],
+            env=ENV,
+            stdin=subprocess.DEVNULL,
+            timeout=TIMEOUT,
+            check=True,
+        )
     print("Homebrew installed.")
 
 
@@ -349,16 +353,30 @@ def create_cluster():
 
 
 def install_kubectl():
-    _install_brew_if_needed()
 
+    _install_brew_if_needed()
     print("installed brew")
+    SCRIPTS_DIR = Path.home() / "scripts"
+
     for node in _read_nodes("nodes.txt"):
         print(f"\n=== [Install kubectl] {node} ===")
-        cmd = (
-            f"ssh -o StrictHostKeyChecking=no {node} "
-            "'cd ~/scripts && chmod +x kubectl.sh && brew install kubectl helm'"
+        # cmd2 = (  f"ssh -o StrictHostKeyChecking=no {node} "
+        #     "\"bash -lc 'cd ~/scripts && chmod +x brew.sh && bash brew.sh'\"")
+
+        cmd = f'ssh -o StrictHostKeyChecking=no {node} "bash -ic \\"brew install kubectl helm\\""'
+
+        # cmd3 = (
+        #     f"ssh -o StrictHostKeyChecking=no {node} \"bash -ic \\\"echo $PATH\\\"\""
+        # )
+        print(f"WHAT IS PATH??")
+        subprocess.run(
+            cmd,
+            check=True,
+            shell=True,
+            executable="/bin/zsh",
         )
-        subprocess.run(cmd, shell=True, check=True)
+        # subprocess.run(cmd2, shell=True, check=True)
+        # subprocess.run(cmd, shell=True, check=True)
     print("Kubectl installed successfully on all nodes.")
 
 
@@ -381,7 +399,7 @@ def set_up_environment():
         subprocess.run(
             cmd,
             shell=True,
-            executable="/bin/bash",
+            executable="/bin/zsh",
             env=ENV,
             stdin=subprocess.DEVNULL,
             timeout=TIMEOUT,
@@ -392,6 +410,13 @@ def set_up_environment():
         print("Setup timed out.")
     except subprocess.CalledProcessError as e:
         print(f"Setup failed with return code {e.returncode}")
+
+
+def kill_server():
+    TMUX_KILL_CMD = "tmux kill-server"
+    for host in _read_nodes("nodes.txt"):
+        print(f"\n=== [KILL TMUX SESSIONS] {host} ===")
+        _run(["ssh", host, TMUX_KILL_CMD])
 
 
 if __name__ == "__main__" and "--installations" in sys.argv:
@@ -408,7 +433,8 @@ if __name__ == "__main__":
     # run_installations_all("nodes.txt")
     # run_setup_env_all("nodes.txt")
 
-    install_kubectl()
+    # install_kubectl()
+    kill_server()
     run_submit()
 
 # if __name__ == "__main__":
