@@ -212,7 +212,7 @@ class ProblemRegistry:
             "astronomy_shop_product_catalog_service_failure": ProductCatalogServiceFailure,
             "astronomy_shop_recommendation_service_cache_failure": RecommendationServiceCacheFailure,
             "kafka_queue_problems_hotel_reservation": lambda: KafkaQueueProblems(
-                app_name="hotel_reservation", faulty_service="memcached-rate"
+                # app_name="hotel_reservation", faulty_service="memcached-rate"
             ),
             "loadgenerator_flood_homepage": LoadGeneratorFloodHomepage,
             # ==================== TRAIN TICKET FAULT INJECTOR ====================
