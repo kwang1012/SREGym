@@ -27,6 +27,8 @@ class Wrk:
 
         config.load_kube_config()
 
+        self.kubectl = KubeCtl()
+
     def create_configmap(self, name, namespace, payload_script_path):
         with open(payload_script_path, "r") as script_file:
             script_content = script_file.read()
@@ -168,9 +170,8 @@ class WorkloadOracle(BaseOracle):
         return self.core_v1_api.read_namespaced_pod_log(pods.items[0].metadata.name, namespace)
 
     def get_base_url(self):
-        kubectl = KubeCtl()
         # these are assumed to be initialized within the specific app
-        endpoint = kubectl.get_cluster_ip(self.app.frontend_service, self.app.namespace)
+        endpoint = self.kubectl.get_cluster_ip(self.app.frontend_service, self.app.namespace)
         return f"http://{endpoint}:{self.app.frontend_port}"
 
     def get_workloads(self, app_type):
@@ -197,23 +198,8 @@ class WorkloadOracle(BaseOracle):
                     return True
         return False
 
-    async def wait_for_job_completion(self, job_name):
-        namespace = "default"
-
-        print(f"--- Waiting for the job {job_name} ---")
-
-        try:
-            while True:
-                job_status = self.batch_v1_api.read_namespaced_job_status(name=job_name, namespace=namespace).status
-                if WorkloadOracle.is_job_completed(job_status):
-                    print("Job completed successfully.", flush=True)
-                    break
-                await asyncio.sleep(5)
-        except client.exceptions.ApiException as e:
-            print(f"Error monitoring job: {e}")
-
     async def get_workload_result(self, job_name):
-        await self.wait_for_job_completion(job_name)
+        await self.kubectl.wait_for_job_completion(job_name=job_name, namespace="default")
 
         namespace = "default"
 
