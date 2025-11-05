@@ -53,7 +53,7 @@ class GCCapacityDegradation(Problem):
     def run_workload(self, namespace="default"):
         self.start_workload()
         job_name = self.wrk.job_name
-        self.kubectl.wait_for_job_completion_(job_name=job_name, namespace=namespace, timeout=1000)
+        self.kubectl.wait_for_job_completion(job_name=job_name, namespace=namespace, timeout=1000)
         workentries = self.wrk.retrievelog()
         workentry = workentries[0] if workentries else None
         print(f"Workload Entry: {workentry}")

@@ -179,35 +179,6 @@ class KubeCtl:
 
         raise Exception(f"[red]Timeout: Namespace '{namespace}' was not deleted within {max_wait} seconds.")
 
-    def wait_for_job_completion(self, name: str, namespace: str, sleep: int = 5, max_wait: int = 10_000):
-        """Wait for a Kubernetes Job to complete."""
-        batch_v1 = client.BatchV1Api()
-        console = Console()
-        console.log(f"[bold yellow]Waiting for Job '{name}' in namespace '{namespace}' to complete...")
-
-        with console.status("[bold yellow]Monitoring job status..."):
-            elapsed = 0
-            while elapsed < max_wait:
-                try:
-                    job = batch_v1.read_namespaced_job(name=name, namespace=namespace)
-                    status = job.status
-
-                    if status.succeeded and status.succeeded >= 1:
-                        console.log(f"[bold green]Job '{name}' completed successfully.")
-                        return
-
-                    if status.failed and status.failed > 0:
-                        raise Exception(f"[red]Job '{name}' failed.")
-
-                except ApiException as e:
-                    console.log(f"[red]Exception when checking job status: {e}")
-                    raise
-
-                time.sleep(sleep)
-                elapsed += sleep
-
-            raise TimeoutError(f"[red]Timeout: Job '{name}' did not complete within {max_wait} seconds.")
-
     def is_ready(self, pod):
         phase = pod.status.phase or ""
         container_statuses = pod.status.container_statuses or []
@@ -292,7 +263,7 @@ class KubeCtl:
             console.log(f"[red]Unexpected error deleting job '{job_name}': {e}")
             return False
 
-    def wait_for_job_completion_(self, job_name: str, namespace: str = "default", timeout: int = 600):
+    def wait_for_job_completion(self, job_name: str, namespace: str = "default", timeout: int = 600):
         """Wait for a Kubernetes Job to complete successfully within a specified timeout."""
         api_instance = client.BatchV1Api()
         console = Console()
