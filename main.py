@@ -1,6 +1,7 @@
 import asyncio
 import csv
 import logging
+import multiprocessing
 import os
 import sys
 import threading
@@ -12,6 +13,7 @@ from rich.console import Console
 
 from dashboard.dashboard_app import SREGymDashboardServer
 from dashboard.proxy import LogProxy
+from logger import init_logger
 from mcp_server.configs.load_all_cfg import mcp_server_cfg
 from mcp_server.sregym_mcp_server import app as mcp_app
 from sregym.agent_launcher import AgentLauncher
@@ -19,7 +21,6 @@ from sregym.agent_registry import get_agent
 from sregym.conductor.conductor import Conductor
 from sregym.conductor.conductor_api import request_shutdown, run_api
 from sregym.conductor.constants import StartProblemResult
-from logger import init_logger
 
 LAUNCHER = AgentLauncher()
 
@@ -117,39 +118,60 @@ def _run_driver_and_shutdown(conductor: Conductor):
 
 def run_dashboard_server():
     """Entry point for multiprocessing child: construct Dash in child process."""
-    # Silence child process stdout/stderr and noisy loggers
+    # Silence child process stdout/stderr to prevent output from being printed
     import logging
     import os
     import sys
 
+    # Redirect stdout and stderr to devnull
     try:
         sys.stdout = open(os.devnull, "w")
         sys.stderr = open(os.devnull, "w")
     except Exception:
         pass
+
+    # Also silence logging output
+    logging.getLogger("werkzeug").setLevel(logging.ERROR)
+    logging.getLogger("dash").setLevel(logging.ERROR)
+
+    # Create and run the dashboard server
     server = SREGymDashboardServer(host="127.0.0.1", port=11451, debug=False)
     server.run(threaded=False)
-    print("Dashboard server started on 127.0.0.1:11451")
+
+
+def start_dashboard_process():
+    """Start the dashboard server in a separate process and return the process object."""
+    # Set multiprocessing start method to 'spawn' for better cross-platform compatibility
+    try:
+        multiprocessing.set_start_method("spawn", force=True)
+    except RuntimeError:
+        # Already set, ignore
+        pass
+
+    # Start dashboard in a separate process
+    dashboard_process = None
+    try:
+        dashboard_process = multiprocessing.Process(
+            target=run_dashboard_server,
+            name="dashboard-server",
+            daemon=True,  # Daemon process will be terminated when main process exits
+        )
+        dashboard_process.start()
+        # Give dashboard a moment to start up
+        time.sleep(2)
+    except Exception as e:
+        print(f"⚠️  Failed to start dashboard server: {e}", file=sys.stderr)
+
+    return dashboard_process
 
 
 def main():
+
     # set up the logger
-    logging.getLogger("sregym-global").setLevel(logging.INFO)
-    logging.getLogger("sregym-global").addHandler(LogProxy())
     init_logger()
 
-    """
-    try:
-        set_start_method("spawn")
-    except RuntimeError:
-        pass
-
-    # Start dashboard in a separate process; construct server inside the child
-    p = Process(target=run_dashboard_server, daemon=True)
-    p.start()
-    
-    time.sleep(5)
-    """
+    # Start dashboard in a separate process
+    dashboard_process = start_dashboard_process()
 
     # Get agent name from environment variable or default to "agent"
     agent_name = os.environ.get("SREGYM_AGENT", "agent")
@@ -182,6 +204,21 @@ def main():
     finally:
         # Give driver a moment to finish setting results
         driver_thread.join(timeout=5)
+
+        # Terminate dashboard process gracefully if it's still running
+        if dashboard_process is not None and dashboard_process.is_alive():
+            try:
+                # Send SIGTERM to allow graceful shutdown (triggers _export_on_exit)
+                dashboard_process.terminate()
+                # Give dashboard time to export trace data (export can take a few seconds)
+                dashboard_process.join(timeout=5)
+                # Force kill only if still alive after graceful shutdown timeout
+                if dashboard_process.is_alive():
+                    print("⚠️  Dashboard process did not exit gracefully, forcing termination...", file=sys.stderr)
+                    dashboard_process.kill()
+                    dashboard_process.join(timeout=1)
+            except Exception as e:
+                print(f"⚠️  Error terminating dashboard process: {e}", file=sys.stderr)
 
     # When API shuts down, collect results from driver
     results = getattr(main, "results", [])
