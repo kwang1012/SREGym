@@ -181,7 +181,7 @@ class Conductor:
 
             self.logger.info(f"[ENV] Injected fault")
 
-            # FIXME: Disabled until https://github.com/xlab-uiuc/SREGym/issues/296 is complete
+            # FIXME: Disabled until https://github.com/SREGym/SREGym/issues/296 is complete
             # self.configure_transient_issues()
             # if self.transient_config["switch"]:
             #     self._start_transient_issues()
