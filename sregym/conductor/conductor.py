@@ -57,12 +57,6 @@ class Conductor:
             "interval_max": 30,
         }
 
-        # Act execution registry/state
-        # Each item in act_sequence is a dict with:
-        #   type: "AgentAct" | "GymAct"
-        #   name: str
-        #   For AgentAct: "precondition" and "evaluation" callables
-        #   For GymAct: "op" callable
         self.act_sequence: list[dict] = []
         self.current_act_index: int = 0
         self.current_agent_act_index: int | None = None
@@ -121,17 +115,7 @@ class Conductor:
             # Use the tasklist as-is (only AgentAct names, e.g., localization, mitigation)
             self.tasklist = problem_tasklist
 
-    # --------------------
-    # Act registry helpers
-    # --------------------
-
     def _build_act_sequence(self):
-        """
-        Build the ordered list of Acts (GymAct and AgentAct) for this problem based on tasklist.
-
-        Default GymAct: inject fault into the environment.
-        Default AgentActs: localization, mitigation.
-        """
         self.act_sequence = []
         self.current_act_index = 0
         self.current_agent_act_index = None
@@ -205,7 +189,6 @@ class Conductor:
         self.act_sequence.extend(configured_agent_acts)
 
     def _gymact_inject_fault(self):
-        """Default GymAct: inject the problem fault."""
         self.problem.inject_fault()
         self.logger.info("[ENV] Injected fault")
 
@@ -221,12 +204,7 @@ class Conductor:
 
     # -------- AgentAct: localization --------
     def _precondition_localization(self):
-        """
-        Precondition for localization AgentAct.
-
-        At this point, fault has already been injected and checkpoint loaded in _gymact_inject_fault.
-        """
-        self.local_logger.info("Precondition for Localization AgentAct executed.")
+        self.local_logger.info("Precondition for Localization AgentAct executed. No real action.")
 
     def _evaluate_localization(self, solution):
         """Evaluation logic for localization AgentAct."""
@@ -243,12 +221,7 @@ class Conductor:
 
     # -------- AgentAct: mitigation --------
     def _precondition_mitigation(self):
-        """
-        Precondition for mitigation AgentAct.
-
-        Currently this is a logical placeholder; it can be extended per-problem if needed.
-        """
-        self.local_logger.info("Precondition for Mitigation AgentAct executed.")
+        self.local_logger.info("Precondition for Mitigation AgentAct executed. No real action.")
 
     def _evaluate_mitigation(self, solution):
         """Evaluation logic for mitigation AgentAct."""
@@ -308,7 +281,6 @@ class Conductor:
         self._finish_problem()
 
     def _finish_problem(self):
-        """Finalize the problem: stop transient issues, recover fault, undeploy app."""
         self.submission_stage = "done"
 
         self.logger.info(f"[STAGE] Done, recover fault")
