@@ -66,10 +66,9 @@ def scp_scripts_to_all(user, nodes_file: str = "nodes.txt"):
 
 def run_installations_all(user, nodes_file: str = "nodes.txt"):
     """SSH each node and run this file with --installations in a tmux session named 'installations'."""
-    session = "installations"
     tmux_cmd = (
-        f"if tmux has-session -t {session}; then tmux kill-session -t {session}; fi; "
-        f"tmux new-session -d -s {session} "
+        f"if tmux has-session -t installations; then tmux kill-session -t installations; fi; "
+        f"tmux new-session -d -s installations "
         f"'bash -ic \"python3 {REMOTE_SELF_PATH} --installations; sleep infinity\"'"
     )
     for host in _read_nodes(nodes_file):
