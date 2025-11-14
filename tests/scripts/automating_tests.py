@@ -239,7 +239,7 @@ def install_git():
         print(f"Error installing Git: exit {e.returncode}")
 
 
-def clone(nodes_file: str = "nodes.txt", repo: str = "git@github.com:SREGym/SREGym.git"):
+def clone(nodes_file: str = "nodes.txt", repo: str = "git@github.com:SREGym/SREGym"):
     """
     Clone the repo on all remote nodes using local SSH agent forwarding.
     """
