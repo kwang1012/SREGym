@@ -410,7 +410,7 @@ def set_up_environment():
     try:
         shellenv = _brew_shellenv_cmd()
         subprocess.run(
-            ["bash", "-ic", f"{shellenv}; command -v uv || brew install uv || python3 -m pip install --user uv"],
+            ["bash", "-ic", f"{shellenv}; command -v uv || brew install uv"],
             env=ENV,
             stdin=subprocess.DEVNULL,
             timeout=TIMEOUT,
@@ -422,7 +422,7 @@ def set_up_environment():
     commands = [
         f"cd ~/SREGym",
         'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"',
-        "command -v uv >/dev/null 2>&1 || brew install uv || python3 -m pip install --user uv",
+        "command -v uv >/dev/null 2>&1 || brew install uv",
         'uv venv -p "$(command -v python3.12 || command -v python3)"',
         "source .venv/bin/activate",
         "uv sync",
