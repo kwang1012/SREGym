@@ -93,7 +93,7 @@ def run_setup_env_all(user, nodes_file: str = "nodes.txt"):
         print(f"Started tmux session 'setup_env' on {host} (log: ~/setup_env_log.txt)")
 
 
-def run_shell_command(path: Path):
+def run_shell_script(path: Path):
     """Run a shell script with Bash: ensure exec bit, then 'bash <script>'."""
     print(f"\n==> RUN: {path}")
     if not path.exists():
@@ -121,7 +121,7 @@ def installations():
     for script in scripts:
         path = SCRIPTS_DIR / script
         if path.exists():
-            run_shell_command(path)
+            run_shell_script(path)
         else:
             print(f"Script {script} not found at {path}")
             return
