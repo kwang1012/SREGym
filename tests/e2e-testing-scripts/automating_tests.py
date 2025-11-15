@@ -55,7 +55,7 @@ def _run(cmd: list[str]):
 
 
 def scp_scripts_to_all(user, nodes_file: str = "nodes.txt"):
-    """scp -r LOCAL_COPY_SRC -> ~/scripts on each node."""
+    """scp -r LOCAL_COPY_SRC -> ~/e2e-testing-scripts on each node."""
 
     if not Path(base).exists():
         raise FileNotFoundError(f"LOCAL_COPY_SRC not found: {base}")
@@ -83,7 +83,7 @@ def run_setup_env_all(user, nodes_file: str = "nodes.txt"):
             "tmux kill-session -t setup_env 2>/dev/null || true; "
             "tmux new-session -d -s setup_env "
             "'bash -ic \""
-            "cd ~/scripts && "
+            "cd ~/e2e-testing-scripts && "
             "python3 automating_tests.py --setup-env 2>&1 | tee -a ~/setup_env_log.txt; "
             "sleep infinity\"'"
         )
@@ -116,7 +116,7 @@ def run_shell_script(path: Path):
 
 
 def installations():
-    SCRIPTS_DIR = Path.home() / "scripts"
+    SCRIPTS_DIR = Path.home() / "e2e-testing-scripts"
     for script in scripts:
         path = SCRIPTS_DIR / script
         if path.exists():
@@ -147,7 +147,11 @@ def _brew_exists(node: str) -> bool:
             timeout=30,
         )
         return True
-    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+    except (
+        subprocess.CalledProcessError,
+        FileNotFoundError,
+        subprocess.TimeoutExpired,
+    ):
         return False
 
 
@@ -178,7 +182,7 @@ def comment_out_problems():
 def run_submit(user, nodes_file: str = "nodes.txt"):
     TMUX_CMD = (
         "tmux kill-session -t submission 2>/dev/null || true; "
-        f"tmux new-session -d -s submission -c /users/{user}/scripts "
+        f"tmux new-session -d -s submission -c /users/{user}/e2e-testing-scripts"
         "'python3 auto_submit.py 2>&1 | tee -a ~/submission_log.txt; sleep infinity'"
     )
     # TMUX_CMD2 = "tmux new-session -d -s main_tmux 'echo $PATH; sleep infinity;'"
@@ -266,7 +270,13 @@ def clone(nodes_file: str = "nodes.txt", repo: str = "git@github.com:SREGym/SREG
         try:
             subprocess.run(cmd, check=True, env=env)
             subprocess.run(
-                ["scp", "-o", "StrictHostKeyChecking=accept-new", str(LOCAL_ENV), f"{host}:~/SREGym/.env"],
+                [
+                    "scp",
+                    "-o",
+                    "StrictHostKeyChecking=accept-new",
+                    str(LOCAL_ENV),
+                    f"{host}:~/SREGym/.env",
+                ],
                 check=True,
                 env=env,
             )
@@ -355,7 +365,6 @@ def _resolve_kind_config() -> str | None:
 
 
 def create_cluster(user):
-
     for node in _read_nodes("nodes.txt"):
         print(f"\n=== [Create Kind Cluster] {node} ===")
         TMUX_SESSION = "cluster_setup"
@@ -374,7 +383,14 @@ def copy_env():
     for node in _read_nodes("nodes.txt"):
         print(f"\n=== [SCP .env] {node} ===")
         subprocess.run(
-            ["scp", "-o", "StrictHostKeyChecking=accept-new", str(LOCAL_ENV), f"{node}:~/SREGym/.env"], check=True
+            [
+                "scp",
+                "-o",
+                "StrictHostKeyChecking=accept-new",
+                str(LOCAL_ENV),
+                f"{node}:~/SREGym/.env",
+            ],
+            check=True,
         )
         subprocess.run(
             [
@@ -390,10 +406,9 @@ def copy_env():
 
 
 def install_kubectl():
-
     _install_brew_if_needed()
     print("installed brew")
-    SCRIPTS_DIR = Path.home() / "scripts"
+    SCRIPTS_DIR = Path.home() / "e2e-testing-scripts"
 
     for node in _read_nodes("nodes.txt"):
         print(f"\n=== [Install kubectl] {node} ===")
