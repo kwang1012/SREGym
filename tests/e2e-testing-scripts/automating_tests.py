@@ -171,12 +171,17 @@ def comment_out_problems():
         start = i * m // n
         end = (i + 1) * m // n
         mapping[node] = problems[start:end]
+    # comment out agent run too
+    agent_run_lines = ["reg = get_agent(agent_name)", "if reg:", "await LAUNCHER.ensure_started(reg)"]
     for node, probs in mapping.items():
         for prob in problems:
             if prob not in mapping[node]:
                 print(f"On node {node}, comment out line: {prob.strip()}")
                 cmd = f'ssh -o StrictHostKeyChecking=no {node} "sed -i \'/\\"{prob}\\":/s/^/#/\' ~/SREGym/sregym/conductor/problems/registry.py"'
                 subprocess.run(cmd, shell=True, check=True)
+        for l in agent_run_lines:
+            cmd = f'ssh -o StrictHostKeyChecking=no {node} "sed -i \'/\\"{l}\\":/s/^/#/\' ~/SREGym/main.py"'
+            subprocess.run(cmd, shell=True, check=True)
 
 
 def run_submit(user, nodes_file: str = "nodes.txt"):
@@ -530,14 +535,14 @@ if __name__ == "__main__":
 
     # installs prereqs
     run_installations_all(user, "nodes.txt")
-    sleep(50)
+    sleep(120)
     install_kubectl()
     create_cluster(user)
-    sleep(30)
+    sleep(120)
     copy_env()
     # set up python environment
     run_setup_env_all(user, "nodes.txt")
-    sleep(90)
+    sleep(120)
     # runs auto submitting script to keep benchmark going
     run_submit(user, "nodes.txt")
     # collects any logs
