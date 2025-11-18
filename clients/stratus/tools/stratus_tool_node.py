@@ -36,7 +36,7 @@ class StratusToolNode:
         self.sync_tools_by_name = {t.name: t for t in sync_tools} if sync_tools is not None else None
         self.async_tools_by_name = {t.name: t for t in async_tools} if async_tools is not None else None
 
-    def __call__(self, inputs: dict):
+    async def __call__(self, inputs: dict):
         if messages := inputs.get("messages", []):
             message = messages[-1]
         else:
@@ -70,15 +70,13 @@ class StratusToolNode:
                 arena_logger.info(f"[LLM] Agent choose to call: {tool_call['name']}({', '.join(arg_list)})")
                 logger.info(f"[STRATUS_TOOLNODE] Agent choose to call: {tool_call['name']}({', '.join(arg_list)})")
                 if tool_call["name"] in self.async_tools_by_name:
-                    tool_result = asyncio.run(
-                        self.async_tools_by_name[tool_call["name"]].ainvoke(
-                            {
-                                "type": "tool_call",
-                                "name": tool_call["name"],
-                                "args": {"state": inputs, **tool_call["args"]},
-                                "id": tool_call["id"],
-                            }
-                        )
+                    tool_result = await self.async_tools_by_name[tool_call["name"]].ainvoke(
+                        {
+                            "type": "tool_call",
+                            "name": tool_call["name"],
+                            "args": {"state": inputs, **tool_call["args"]},
+                            "id": tool_call["id"],
+                        }
                     )
                 elif tool_call["name"] in self.sync_tools_by_name:
                     tool_result = self.sync_tools_by_name[tool_call["name"]].invoke(

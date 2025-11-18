@@ -66,6 +66,7 @@ from sregym.conductor.problems.wrong_service_selector import WrongServiceSelecto
 from sregym.service.kubectl import KubeCtl
 
 
+# fmt: off
 class ProblemRegistry:
     def __init__(self):
         self.PROBLEM_REGISTRY = {
@@ -77,9 +78,7 @@ class ProblemRegistry:
             "incorrect_image": IncorrectImage,
             "incorrect_port_assignment": IncorrectPortAssignment,
             "misconfig_app_hotel_res": MisconfigAppHotelRes,
-            "missing_env_variable_astronomy_shop": lambda: MissingEnvVariable(
-                app_name="astronomy_shop", faulty_service="frontend"
-            ),
+            "missing_env_variable_astronomy_shop": lambda: MissingEnvVariable(app_name="astronomy_shop", faulty_service="frontend" ),
             "revoke_auth_mongodb-1": lambda: MongoDBRevokeAuth(faulty_service="mongodb-geo"),
             "revoke_auth_mongodb-2": lambda: MongoDBRevokeAuth(faulty_service="mongodb-rate"),
             "storage_user_unregistered-1": lambda: MongoDBUserUnregistered(faulty_service="mongodb-geo"),
@@ -95,112 +94,50 @@ class ProblemRegistry:
             "assign_to_non_existent_node": AssignNonExistentNode,
             "auth_miss_mongodb": MongoDBAuthMissing,
             "configmap_drift_hotel_reservation": lambda: ConfigMapDrift(faulty_service="geo"),
-            "duplicate_pvc_mounts_astronomy_shop": lambda: DuplicatePVCMounts(
-                app_name="astronomy_shop", faulty_service="frontend"
-            ),
-            "duplicate_pvc_mounts_hotel_reservation": lambda: DuplicatePVCMounts(
-                app_name="hotel_reservation", faulty_service="frontend"
-            ),
-            "duplicate_pvc_mounts_social_network": lambda: DuplicatePVCMounts(
-                app_name="social_network", faulty_service="jaeger"
-            ),
+            "duplicate_pvc_mounts_astronomy_shop": lambda: DuplicatePVCMounts(app_name="astronomy_shop", faulty_service="frontend"),
+            "duplicate_pvc_mounts_hotel_reservation": lambda: DuplicatePVCMounts(app_name="hotel_reservation", faulty_service="frontend"),
+            "duplicate_pvc_mounts_social_network": lambda: DuplicatePVCMounts(app_name="social_network", faulty_service="jaeger"),
             "env_variable_shadowing_astronomy_shop": lambda: EnvVariableShadowing(),
             "k8s_target_port-misconfig": lambda: K8STargetPortMisconfig(faulty_service="user-service"),
-            "liveness_probe_misconfiguration_astronomy_shop": lambda: LivenessProbeMisconfiguration(
-                app_name="astronomy_shop", faulty_service="frontend"
-            ),
-            "liveness_probe_misconfiguration_hotel_reservation": lambda: LivenessProbeMisconfiguration(
-                app_name="hotel_reservation", faulty_service="recommendation"
-            ),
-            "liveness_probe_misconfiguration_social_network": lambda: LivenessProbeMisconfiguration(
-                app_name="social_network", faulty_service="user-service"
-            ),
-            "liveness_probe_too_aggressive_astronomy_shop": lambda: LivenessProbeTooAggressive(
-                app_name="astronomy_shop"
-            ),
-            "liveness_probe_too_aggressive_hotel_reservation": lambda: LivenessProbeTooAggressive(
-                app_name="hotel_reservation"
-            ),
-            "liveness_probe_too_aggressive_social_network": lambda: LivenessProbeTooAggressive(
-                app_name="social_network"
-            ),
-            "missing_configmap_hotel_reservation": lambda: MissingConfigMap(
-                app_name="hotel_reservation", faulty_service="mongodb-geo"
-            ),
-            "missing_configmap_social_network": lambda: MissingConfigMap(
-                app_name="social_network", faulty_service="media-mongodb"
-            ),
+            "liveness_probe_misconfiguration_astronomy_shop": lambda: LivenessProbeMisconfiguration(app_name="astronomy_shop", faulty_service="frontend"),
+            "liveness_probe_misconfiguration_hotel_reservation": lambda: LivenessProbeMisconfiguration(app_name="hotel_reservation", faulty_service="recommendation"),
+            "liveness_probe_misconfiguration_social_network": lambda: LivenessProbeMisconfiguration(app_name="social_network", faulty_service="user-service"),
+            "liveness_probe_too_aggressive_astronomy_shop": lambda: LivenessProbeTooAggressive(app_name="astronomy_shop"),
+            "liveness_probe_too_aggressive_hotel_reservation": lambda: LivenessProbeTooAggressive(app_name="hotel_reservation"),
+            "liveness_probe_too_aggressive_social_network": lambda: LivenessProbeTooAggressive(app_name="social_network"),
+            "missing_configmap_hotel_reservation": lambda: MissingConfigMap(app_name="hotel_reservation", faulty_service="mongodb-geo"),
+            "missing_configmap_social_network": lambda: MissingConfigMap(app_name="social_network", faulty_service="media-mongodb"),
             "missing_service_astronomy_shop": lambda: MissingService(app_name="astronomy_shop", faulty_service="ad"),
-            "missing_service_hotel_reservation": lambda: MissingService(
-                app_name="hotel_reservation", faulty_service="mongodb-rate"
-            ),
-            "missing_service_social_network": lambda: MissingService(
-                app_name="social_network", faulty_service="user-service"
-            ),
+            "missing_service_hotel_reservation": lambda: MissingService(app_name="hotel_reservation", faulty_service="mongodb-rate"),
+            "missing_service_social_network": lambda: MissingService(app_name="social_network", faulty_service="user-service"),
             "namespace_memory_limit": NamespaceMemoryLimit,
             "pod_anti_affinity_deadlock": PodAntiAffinityDeadlock,
             "persistent_volume_affinity_violation": PersistentVolumeAffinityViolation,
             "pvc_claim_mismatch": PVCClaimMismatch,
             "rbac_misconfiguration": RBACMisconfiguration,
-            "readiness_probe_misconfiguration_astronomy_shop": lambda: ReadinessProbeMisconfiguration(
-                app_name="astronomy_shop", faulty_service="frontend"
-            ),
-            "readiness_probe_misconfiguration_hotel_reservation": lambda: ReadinessProbeMisconfiguration(
-                app_name="hotel_reservation", faulty_service="frontend"
-            ),
-            "readiness_probe_misconfiguration_social_network": lambda: ReadinessProbeMisconfiguration(
-                app_name="social_network", faulty_service="user-service"
-            ),
-            "resource_request_too_large": lambda: ResourceRequestTooLarge(
-                app_name="hotel_reservation", faulty_service="mongodb-rate"
-            ),
-            "resource_request_too_small": lambda: ResourceRequestTooSmall(
-                app_name="hotel_reservation", faulty_service="mongodb-rate"
-            ),
-            "rolling_update_misconfigured_hotel_reservation": lambda: RollingUpdateMisconfigured(
-                app_name="hotel_reservation"
-            ),
-            "rolling_update_misconfigured_social_network": lambda: RollingUpdateMisconfigured(
-                app_name="social_network"
-            ),
+            "readiness_probe_misconfiguration_astronomy_shop": lambda: ReadinessProbeMisconfiguration(app_name="astronomy_shop", faulty_service="frontend"),
+            "readiness_probe_misconfiguration_hotel_reservation": lambda: ReadinessProbeMisconfiguration(app_name="hotel_reservation", faulty_service="frontend"),
+            "readiness_probe_misconfiguration_social_network": lambda: ReadinessProbeMisconfiguration(app_name="social_network", faulty_service="user-service"),
+            "resource_request_too_large": lambda: ResourceRequestTooLarge(app_name="hotel_reservation", faulty_service="mongodb-rate"),
+            "resource_request_too_small": lambda: ResourceRequestTooSmall(app_name="hotel_reservation", faulty_service="mongodb-rate"),
+            "rolling_update_misconfigured_hotel_reservation": lambda: RollingUpdateMisconfigured(app_name="hotel_reservation"),
+            "rolling_update_misconfigured_social_network": lambda: RollingUpdateMisconfigured(app_name="social_network"),
             "scale_pod_zero_social_net": ScalePodSocialNet,
-            "service_dns_resolution_failure_astronomy_shop": lambda: ServiceDNSResolutionFailure(
-                app_name="astronomy_shop", faulty_service="frontend"
-            ),
-            "service_dns_resolution_failure_social_network": lambda: ServiceDNSResolutionFailure(
-                app_name="social_network", faulty_service="user-service"
-            ),
-            "sidecar_port_conflict_astronomy_shop": lambda: SidecarPortConflict(
-                app_name="astronomy_shop", faulty_service="frontend"
-            ),
-            "sidecar_port_conflict_hotel_reservation": lambda: SidecarPortConflict(
-                app_name="hotel_reservation", faulty_service="frontend"
-            ),
-            "sidecar_port_conflict_social_network": lambda: SidecarPortConflict(
-                app_name="social_network", faulty_service="user-service"
-            ),
+            "service_dns_resolution_failure_astronomy_shop": lambda: ServiceDNSResolutionFailure(app_name="astronomy_shop", faulty_service="frontend"),
+            "service_dns_resolution_failure_social_network": lambda: ServiceDNSResolutionFailure(app_name="social_network", faulty_service="user-service"),
+            "sidecar_port_conflict_astronomy_shop": lambda: SidecarPortConflict(app_name="astronomy_shop", faulty_service="frontend"),
+            "sidecar_port_conflict_hotel_reservation": lambda: SidecarPortConflict(app_name="hotel_reservation", faulty_service="frontend"),
+            "sidecar_port_conflict_social_network": lambda: SidecarPortConflict(app_name="social_network", faulty_service="user-service"),
             "stale_coredns_config_astronomy_shop": lambda: StaleCoreDNSConfig(app_name="astronomy_shop"),
             "stale_coredns_config_social_network": lambda: StaleCoreDNSConfig(app_name="social_network"),
             "taint_no_toleration_social_network": lambda: TaintNoToleration(),
             "wrong_bin_usage": WrongBinUsage,
-            "wrong_dns_policy_astronomy_shop": lambda: WrongDNSPolicy(
-                app_name="astronomy_shop", faulty_service="frontend"
-            ),
-            "wrong_dns_policy_hotel_reservation": lambda: WrongDNSPolicy(
-                app_name="hotel_reservation", faulty_service="profile"
-            ),
-            "wrong_dns_policy_social_network": lambda: WrongDNSPolicy(
-                app_name="social_network", faulty_service="user-service"
-            ),
-            "wrong_service_selector_astronomy_shop": lambda: WrongServiceSelector(
-                app_name="astronomy_shop", faulty_service="frontend"
-            ),
-            "wrong_service_selector_hotel_reservation": lambda: WrongServiceSelector(
-                app_name="hotel_reservation", faulty_service="frontend"
-            ),
-            "wrong_service_selector_social_network": lambda: WrongServiceSelector(
-                app_name="social_network", faulty_service="user-service"
-            ),
+            "wrong_dns_policy_astronomy_shop": lambda: WrongDNSPolicy(app_name="astronomy_shop", faulty_service="frontend"),
+            "wrong_dns_policy_hotel_reservation": lambda: WrongDNSPolicy(app_name="hotel_reservation", faulty_service="profile"),
+            "wrong_dns_policy_social_network": lambda: WrongDNSPolicy(app_name="social_network", faulty_service="user-service"),
+            "wrong_service_selector_astronomy_shop": lambda: WrongServiceSelector(app_name="astronomy_shop", faulty_service="frontend"),
+            "wrong_service_selector_hotel_reservation": lambda: WrongServiceSelector(app_name="hotel_reservation", faulty_service="frontend"),
+            "wrong_service_selector_social_network": lambda: WrongServiceSelector(app_name="social_network", faulty_service="user-service"),
             # ==================== OPENTELEMETRY FAULT INJECTOR ====================
             "astronomy_shop_ad_service_failure": AdServiceFailure,
             "astronomy_shop_ad_service_high_cpu": AdServiceHighCpu,
@@ -219,18 +156,10 @@ class ProblemRegistry:
             # ==================== HARDWARE FAULT INJECTOR ====================
             "read_error": ReadError,
             # ==================== DIRECT K8S API ====================
-            "ingress_misroute": lambda: IngressMisroute(
-                path="/api", correct_service="frontend-service", wrong_service="recommendation-service"
-            ),
+            "ingress_misroute": lambda: IngressMisroute(path="/api", correct_service="frontend-service", wrong_service="recommendation-service"),
             "network_policy_block": lambda: NetworkPolicyBlock(faulty_service="payment-service"),
             # ==================== MULTIPLE INDEPENDENT FAILURES ====================
-            "social_net_hotel_res_astro_shop_concurrent_failures": lambda: MultipleIndependentFailures(
-                problems=[
-                    K8STargetPortMisconfig(faulty_service="user-service"),
-                    MongoDBRevokeAuth(faulty_service="mongodb-geo"),
-                    WrongServiceSelector(),
-                ]
-            ),
+            "social_net_hotel_res_astro_shop_concurrent_failures": lambda: MultipleIndependentFailures(problems=[K8STargetPortMisconfig(faulty_service="user-service"),MongoDBRevokeAuth(faulty_service="mongodb-geo"),WrongServiceSelector(),]),
             # ad hoc:
             "kubelet_crash": KubeletCrash,
             "workload_imbalance": WorkloadImbalance,
@@ -241,6 +170,7 @@ class ProblemRegistry:
             "operator_security_context_fault": K8SOperatorSecurityContextFault,
             "operator_wrong_update_strategy_fault": K8SOperatorWrongUpdateStrategyFault,
         }
+# fmt: on
         self.kubectl = KubeCtl()
         self.non_emulated_cluster_problems = []
 
