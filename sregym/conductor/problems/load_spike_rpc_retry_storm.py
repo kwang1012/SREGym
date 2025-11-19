@@ -1,6 +1,5 @@
-from sregym.conductor.oracles.configmap_itself_localization_oracle import ConfigMapItselfLocalizationOracle
 from sregym.conductor.oracles.detection import DetectionOracle
-from sregym.conductor.oracles.localization import LocalizationOracle
+from sregym.conductor.oracles.llm_as_a_judge.llm_as_a_judge_oracle import LLMAsAJudgeOracle
 from sregym.conductor.oracles.rpc_retry_storm_mitigation import RPCRetryStormMitigationOracle
 from sregym.conductor.problems.base import Problem
 from sregym.generators.fault.inject_virtual import VirtualizationFaultInjector
@@ -16,12 +15,10 @@ class LoadSpikeRPCRetryStorm(Problem):
         self.kubectl = KubeCtl()
         self.namespace = self.app.namespace
         self.faulty_service = "rpc"
-
+        self.root_cause = f"The ConfigMap `{self.faulty_service}` has misconfigured RPC timeout (50ms) and retry settings (30 retries), combined with a load spike, causing an RPC retry storm that overwhelms the service."
         super().__init__(app=self.app, namespace=self.app.namespace)
         # === Attach evaluation oracles ===
-        self.localization_oracle = ConfigMapItselfLocalizationOracle(
-            problem=self, namespace=self.namespace, expected_configmap_name=f"rpc"
-        )
+        self.localization_oracle = LLMAsAJudgeOracle(problem=self, expected=self.root_cause)
 
         self.mitigation_oracle = RPCRetryStormMitigationOracle(problem=self)
 

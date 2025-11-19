@@ -1,6 +1,5 @@
-from sregym.conductor.oracles.compound import CompoundedOracle
+from sregym.conductor.oracles.llm_as_a_judge.llm_as_a_judge_oracle import LLMAsAJudgeOracle
 from sregym.conductor.oracles.mitigation import MitigationOracle
-from sregym.conductor.oracles.pvc_itself_localization_oracle import PVCItselfLocalizationOracle
 from sregym.conductor.oracles.workload import WorkloadOracle
 from sregym.conductor.problems.base import Problem
 from sregym.generators.fault.inject_virtual import VirtualizationFaultInjector
@@ -29,10 +28,8 @@ class DuplicatePVCMounts(Problem):
         super().__init__(app=self.app, namespace=self.app.namespace)
         self.kubectl = KubeCtl()
         self.namespace = self.app.namespace
-
-        self.localization_oracle = PVCItselfLocalizationOracle(
-            problem=self, namespace=self.namespace, expected_pvc_name=f"{self.faulty_service}-pvc"
-        )
+        self.root_cause = f"Multiple replicas of the deployment `{self.faulty_service}` are configured to share a single ReadWriteOnce PVC, causing mount conflicts and preventing pods from starting."
+        self.localization_oracle = LLMAsAJudgeOracle(problem=self, expected=self.root_cause)
         self.mitigation_oracle = MitigationOracle(problem=self)
 
         self.app.create_workload()

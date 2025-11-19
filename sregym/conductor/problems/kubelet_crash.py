@@ -15,7 +15,8 @@ class KubeletCrash(Problem):
         self.rollout_services = ["frontend", "frontend-proxy", "currency"]
         self.injector = RemoteOSFaultInjector()
 
-        super().__init__(app=self.app, namespace=self.namespace)
+        super().__init__(app=self.app, namespace=self.app.namespace)
+        self.root_cause = "The kubelet daemon on a node has crashed, preventing pod scheduling, updates, and management on that node, causing services to become unavailable or stuck."
 
         # note from JC after talking to Bohan:
         # We could consider adding an oracle later, but it's not trivial where localization should go

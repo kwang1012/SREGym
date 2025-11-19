@@ -6,8 +6,7 @@ import time
 from datetime import datetime, timedelta
 from typing import Any
 
-from sregym.conductor.oracles.cr_localization_oracle import CustomResourceLocalizationOracle
-from sregym.conductor.oracles.localization import LocalizationOracle
+from sregym.conductor.oracles.llm_as_a_judge.llm_as_a_judge_oracle import LLMAsAJudgeOracle
 from sregym.conductor.oracles.operator_misoperation.invalid_affinity_mitigation import InvalidAffinityMitigationOracle
 from sregym.conductor.problems.base import Problem
 from sregym.generators.fault.inject_operator import K8SOperatorFaultInjector
@@ -24,11 +23,10 @@ class K8SOperatorInvalidAffinityTolerationFault(Problem):
         super().__init__(app=app, namespace="tidb-cluster")
         self.faulty_service = faulty_service
         self.kubectl = KubeCtl()
+        self.root_cause = "The TiDBCluster custom resource specifies an invalid toleration effect, causing pods to be unschedulable and remain in Pending state."
         self.app.create_workload()
 
-        self.localization_oracle = CustomResourceLocalizationOracle(
-            problem=self, namespace=self.namespace, resource_type="tidbcluster", expected_resource_name="basic"
-        )
+        self.localization_oracle = LLMAsAJudgeOracle(problem=self, expected=self.root_cause)
 
         self.mitigation_oracle = InvalidAffinityMitigationOracle(problem=self, deployment_name="basic")
 

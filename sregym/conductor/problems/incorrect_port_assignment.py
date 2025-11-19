@@ -1,6 +1,5 @@
-from sregym.conductor.oracles.deployment_itself_localization_oracle import DeploymentItselfLocalizationOracle
 from sregym.conductor.oracles.incorrect_port import IncorrectPortAssignmentMitigationOracle
-from sregym.conductor.oracles.localization import LocalizationOracle
+from sregym.conductor.oracles.llm_as_a_judge.llm_as_a_judge_oracle import LLMAsAJudgeOracle
 from sregym.conductor.problems.base import Problem
 from sregym.generators.fault.inject_app import ApplicationFaultInjector
 from sregym.service.apps.astronomy_shop import AstronomyShop
@@ -18,11 +17,10 @@ class IncorrectPortAssignment(Problem):
         self.incorrect_port = "8082"
         self.correct_port = "8080"
         self.injector = ApplicationFaultInjector(namespace=self.namespace)
+        self.root_cause = f"The deployment `{self.faulty_service}` has the environment variable `{self.env_var}` configured with an incorrect port `{self.incorrect_port}` instead of `{self.correct_port}`."
         super().__init__(app=self.app, namespace=self.namespace)
         # === Attach evaluation oracles ===
-        self.localization_oracle = DeploymentItselfLocalizationOracle(
-            problem=self, namespace=self.namespace, expected_deployment_names=[self.faulty_service]
-        )
+        self.localization_oracle = LLMAsAJudgeOracle(problem=self, expected=self.root_cause)
         self.mitigation_oracle = IncorrectPortAssignmentMitigationOracle(problem=self)
 
         self.app.create_workload()

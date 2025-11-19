@@ -6,8 +6,7 @@ import time
 from datetime import datetime, timedelta
 from typing import Any
 
-from sregym.conductor.oracles.cr_localization_oracle import CustomResourceLocalizationOracle
-from sregym.conductor.oracles.localization import LocalizationOracle
+from sregym.conductor.oracles.llm_as_a_judge.llm_as_a_judge_oracle import LLMAsAJudgeOracle
 from sregym.conductor.oracles.operator_misoperation.security_context_mitigation import SecurityContextMitigationOracle
 from sregym.conductor.problems.base import Problem
 from sregym.generators.fault.inject_operator import K8SOperatorFaultInjector
@@ -23,9 +22,8 @@ class K8SOperatorSecurityContextFault(Problem):
         super().__init__(app=app, namespace="tidb-cluster")
         self.faulty_service = faulty_service
         self.kubectl = KubeCtl()
-        self.localization_oracle = CustomResourceLocalizationOracle(
-            problem=self, namespace=self.namespace, resource_type="tidbcluster", expected_resource_name="basic"
-        )
+        self.root_cause = "The TiDBCluster custom resource specifies an invalid runAsUser value in the security context, causing pods to fail to start or be rejected by the security policy."
+        self.localization_oracle = LLMAsAJudgeOracle(problem=self, expected=self.root_cause)
         self.mitigation_oracle = SecurityContextMitigationOracle(problem=self, deployment_name="basic")
         self.app.create_workload()
 

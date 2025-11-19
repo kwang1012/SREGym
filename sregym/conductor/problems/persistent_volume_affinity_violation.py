@@ -1,8 +1,5 @@
-from sregym.conductor.oracles.deployment_itself_localization_oracle import DeploymentItselfLocalizationOracle
-from sregym.conductor.oracles.localization import LocalizationOracle
+from sregym.conductor.oracles.llm_as_a_judge.llm_as_a_judge_oracle import LLMAsAJudgeOracle
 from sregym.conductor.oracles.mitigation import MitigationOracle
-from sregym.conductor.oracles.or_localization_oracle import OrLocalizationOracle
-from sregym.conductor.oracles.pv_itself_localization_oracle import PVItselfLocalizationOracle
 from sregym.conductor.problems.base import Problem
 from sregym.generators.fault.inject_virtual import VirtualizationFaultInjector
 from sregym.service.apps.app_registry import AppRegistry
@@ -18,17 +15,11 @@ class PersistentVolumeAffinityViolation(Problem):
         self.kubectl = KubeCtl()
         self.namespace = self.app.namespace
         self.faulty_service = faulty_service
+        self.root_cause = f"The deployment `{self.faulty_service}` is configured with a PersistentVolume (temp-pv) that has node affinity to node A, but the deployment has a nodeSelector pointing to node B, causing a volume affinity violation and pods to remain in Pending state."
         super().__init__(app=self.app, namespace=self.app.namespace)
 
         # === Attach evaluation oracles ===
-        oracle1 = DeploymentItselfLocalizationOracle(
-            problem=self, namespace=self.namespace, expected_deployment_names=[self.faulty_service]
-        )
-        oracle2 = PVItselfLocalizationOracle(problem=self, namespace=self.namespace, expected_pv_name=f"temp-pv")
-        # claim RC in any of it is ok
-        self.localization_oracle = OrLocalizationOracle(
-            problem=self, namespace=self.namespace, oracle1=oracle1, oracle2=oracle2
-        )
+        self.localization_oracle = LLMAsAJudgeOracle(problem=self, expected=self.root_cause)
 
         self.mitigation_oracle = MitigationOracle(problem=self)
 

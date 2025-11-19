@@ -6,7 +6,7 @@ import time
 from datetime import datetime, timedelta
 from typing import Any
 
-from sregym.conductor.oracles.cr_localization_oracle import CustomResourceLocalizationOracle
+from sregym.conductor.oracles.llm_as_a_judge.llm_as_a_judge_oracle import LLMAsAJudgeOracle
 from sregym.conductor.oracles.operator_misoperation.wrong_update_strategy_mitigation import (
     WrongUpdateStrategyMitigationOracle,
 )
@@ -24,11 +24,10 @@ class K8SOperatorWrongUpdateStrategyFault(Problem):
         super().__init__(app=app, namespace="tidb-cluster")
         self.faulty_service = faulty_service
         self.kubectl = KubeCtl()
+        self.root_cause = "The TiDBCluster custom resource specifies an invalid update strategy, causing deployment updates to fail or get stuck."
         self.app.create_workload()
 
-        self.localization_oracle = CustomResourceLocalizationOracle(
-            problem=self, namespace=self.namespace, resource_type="tidbcluster", expected_resource_name="basic"
-        )
+        self.localization_oracle = LLMAsAJudgeOracle(problem=self, expected=self.root_cause)
         self.mitigation_oracle = WrongUpdateStrategyMitigationOracle(problem=self, deployment_name="basic")
 
     @mark_fault_injected

@@ -85,4 +85,5 @@ async_tools:
           Args:
               ans (str): the answer you would like to submit to the benchmark. Use natural language to describe the root cause of the failure.
 
+prompts_path: localization_agent_prompts.yaml
 

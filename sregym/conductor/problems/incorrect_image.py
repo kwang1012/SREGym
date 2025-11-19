@@ -1,7 +1,5 @@
-from sregym.conductor.oracles.deployment_itself_localization_oracle import DeploymentItselfLocalizationOracle
 from sregym.conductor.oracles.incorrect_image_mitigation import IncorrectImageMitigationOracle
 from sregym.conductor.oracles.llm_as_a_judge.llm_as_a_judge_oracle import LLMAsAJudgeOracle
-from sregym.conductor.oracles.localization import LocalizationOracle
 from sregym.conductor.problems.base import Problem
 from sregym.generators.fault.inject_app import ApplicationFaultInjector
 from sregym.service.apps.astronomy_shop import AstronomyShop

@@ -1,5 +1,4 @@
-from sregym.conductor.oracles.localization import LocalizationOracle
-from sregym.conductor.oracles.pod_of_deployment_oracle import PodOfDeploymentOracle
+from sregym.conductor.oracles.llm_as_a_judge.llm_as_a_judge_oracle import LLMAsAJudgeOracle
 from sregym.conductor.oracles.valkey_auth_mitigation import ValkeyAuthMitigation
 from sregym.conductor.problems.base import Problem
 from sregym.generators.fault.inject_app import ApplicationFaultInjector
@@ -16,11 +15,10 @@ class ValkeyAuthDisruption(Problem):
 
         self.faulty_service = "valkey-cart"
         self.kubectl = KubeCtl()
+        self.root_cause = f"The valkey-cart service has an invalid password configured, causing authentication failures for dependent services."
 
         # === Attach evaluation oracles ===
-        self.localization_oracle = PodOfDeploymentOracle(
-            problem=self, namespace=self.namespace, expected_deployment_name=self.faulty_service
-        )
+        self.localization_oracle = LLMAsAJudgeOracle(problem=self, expected=self.root_cause)
         self.mitigation_oracle = ValkeyAuthMitigation(problem=self)
 
         self.app.create_workload()
