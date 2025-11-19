@@ -587,7 +587,10 @@
 
         - name: Verify dm_dust module can be loaded
           shell: |
-            modprobe dm_dust && modprobe -r dm_dust && modprobe dm_dust
+            modprobe dm_dust
+            lsmod | grep -q "^dm_dust" || exit 1
+            dmsetup targets | grep -q "dust" || exit 1
+            echo "dm_dust module is loaded and functional"
           become: yes
           register: dm_dust_load_test
           failed_when: dm_dust_load_test.rc != 0
@@ -735,6 +738,8 @@
         KUBECONFIG: "{{ kubeconfig_path }}"
     - name: Untaint the control plane to host pods
       shell: kubectl taint nodes $(hostname) node-role.kubernetes.io/control-plane:NoSchedule- || true
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
 # Worker Node Setup
 - hosts: worker_nodes
   become: true
@@ -754,3 +759,57 @@
     - name: Display ansible_user
       debug:
         msg: "ansible_user is {{ ansible_user }}"
+
+# Label Worker Nodes
+- hosts: control_node
+  become: true
+  vars:
+    kubeconfig_path: "/users/{{ k8s_user }}/.kube/config"
+  tasks:
+    - name: Wait for worker nodes to be ready
+      shell: |
+        timeout=120
+        elapsed=0
+        while [ $elapsed -lt $timeout ]; do
+          if kubectl get nodes --no-headers | grep -v "control-plane\|master" | grep -q "Ready"; then
+            echo "Worker nodes are ready"
+            exit 0
+          fi
+          sleep 2
+          elapsed=$((elapsed + 2))
+        done
+        echo "Timeout waiting for worker nodes after ${timeout}s"
+        exit 1
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      ignore_errors: yes
+
+    - name: Get all node names
+      shell: kubectl get nodes --no-headers -o custom-columns=NAME:.metadata.name
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      register: all_nodes
+      changed_when: false
+
+    - name: Label worker nodes with node-role.kubernetes.io/worker
+      shell: |
+        node="{{ item }}"
+        # Get node labels as YAML and check for control-plane/master labels
+        node_yaml=$(kubectl get node "$node" -o yaml)
+        if echo "$node_yaml" | grep -q "node-role.kubernetes.io/control-plane:" || echo "$node_yaml" | grep -q "node-role.kubernetes.io/master:"; then
+          echo "Skipping control plane node: $node"
+        elif echo "$node_yaml" | grep -q "node-role.kubernetes.io/worker:"; then
+          echo "Node $node already has worker label"
+        else
+          kubectl label node "$node" node-role.kubernetes.io/worker= --overwrite
+          echo "Labeled $node as worker"
+        fi
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      loop: "{{ all_nodes.stdout_lines }}"
+      ignore_errors: yes
+      register: label_result
+
+    - name: Display labeling result
+      debug:
+        msg: "{{ label_result.stdout_lines | default(['No output']) }}"
