@@ -219,12 +219,13 @@ def main():
     driver_thread.start()
 
     # Start the MCP server in the background (lets the main thread run the Conductor API)
-    mcp_thread = threading.Thread(
-        target=start_mcp_server_after_api,
-        name="mcp-server",
-        daemon=True,
-    )
-    mcp_thread.start()
+    if not args.disable_agent:  # No need for MCP if agent is disabled
+        mcp_thread = threading.Thread(
+            target=start_mcp_server_after_api,
+            name="mcp-server",
+            daemon=True,
+        )
+        mcp_thread.start()
 
     # Start the Conductor HTTP API in the MAIN thread (blocking)
     try:
