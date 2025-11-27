@@ -9,9 +9,13 @@ import python
 
 class ApplicationSubclass extends Class {
   ApplicationSubclass() {
-    exists(ClassValue base |
+    // Direct inheritance from Application
+    this.getABase().(Name).getId() = "Application"
+    or
+    // Transitive inheritance (inherits through other classes)
+    exists(Class base |
       base.getName() = "Application" and
-      this.getABase().pointsTo(base)
+      this.getABase+() = base
     )
   }
 }

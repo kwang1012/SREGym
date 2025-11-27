@@ -9,9 +9,13 @@ import python
 
 class ProblemSubclass extends Class {
   ProblemSubclass() {
-    exists(ClassValue base |
+    // Direct inheritance from Problem
+    this.getABase().(Name).getId() = "Problem"
+    or
+    // Transitive inheritance (inherits through other classes)
+    exists(Class base |
       base.getName() = "Problem" and
-      this.getABase().pointsTo(base)
+      this.getABase+() = base
     )
   }
 }

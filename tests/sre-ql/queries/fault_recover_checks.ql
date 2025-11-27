@@ -9,9 +9,13 @@ import python
 
 class ProblemSubclass extends Class {
   ProblemSubclass() {
-    exists(ClassValue base |
+    // Direct inheritance from Problem
+    this.getABase().(Name).getId() = "Problem"
+    or
+    // Transitive inheritance (inherits through other classes)
+    exists(Class base |
       base.getName() = "Problem" and
-      this.getABase().pointsTo(base)
+      this.getABase+() = base
     )
   }
 }
@@ -20,11 +24,11 @@ class FaultMethod extends Function {
   FaultMethod() {
     this.getName() in ["inject_fault", "recover_fault"]
   }
-  
+
   string getMethodName() {
     result = this.getName()
   }
-  
+
   predicate hasMarkFaultInjectedDecorator() {
     exists(Expr decorator |
       decorator = this.getADecorator() and
@@ -43,9 +47,9 @@ class FaultMethod extends Function {
       )
     )
   }
-  
+
   string getFaultIdentifier() {
-    exists(Call call, StrConst arg |
+    exists(Call call, StringLiteral arg |
       call.getScope() = this and
       call.getFunc().(Attribute).getName() in ["inject_fault", "recover_fault"] and
       arg = call.getArg(0) and
