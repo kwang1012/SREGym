@@ -1,0 +1,46 @@
+name: Run SRE-QL Queries
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  custom-codeql:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Download CodeQL
+      uses: github/codeql-action/download-bundle@v3
+      id: codeql
+
+    - name: Create CodeQL Database
+      run: |
+        CODEQL="${{ steps.codeql.outputs.codeql-path }}"
+        $CODEQL database create sreql-db \
+          --language=python \
+          --source-root=. \
+          --overwrite
+
+    - name: Run SRE-QL Custom Queries (CSV)
+      run: |
+        CODEQL="${{ steps.codeql.outputs.codeql-path }}"
+        $CODEQL database analyze sreql-db \
+          "tests/sre-ql/queries" \
+          --format=csv \
+          --output="results.csv" \
+          --rerun
+
+    - name: Upload CSV Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: sreql-results-csv
+        path: results.csv
