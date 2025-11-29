@@ -4,9 +4,9 @@ from fastmcp import Context, FastMCP
 from yarl import URL
 
 from clients.stratus.stratus_utils.get_logger import get_logger
-from fake_log_template_mcp_server.configs.load_all_cfg import kubectl_session_cfg
-from fake_log_template_mcp_server.kubectl_server_helper.kubectl_tool_set import KubectlToolSet
-from fake_log_template_mcp_server.kubectl_server_helper.sliding_lru_session_cache import SlidingLRUSessionCache
+from mcp_server.configs.load_all_cfg import kubectl_session_cfg
+from mcp_server.kubectl_server_helper.kubectl_tool_set import KubectlToolSet
+from mcp_server.kubectl_server_helper.sliding_lru_session_cache import SlidingLRUSessionCache
 from sregym.generators.noise.manager import get_noise_manager
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")

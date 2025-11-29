@@ -4,7 +4,7 @@ import os
 from fastmcp import FastMCP, Context
 
 from clients.stratus.stratus_utils.get_logger import get_logger
-from fake_log_template_mcp_server.utils import ObservabilityClient
+from mcp_server.utils import ObservabilityClient
 from sregym.generators.noise.manager import get_noise_manager
 
 logger = get_logger()
