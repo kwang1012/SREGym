@@ -16,7 +16,7 @@ noises:
       # Duration of each chaos experiment in seconds
       duration: 180
       # Cooldown period between experiments in seconds
-      cooldown: 120
+      cooldown: 300
       # Prefix for experiment names
       experiment_name: "noise-experiment"
       
@@ -25,6 +25,7 @@ noises:
       # Options:
       #   - type: "background" (Default) - Runs periodically based on cooldown.
       #   - type: "tool_call" - Runs only when a specific tool command is executed (Passive Trigger).
+      # Note: You cannot enable both modes simultaneously.
       # trigger:
       #   type: "tool_call"
       #   tool: "kubectl"

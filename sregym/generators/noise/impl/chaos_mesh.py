@@ -21,7 +21,7 @@ class ChaosMeshNoise(BaseNoise):
         self.trigger_config = config.get("trigger", {})
         self.last_injection_time = 0
         self.duration = config.get("duration", 180)
-        self.cooldown = config.get("cooldown", 120)
+        self.cooldown = config.get("cooldown", 300)
         self.namespace = config.get("namespace", "chaos-mesh")
         self.context = {}
         
@@ -126,6 +126,13 @@ class ChaosMeshNoise(BaseNoise):
         
         # Default to background if not specified
         configured_trigger = self.trigger_config.get("type", "background")
+        
+        # Enforce mutual exclusivity: trigger type must be a single string
+        if isinstance(configured_trigger, list):
+            logger.warning(f"ChaosMesh trigger type configuration error: {configured_trigger}. "
+                         "Must be a single string ('background' or 'tool_call'). "
+                         "Dual modes are not supported. Defaulting to 'background'.")
+            configured_trigger = "background"
         
         if trigger_type != configured_trigger:
             return
