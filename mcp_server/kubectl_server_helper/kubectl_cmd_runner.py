@@ -6,7 +6,11 @@ import time
 import bashlex
 
 from mcp_server.configs.kubectl_tool_cfg import KubectlToolCfg
-from mcp_server.kubectl_server_helper.cmd_category import kubectl_safe_commands, kubectl_unsupported_commands
+from mcp_server.kubectl_server_helper.cmd_category import (
+    kubectl_monitoring_commands,
+    kubectl_safe_commands,
+    kubectl_unsupported_commands,
+)
 from mcp_server.kubectl_server_helper.kubectl import DryRunResult, DryRunStatus, KubeCtl
 from mcp_server.kubectl_server_helper.rollback_tool import RollbackCommand, RollbackNode, RollbackTool
 from mcp_server.kubectl_server_helper.utils import cleanup_kubernetes_yaml, parse_text
@@ -138,6 +142,13 @@ class KubectlCmdRunner:
                 return True
         return False
 
+    def _is_kubectl_monitoring_command(self, command: str) -> bool:
+        """Check if a command is a monitoring command that may timeout with informational output."""
+        for c in kubectl_monitoring_commands:
+            if command.startswith(c):
+                return True
+        return False
+
     def _execute_kubectl_command(self, command: str):
         logger.debug(f"Executing command: {command}")
         result = KubeCtl.exec_command(command)
@@ -146,6 +157,18 @@ class KubectlCmdRunner:
             logger.debug(f"Kubectl MCP Tool command execution:\n{output}")
             return result.stdout
         else:
+            # For monitoring commands, non-zero exit codes often contain useful diagnostic information
+            # rather than fatal errors. Return the output instead of raising an exception.
+            if self._is_kubectl_monitoring_command(command):
+                logger.info(f"Monitoring command returned non-zero exit code: {result.stderr.strip()}")
+                # Return both stdout and stderr as they may both contain useful information
+                output = ""
+                if result.stdout.strip():
+                    output += result.stdout.strip() + "\n"
+                if result.stderr.strip():
+                    output += result.stderr.strip()
+                return output if output else "Command completed with no output"
+
             logger.warning(f"Error executing kubectl command:\n{result.stderr}")
             raise RuntimeError(f"Error executing kubectl command:\n{result.stderr}")
 

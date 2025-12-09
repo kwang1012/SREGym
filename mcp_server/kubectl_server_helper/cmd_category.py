@@ -76,3 +76,10 @@ kubectl_dry_run_commands = [
     "kubectl taint",
     "kubectl auth reconcile",
 ]
+
+# Monitoring commands that may timeout or return non-zero exit codes with informational messages
+# These should not raise fatal errors, as the output is useful diagnostic information
+kubectl_monitoring_commands = [
+    "kubectl rollout status",
+    "kubectl wait",
+]
