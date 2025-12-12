@@ -225,7 +225,6 @@ def main():
 
             nm = get_noise_manager()
             nm.load_config(args.noise_config)
-            # nm.start_background_noises()  <-- Moved to Conductor.start_problem
             print(f"✅ Noise manager initialized with config: {args.noise_config}")
         except Exception as e:
             print(f"⚠️ Failed to initialize noise manager: {e}")
