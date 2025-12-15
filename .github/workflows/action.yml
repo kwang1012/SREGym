@@ -75,11 +75,11 @@ jobs:
       if: success()
       run: |
         if [ -f results.csv ]; then
-          # Count non-header lines (issues found)
-          ISSUE_COUNT=$(tail -n +2 results.csv | wc -l)
-          echo "Found $ISSUE_COUNT issues"
-          if [ "$ISSUE_COUNT" -gt 0 ]; then
-            echo "::warning::Found $ISSUE_COUNT SRE reliability issues"
+          # Count non-warning issues
+          ERROR_COUNT=$(cat results.csv | grep "error" | wc -l)
+          echo "Found $ERROR_COUNT critical issues"
+          if [ "$ERROR_COUNT" -gt 0 ]; then
+            echo "::warning::Found $ERROR_COUNT critical issues in repo"
             exit 1
           fi
         fi

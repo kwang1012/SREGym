@@ -16,7 +16,8 @@ from rich.table import Table
 
 console = Console()
 
-DATABASE = "/Users/lilygniedz/Documents/SREArena/SREArena/python-database"
+# assumes codeql database is same folder as this script
+DATABASE = "./python-database"
 QUERIES_DIR = Path(__file__).parent / "queries"
 OUTPUT_DIR = Path("./results")
 
@@ -104,7 +105,13 @@ def run(query, format, output):
     config_table.add_row("Output", str(output_file))
     config_table.add_row("Format", format)
 
-    console.print(Panel(config_table, title="[bold blue]🔍 CodeQL Configuration[/bold blue]", border_style="blue"))
+    console.print(
+        Panel(
+            config_table,
+            title="[bold blue]🔍 CodeQL Configuration[/bold blue]",
+            border_style="blue",
+        )
+    )
 
     cmd = [
         "codeql",
@@ -117,7 +124,11 @@ def run(query, format, output):
         "--rerun",
     ]
 
-    with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console) as progress:
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
         task = progress.add_task("[cyan]Running analysis...", total=None)
         result = subprocess.run(cmd, capture_output=True, text=True)
 
@@ -153,13 +164,20 @@ def run(query, format, output):
                         console.print(f"\n[dim]... and {issue_count - 10} more issues[/dim]")
                 else:
                     console.print(
-                        Panel("[bold green]✨ No issues found! Your code is clean.[/bold green]", border_style="green")
+                        Panel(
+                            "[bold green]✨ No issues found! Your code is clean.[/bold green]",
+                            border_style="green",
+                        )
                     )
 
         console.print(f"\n[dim]Full results saved to: {output_file}[/dim]")
     else:
         console.print(
-            Panel(f"[red]{result.stderr}[/red]", title="[bold red]❌ Analysis Failed[/bold red]", border_style="red")
+            Panel(
+                f"[red]{result.stderr}[/red]",
+                title="[bold red]❌ Analysis Failed[/bold red]",
+                border_style="red",
+            )
         )
 
 
@@ -217,7 +235,11 @@ def interactive():
         console.print("[yellow]No valid queries selected[/yellow]")
         return
 
-    output_format = Prompt.ask("[cyan]Select output format[/cyan]", choices=["csv", "sarif", "json"], default="csv")
+    output_format = Prompt.ask(
+        "[cyan]Select output format[/cyan]",
+        choices=["csv", "sarif", "json"],
+        default="csv",
+    )
 
     selected_queries = [queries[i] for i in selected_indices]
     console.print(f"\n[cyan]Running {len(selected_queries)} selected queries...[/cyan]\n")
@@ -230,7 +252,12 @@ def interactive():
 
 
 @cli.command()
-@click.option("--format", "-f", type=click.Choice(["markdown", "json", "slack", "github", "html"]), default="markdown")
+@click.option(
+    "--format",
+    "-f",
+    type=click.Choice(["markdown", "json", "slack", "github", "html"]),
+    default="markdown",
+)
 @click.option("--output", "-o", help="Output file path")
 def export(format, output):
     """Export results in different formats"""
@@ -314,7 +341,11 @@ def _export_markdown(issues, output_file):
 
 def _export_json(issues, output_file):
     """Export to JSON format"""
-    report = {"generated": datetime.now().isoformat(), "total_issues": len(issues), "issues": issues}
+    report = {
+        "generated": datetime.now().isoformat(),
+        "total_issues": len(issues),
+        "issues": issues,
+    }
 
     with open(output_file, "w") as f:
         json.dump(report, f, indent=2)
@@ -328,7 +359,10 @@ def _export_slack(issues, output_file):
     message = {
         "text": f"🔍 CodeQL Analysis Results",
         "blocks": [
-            {"type": "header", "text": {"type": "plain_text", "text": "🔍 CodeQL Analysis Results"}},
+            {
+                "type": "header",
+                "text": {"type": "plain_text", "text": "🔍 CodeQL Analysis Results"},
+            },
             {
                 "type": "section",
                 "text": {
@@ -353,7 +387,13 @@ def _export_slack(issues, output_file):
 
     if len(issues) > 10:
         message["blocks"].append(
-            {"type": "section", "text": {"type": "mrkdwn", "text": f"_... and {len(issues) - 10} more issues_"}}
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"_... and {len(issues) - 10} more issues_",
+                },
+            }
         )
 
     with open(output_file, "w") as f:
@@ -537,7 +577,7 @@ def _export_html(issues, output_file):
     <div class="container">
         <div class="header">
             <h1>🔍 CodeQL Analysis Report</h1>
-            <p>Generated on {datetime.now().strftime('%B %d, %Y at %H:%M:%S')}</p>
+            <p>Generated on {datetime.now().strftime("%B %d, %Y at %H:%M:%S")}</p>
         </div>
         
         <div class="stats">
@@ -546,11 +586,11 @@ def _export_html(issues, output_file):
                 <div class="stat-label">Total Issues</div>
             </div>
             <div class="stat">
-                <div class="stat-number">{len([i for i in issues if i.get('Severity', '').lower() == 'error'])}</div>
+                <div class="stat-number">{len([i for i in issues if i.get("Severity", "").lower() == "error"])}</div>
                 <div class="stat-label">Errors</div>
             </div>
             <div class="stat">
-                <div class="stat-number">{len([i for i in issues if i.get('Severity', '').lower() == 'warning'])}</div>
+                <div class="stat-number">{len([i for i in issues if i.get("Severity", "").lower() == "warning"])}</div>
                 <div class="stat-label">Warnings</div>
             </div>
         </div>
@@ -586,7 +626,7 @@ def _export_html(issues, output_file):
                 </div>
                 <div class="issue-description">{description}</div>
                 <div class="issue-location">📋 {name}</div>
-                <div class="issue-file">📍 {path}{':' + line if line else ''}</div>
+                <div class="issue-file">📍 {path}{":" + line if line else ""}</div>
             </div>
 """
 
@@ -607,7 +647,11 @@ def _export_html(issues, output_file):
 
 
 @cli.command()
-@click.option("--auto-open/--no-auto-open", default=True, help="Automatically open report in browser")
+@click.option(
+    "--auto-open/--no-auto-open",
+    default=True,
+    help="Automatically open report in browser",
+)
 def report(auto_open):
     """📊 Generate HTML report"""
 
@@ -780,7 +824,12 @@ def check(category):
 
     console.print("\n" + "=" * 60 + "\n")
     if all_issues:
-        console.print(Panel(f"[bold red]Total Issues: {len(all_issues)}[/bold red]", border_style="red"))
+        console.print(
+            Panel(
+                f"[bold red]Total Issues: {len(all_issues)}[/bold red]",
+                border_style="red",
+            )
+        )
     else:
         console.print(Panel("[bold green]✨ All checks passed![/bold green]", border_style="green"))
 
@@ -825,7 +874,12 @@ def summary():
     console.print()
 
     if total_issues == 0:
-        console.print(Panel("[bold green]✨ Perfect! No issues found.[/bold green]", border_style="green"))
+        console.print(
+            Panel(
+                "[bold green]✨ Perfect! No issues found.[/bold green]",
+                border_style="green",
+            )
+        )
     else:
         console.print(Panel(f"[bold red]Total Issues: {total_issues}[/bold red]", border_style="red"))
 
