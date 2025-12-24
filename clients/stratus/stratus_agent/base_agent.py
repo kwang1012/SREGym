@@ -44,18 +44,22 @@ class BaseAgent:
         return self.llm.inference(messages=messages, tools=tools)
 
     def llm_thinking_prompt_inject_step(self, state: State):
-        human_prompt = HumanMessage(
-            content="You are now in the thinking stage. Here are all the tools you can use:\n"
-            + self.tool_descs
-            + "Choose a tool from the list and output the tool name. Justify your tool choice. In the next step, you will generate a tool call for this tool"
-        )
-        self.arena_logger.info(f"[PROMPT] Framework prompt: \n {human_prompt.content}")
-        if self.loop_count is not None and self.loop_count == 0:
-            self.local_logger.debug(f"[Loop {self.loop_count}] Inject framework prompt: \n {human_prompt.content}")
-        else:
-            self.local_logger.debug(
-                f'[Loop {self.loop_count}] Inject framework prompt " {human_prompt.content[:20]}... " again, as above.'
+        # Only include full tool descriptions on the first iteration to save context
+        if self.loop_count == 0:
+            content = (
+                "You are now in the thinking stage. Here are all the tools you can use:\n"
+                + self.tool_descs
+                + "Choose a tool from the list and output the tool name. Justify your tool choice. In the next step, you will generate a tool call for this tool"
             )
+            self.local_logger.debug(f"[Loop {self.loop_count}] Inject framework prompt: \n {content}")
+        else:
+            content = (
+                "You are now in the thinking stage. Choose a tool from the available tools and justify your choice."
+            )
+            self.local_logger.debug(f"[Loop {self.loop_count}] Inject short thinking prompt to save context")
+
+        human_prompt = HumanMessage(content=content)
+        self.arena_logger.info(f"[PROMPT] Framework prompt: \n {human_prompt.content}")
         return {
             "messages": [human_prompt],
         }
@@ -79,12 +83,10 @@ class BaseAgent:
     def llm_tool_call_prompt_inject_step(self, state: State):
         human_prompt = HumanMessage(content="Now generate a tool call according to your last chosen tool.")
         self.arena_logger.info(f"[PROMPT] \n {human_prompt.content}")
-        if self.loop_count is not None and self.loop_count == 0:
+        if self.loop_count == 0:
             self.local_logger.debug(f"[Loop {self.loop_count}] Inject tool call prompt: \n {human_prompt.content}")
         else:
-            self.local_logger.debug(
-                f'[Loop {self.loop_count}] Inject tool call prompt " {human_prompt.content[:20]}... " again, as above.'
-            )
+            self.local_logger.debug(f"[Loop {self.loop_count}] Inject tool call prompt (repeated)")
         return {
             "messages": [human_prompt],
         }
@@ -213,9 +215,7 @@ class BaseAgent:
 
                 # Serialize messages
                 if "messages" in event and event["messages"]:
-                    event_data["messages"] = [
-                        self._serialize_message(msg) for msg in event["messages"]
-                    ]
+                    event_data["messages"] = [self._serialize_message(msg) for msg in event["messages"]]
                     # Also include just the last message for easier inspection
                     event_data["last_message"] = self._serialize_message(event["messages"][-1])
 
