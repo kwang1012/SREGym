@@ -10,9 +10,9 @@ from sregym.utils.decorators import mark_fault_injected
 class IncorrectImage(Problem):
     def __init__(self):
         self.app = AstronomyShop()
+        self.namespace = self.app.namespace
         super().__init__(app=self.app, namespace=self.namespace)
         self.kubectl = KubeCtl()
-        self.namespace = self.app.namespace
         self.faulty_service = ["product-catalog"]
         self.injector = ApplicationFaultInjector(namespace=self.namespace)
         self.root_cause = (

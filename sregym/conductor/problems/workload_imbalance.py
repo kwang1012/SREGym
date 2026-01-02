@@ -12,9 +12,9 @@ from sregym.utils.decorators import mark_fault_injected
 class WorkloadImbalance(Problem):
     def __init__(self):
         self.app = AstronomyShop()
-        super().__init__(app=self.app, namespace=self.namespace)
         self.kubectl = KubeCtl()
         self.namespace = self.app.namespace
+        super().__init__(app=self.app, namespace=self.namespace)
         self.faulty_service = ["frontend"]
         self.injector = VirtualizationFaultInjector(namespace="kube-system")
         self.injector_for_scale = VirtualizationFaultInjector(namespace=self.namespace)
