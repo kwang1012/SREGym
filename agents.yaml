@@ -5,7 +5,7 @@ agents:
       http://localhost:8000
     kickoff_workdir: .
     kickoff_env: null
-  # - name: autosubmit
-  #   kickoff_command: python -m clients.autosubmit.autosubmit_agent http://localhost:8000
-  #   kickoff_workdir: .
-  #   kickoff_env: null
+  - name: autosubmit
+    kickoff_command: python -m clients.autosubmit.autosubmit_agent http://localhost:8000
+    kickoff_workdir: .
+    kickoff_env: null
