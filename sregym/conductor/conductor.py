@@ -43,7 +43,7 @@ class Conductor:
         self.execution_start_time = None
 
         # grading flow state
-        # submission_stage reflects the current AgentAct name (e.g., "diagnosis", "mitigation") or "done"
+        # submission_stage reflects the current stage (e.g., "diagnosis", "mitigation") or "done"
         self.submission_stage = None
         self.results = {}
 
@@ -51,10 +51,10 @@ class Conductor:
         self.logger = logging.getLogger("sregym-global")  # this is for dashboard
         self.local_logger = logging.getLogger("all.sregym.conductor")
 
-        self.act_sequence: list[dict] = []
-        self.current_act_index: int = 0
-        self.current_agent_act_index: int | None = None
+        self.stage_sequence: list[dict] = []
+        self.current_stage_index: int = 0
         self.waiting_for_agent: bool = False
+        self.fault_injected: bool = False
 
     def register_agent(self, name="agent"):
         self.agent_name = name
@@ -103,49 +103,41 @@ class Conductor:
                 raise RuntimeError(msg)
 
             self.local_logger.info(
-                f"Tasklist specified for {self.problem_id}. Configured AgentActs to run: {problem_tasklist}"
+                f"Tasklist specified for {self.problem_id}. Configured stages to run: {problem_tasklist}"
             )
 
-            # Use the tasklist as-is (only AgentAct names, e.g., diagnosis, mitigation)
+            # Use the tasklist as-is (stage names: diagnosis, mitigation)
             self.tasklist = problem_tasklist
 
-    def _build_act_sequence(self):
-        self.act_sequence = []
-        self.current_act_index = 0
-        self.current_agent_act_index = None
+    def _build_stage_sequence(self):
+        """Build the sequence of stages (diagnosis, mitigation) based on tasklist and available oracles."""
+        self.stage_sequence = []
+        self.current_stage_index = 0
         self.waiting_for_agent = False
+        self.fault_injected = False
 
         if not self.tasklist:
-            self.local_logger.warning("Empty tasklist; no AgentActs configured for this problem.")
+            self.local_logger.warning("Empty tasklist; no stages configured for this problem.")
             return
 
-        # Map AgentAct names to their precondition/evaluation functions
-        agent_act_definitions = {
-            "diagnosis": {
-                "precondition": self._precondition_diagnosis,
-                "evaluation": self._evaluate_diagnosis,
-            },
-            "mitigation": {
-                "precondition": self._precondition_mitigation,
-                "evaluation": self._evaluate_mitigation,
-            },
+        # Map stage names to their evaluation functions
+        stage_definitions = {
+            "diagnosis": self._evaluate_diagnosis,
+            "mitigation": self._evaluate_mitigation,
         }
 
-        # Determine which AgentActs are actually available (oracle attached)
-        configured_agent_acts: list[dict] = []
+        # Determine which stages are actually available (oracle attached)
         for name in self.tasklist:
-            if name not in agent_act_definitions:
-                self.local_logger.warning(f"Unknown AgentAct '{name}' in tasklist; skipping.")
+            if name not in stage_definitions:
+                self.local_logger.warning(f"Unknown stage '{name}' in tasklist; skipping.")
                 continue
 
             if name == "diagnosis":
                 if getattr(self.problem, "diagnosis_oracle", None):
-                    configured_agent_acts.append(
+                    self.stage_sequence.append(
                         {
-                            "type": "AgentAct",
                             "name": name,
-                            "precondition": agent_act_definitions[name]["precondition"],
-                            "evaluation": agent_act_definitions[name]["evaluation"],
+                            "evaluation": stage_definitions[name],
                         }
                     )
                 else:
@@ -153,40 +145,27 @@ class Conductor:
 
             elif name == "mitigation":
                 if getattr(self.problem, "mitigation_oracle", None):
-                    configured_agent_acts.append(
+                    self.stage_sequence.append(
                         {
-                            "type": "AgentAct",
                             "name": name,
-                            "precondition": agent_act_definitions[name]["precondition"],
-                            "evaluation": agent_act_definitions[name]["evaluation"],
+                            "evaluation": stage_definitions[name],
                         }
                     )
                 else:
                     self.local_logger.info("⏩ Mitigation oracle is not attached. Skipping mitigation.")
 
-        if not configured_agent_acts:
+        if not self.stage_sequence:
             self.local_logger.warning(
-                "No AgentActs left after checking oracles. This problem will complete without agent interaction."
+                "No stages left after checking oracles. This problem will complete without agent interaction."
             )
-            return
 
-        # Default GymAct: inject fault before the first AgentAct precondition
-        self.act_sequence.append(
-            {
-                "type": "GymAct",
-                "name": "inject_fault",
-                "op": self._gymact_inject_fault,
-            }
-        )
-
-        # Append AgentActs in order
-        self.act_sequence.extend(configured_agent_acts)
-
-    def _gymact_inject_fault(self):
+    def _inject_fault(self):
+        """Inject fault and prepare diagnosis checkpoint if available."""
         self.problem.inject_fault()
         self.logger.info("[ENV] Injected fault")
+        self.fault_injected = True
 
-        # Prepare diagnosis checkpoint if available, after fault injection but before agent acts
+        # Prepare diagnosis checkpoint if available, after fault injection but before agent stages
         if (
             hasattr(self.problem, "diagnosis_oracle")
             and self.problem.diagnosis_oracle
@@ -195,12 +174,8 @@ class Conductor:
             self.problem.diagnosis_oracle.load_diagnosis_checkpoint()
             self.local_logger.info("Diagnosis checkpoint loaded after fault injection.")
 
-    # -------- AgentAct: diagnosis --------
-    def _precondition_diagnosis(self):
-        self.local_logger.info("Precondition for Diagnosis AgentAct executed. No real action.")
-
     def _evaluate_diagnosis(self, solution):
-        """Evaluation logic for diagnosis AgentAct."""
+        """Evaluation logic for diagnosis stage."""
         self.local_logger.info("Start Eval for Diagnosis", extra={"sol": solution})
         r = self.problem.diagnosis_oracle.evaluate(solution)
         self.results["Diagnosis"] = r
@@ -212,12 +187,8 @@ class Conductor:
         )
         return r
 
-    # -------- AgentAct: mitigation --------
-    def _precondition_mitigation(self):
-        self.local_logger.info("Precondition for Mitigation AgentAct executed. No real action.")
-
     def _evaluate_mitigation(self, solution):
-        """Evaluation logic for mitigation AgentAct."""
+        """Evaluation logic for mitigation stage."""
         # Currently mitigation_oracle.evaluate() does not take the agent solution directly.
         self.local_logger.info("Start Eval for Mitigation", extra={"sol": solution})
         r = self.problem.mitigation_oracle.evaluate()
@@ -230,56 +201,42 @@ class Conductor:
         )
         return r
 
-    def _advance_to_next_agent_act_precondition(self, start_index: int = 0):
+    def _advance_to_next_stage(self, start_index: int = 0):
         """
-        Execute Acts sequentially starting from start_index until:
-          - The precondition of the next AgentAct is executed (inclusive), then wait for agent submission; or
-          - There are no more AgentActs, in which case finish the problem.
+        Advance to the next stage starting from start_index.
+        If there are more stages, set up for agent submission.
+        Otherwise, finish the problem.
         """
-        self.current_agent_act_index = None
         self.waiting_for_agent = False
-        self.current_act_index = start_index
+        self.current_stage_index = start_index
 
-        if not self.act_sequence:
-            self.local_logger.info("No Acts configured; finishing problem immediately.")
+        if not self.stage_sequence:
+            self.local_logger.info("No stages configured; finishing problem immediately.")
             self._finish_problem()
             return
 
-        i = start_index
-        while i < len(self.act_sequence):
-            act = self.act_sequence[i]
-            act_type = act.get("type")
-            act_name = act.get("name")
+        # Inject fault before the first stage if not already done
+        if start_index == 0 and not self.fault_injected:
+            self._inject_fault()
 
-            if act_type == "GymAct":
-                self.local_logger.debug(f"Executing GymAct '{act_name}'")
-                act["op"]()
-                i += 1
-                continue
+        if start_index < len(self.stage_sequence):
+            stage = self.stage_sequence[start_index]
+            stage_name = stage.get("name")
 
-            if act_type == "AgentAct":
-                self.local_logger.debug(f"Executing precondition for AgentAct '{act_name}' and waiting for agent.")
-                act["precondition"]()
-                self.current_agent_act_index = i
-                self.waiting_for_agent = True
-                self.submission_stage = act_name
-                self.current_act_index = i
-                self.logger.info(f"[STAGE] Go to stage {self.submission_stage}")
+            self.local_logger.debug(f"Advancing to stage '{stage_name}' and waiting for agent.")
+            self.waiting_for_agent = True
+            self.submission_stage = stage_name
+            self.logger.info(f"[STAGE] Go to stage {self.submission_stage}")
 
-                # Update NoiseManager stage
-                try:
-                    nm = get_noise_manager()
-                    nm.set_stage(self.submission_stage)
-                except Exception as e:
-                    self.local_logger.warning(f"Failed to set NoiseManager stage: {e}")
-
-                return
-
-            self.local_logger.warning(f"Unknown Act type '{act_type}' for Act '{act_name}'; skipping.")
-            i += 1
-
-        # No more AgentActs; finish the problem
-        self._finish_problem()
+            # Update NoiseManager stage
+            try:
+                nm = get_noise_manager()
+                nm.set_stage(self.submission_stage)
+            except Exception as e:
+                self.local_logger.warning(f"Failed to set NoiseManager stage: {e}")
+        else:
+            # No more stages; finish the problem
+            self._finish_problem()
 
     def _finish_problem(self):
         self.logger.info(f"[STAGE] Done, recover fault")
@@ -332,7 +289,7 @@ class Conductor:
         self.fix_kubernetes()
 
         self.get_tasklist()
-        self._build_act_sequence()
+        self._build_stage_sequence()
 
         self.local_logger.info("Undeploying app leftovers...")
         self.undeploy_app()  # Cleanup any leftovers
@@ -354,8 +311,8 @@ class Conductor:
         except Exception as e:
             self.local_logger.warning(f"Failed to update NoiseManager context: {e}")
 
-        # After deployment, execute Acts until the first AgentAct precondition is reached.
-        self._advance_to_next_agent_act_precondition(start_index=0)
+        # After deployment, advance to the first stage
+        self._advance_to_next_stage(start_index=0)
 
         if self.submission_stage and self.submission_stage != "done":
             self.local_logger.info(
@@ -363,14 +320,14 @@ class Conductor:
             )
         else:
             self.local_logger.info(
-                "✅ Deployment complete. No AgentAct configured; problem will complete without agent submission."
+                "✅ Deployment complete. No stages configured; problem will complete without agent submission."
             )
         return StartProblemResult.SUCCESS
 
     async def submit(self, wrapped_cmd: str) -> dict:
         """
         Called by CLI or HTTP /submit.  Parses & grades the `submit(...)` call,
-        advances submission_stage, records results—and when we hit “done”,
+        advances submission_stage, records results—and when we hit "done",
         triggers undeploy_app. Returns a snapshot of the results dict.
         """
         from sregym.conductor.parser import ResponseParser
@@ -386,26 +343,20 @@ class Conductor:
             self.local_logger.info("All tasks already completed; ignoring new submission.")
             return dict(self.results)
 
-        if not self.act_sequence:
-            self.local_logger.warning("submit() called but no Acts are configured; returning current results.")
+        if not self.stage_sequence:
+            self.local_logger.warning("submit() called but no stages are configured; returning current results.")
             return dict(self.results)
 
-        if self.current_agent_act_index is None or not self.waiting_for_agent:
+        if not self.waiting_for_agent:
             self.local_logger.error(
-                "submit() called when conductor is not waiting for an AgentAct evaluation. "
+                "submit() called when conductor is not waiting for a submission. "
                 f"Current submission_stage={self.submission_stage}"
             )
             raise RuntimeError("Conductor is not currently waiting for an agent submission.")
 
-        current_act = self.act_sequence[self.current_agent_act_index]
-        if current_act.get("type") != "AgentAct":
-            self.local_logger.error(
-                f"Internal error: current_act at index {self.current_agent_act_index} is not an AgentAct."
-            )
-            raise RuntimeError("Invalid Act configuration.")
-
-        act_name = current_act.get("name")
-        self.local_logger.info(f"Evaluating AgentAct '{act_name}'", extra={"sol": sol})
+        current_stage = self.stage_sequence[self.current_stage_index]
+        stage_name = current_stage.get("name")
+        self.local_logger.info(f"Evaluating stage '{stage_name}'", extra={"sol": sol})
 
         # Stop noise before evaluation to ensure clean environment
         try:
@@ -415,12 +366,12 @@ class Conductor:
         except Exception as e:
             self.local_logger.warning(f"Failed to stop noise manager: {e}")
 
-        # Run the evaluation function for the current AgentAct
-        current_act["evaluation"](sol)
+        # Run the evaluation function for the current stage
+        current_stage["evaluation"](sol)
 
-        # After evaluation, advance to the next AgentAct precondition (if any)
-        next_index = self.current_agent_act_index + 1
-        self._advance_to_next_agent_act_precondition(start_index=next_index)
+        # After evaluation, advance to the next stage (if any)
+        next_index = self.current_stage_index + 1
+        self._advance_to_next_stage(start_index=next_index)
 
         # Restart noise if there are more stages
         if self.submission_stage != "done":
