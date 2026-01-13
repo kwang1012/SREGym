@@ -8,7 +8,7 @@ from .handler import ColorFormatter, ExhaustInfoFormatter
 
 def get_current_datetime_formatted():
     now = datetime.now()
-    formatted_datetime = now.strftime("%m-%d_%H-%M")
+    formatted_datetime = now.strftime("%m%d_%H%M")
     return formatted_datetime
 
 

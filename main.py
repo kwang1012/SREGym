@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 def get_current_datetime_formatted():
     now = datetime.now()
-    formatted_datetime = now.strftime("%m-%d_%H-%M")
+    formatted_datetime = now.strftime("%m%d_%H%M")
     return formatted_datetime
 
 
@@ -144,7 +144,7 @@ def driver_loop(
 
             fieldnames = sorted({key for row in all_results_for_agent for key in row.keys()})
             current_date_time = get_current_datetime_formatted()
-            csv_path = f"{agent_to_run}_{current_date_time}_{pid}_results.csv"
+            csv_path = f"{current_date_time}_{pid}_{agent_to_run}_results.csv"
             with open(csv_path, "w", newline="") as csvfile:
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
                 writer.writeheader()
