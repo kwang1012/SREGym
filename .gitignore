@@ -770,6 +770,5 @@ python-database
 # LLM traces
 *.jsonl
 sregym/generators/noise/noise_config.yaml
-mlflow.db
 results/
 logs/
