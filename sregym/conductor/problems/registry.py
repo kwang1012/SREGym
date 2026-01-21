@@ -11,6 +11,7 @@ from sregym.conductor.problems.capacity_decrease_rpc_retry_storm import Capacity
 from sregym.conductor.problems.cart_service_failure import CartServiceFailure
 from sregym.conductor.problems.configmap_drift import ConfigMapDrift
 from sregym.conductor.problems.duplicate_pvc_mounts import DuplicatePVCMounts
+from sregym.conductor.problems.email_memory_leak import EmailMemoryLeak
 from sregym.conductor.problems.env_variable_shadowing import EnvVariableShadowing
 from sregym.conductor.problems.faulty_image_correlated import FaultyImageCorrelated
 from sregym.conductor.problems.gc_capacity_degradation import GCCapacityDegradation
@@ -24,6 +25,8 @@ from sregym.conductor.problems.kubelet_crash import KubeletCrash
 from sregym.conductor.problems.latent_sector_error import LatentSectorError
 from sregym.conductor.problems.liveness_probe_misconfiguration import LivenessProbeMisconfiguration
 from sregym.conductor.problems.liveness_probe_too_aggressive import LivenessProbeTooAggressive
+from sregym.conductor.problems.llm_inaccurate_response import LlmInaccurateResponse
+from sregym.conductor.problems.llm_rate_limit_error import LlmRateLimitError
 from sregym.conductor.problems.load_spike_rpc_retry_storm import LoadSpikeRPCRetryStorm
 from sregym.conductor.problems.loadgenerator_flood_homepage import LoadGeneratorFloodHomepage
 from sregym.conductor.problems.misconfig_app import MisconfigAppHotelRes
@@ -150,6 +153,9 @@ class ProblemRegistry:
             "astronomy_shop_ad_service_manual_gc": AdServiceManualGc,
             "astronomy_shop_cart_service_failure": CartServiceFailure,
             "astronomy_shop_ad_service_image_slow_load": ImageSlowLoad,
+            "astronomy_shop_email_memory_leak": EmailMemoryLeak,
+            "astronomy_shop_llm_inaccurate_response": LlmInaccurateResponse,
+            "astronomy_shop_llm_rate_limit_error": LlmRateLimitError,
             "astronomy_shop_payment_service_failure": PaymentServiceFailure,
             "astronomy_shop_payment_service_unreachable": PaymentServiceUnreachable,
             "astronomy_shop_product_catalog_service_failure": ProductCatalogServiceFailure,
