@@ -34,6 +34,10 @@ class AstronomyShop(Application):
         self.frontend_service = "frontend-proxy"
         self.frontend_port = 8080
 
+        self._FLAGD_CONFIGMAP = metadata.get("FlagdConfigMap", self._FLAGD_CONFIGMAP)
+        self._FLAGD_CONFIG_KEY = metadata.get("FlagdConfigKey", self._FLAGD_CONFIG_KEY)
+        self._FLAGD_DEPLOYMENT = metadata.get("FlagdDeployment", self._FLAGD_DEPLOYMENT)
+
     def deploy(self):
         """Deploy the Helm configurations."""
         self.kubectl.create_namespace_if_not_exist(self.namespace)
@@ -88,6 +92,10 @@ class AstronomyShop(Application):
             raise ValueError(
                 f"Feature flag '{flag_name}' not found in flagd config."
             ) from e
+
+        desired = self._VARIANT_ON if enabled else self._VARIANT_OFF
+        if flag.get("defaultVariant") == desired:
+            return
 
         flag["defaultVariant"] = self._VARIANT_ON if enabled else self._VARIANT_OFF
         self._write_flagd_config(config)
