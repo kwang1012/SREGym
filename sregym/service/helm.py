@@ -207,7 +207,7 @@ class Helm:
             RuntimeError: If all retry attempts fail
         """
         logger.info(f"Helm Repo Add: {name} with url {url}")
-        command = f"helm repo add {name} {url} || true"
+        command = f"helm repo add {name} {url}"
 
         for attempt in range(max_retries):
             process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
