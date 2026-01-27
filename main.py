@@ -37,7 +37,7 @@ def driver_loop(
     problem_filter: str | None = None,
     agent_to_run: str | None = None,
     use_external_harness: bool = False,
-    n_attempts: int = 1,
+    n_attempts: int = 1
 ):
     """
     Deploy each problem and wait for HTTP grading via POST /submit.
@@ -220,10 +220,15 @@ def _run_driver_and_shutdown(
     problem_filter: str | None = None,
     agent_to_run: str | None = None,
     use_external_harness: bool = False,
+    n_attempts: int = 1
 ):
     """Run the benchmark driver, stash results, then tell the API to exit."""
     results = driver_loop(
-        conductor, problem_filter=problem_filter, agent_to_run=agent_to_run, use_external_harness=use_external_harness
+        conductor,
+        problem_filter=problem_filter,
+        agent_to_run=agent_to_run,
+        use_external_harness=use_external_harness,
+        n_attempts=n_attempts,
     )
     global _driver_results
     _driver_results = results
@@ -262,7 +267,7 @@ def main(args):
     # Start the driver in the background; it will call request_shutdown() when finished
     driver_thread = threading.Thread(
         target=_run_driver_and_shutdown,
-        args=(conductor, args.problem, args.agent, args.use_external_harness),
+        args=(conductor, args.problem, args.agent, args.use_external_harness, args.n_attempts),
         name="driver",
         daemon=True,
     )
@@ -354,10 +359,20 @@ if __name__ == "__main__":
         default=None,
         help="Path to noise configuration YAML file",
     )
+    parser.add_argument(
+        "--n-attempts",
+        type=int,
+        default=1,
+        help="Number of attempts to run each problem (default: 1)",
+    )
     args = parser.parse_args()
 
     # Validate that --agent is provided when not using external harness
     if not args.use_external_harness and args.agent is None:
         parser.error("--agent is required when --use-external-harness is not set")
+
+    # Validate that n_attempts is positive
+    if args.n_attempts < 1:
+        parser.error("--n-attempts must be a positive integer")
 
     main(args)
