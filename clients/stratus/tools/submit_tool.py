@@ -26,7 +26,8 @@ Use this tool to submit your answer to the assigned tasks. You can give partial 
 rollback_submit_tool_docstring = """
 The tool to submit after you rolled back all the changes.
 """
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(level=logging.INFO,
+                    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 langgraph_tool_config = LanggraphToolConfig()
@@ -47,7 +48,8 @@ def get_benchmark_status() -> str:
             data = response.json()
             return data.get("stage", "error")
         else:
-            logger.warning(f"Failed to get benchmark status: {response.status_code}")
+            logger.warning(
+                f"Failed to get benchmark status: {response.status_code}")
             return "error"
     except Exception as e:
         logger.warning(f"Exception while getting benchmark status: {e}")
@@ -103,13 +105,82 @@ async def submit_tool(
                 }
             )
 
-        logger.info("we don't set submitted to True, to force agent retry submission. \n")
+        logger.info(
+            "we don't set submitted to True, to force agent retry submission. \n")
         logger.info("giving agent another change by decrementing step count")
         return Command(
             update={
                 "num_steps": state["num_steps"] - 1,
                 "messages": [
-                    ToolMessage(content=f"HTTP submission failed: {result}", tool_call_id=tool_call_id),
+                    ToolMessage(
+                        content=f"HTTP submission failed: {result}", tool_call_id=tool_call_id),
+                ],
+            }
+        )
+    logger.info("submission succeeded.")
+    return Command(
+        update={
+            "submitted": True,
+            "messages": [ToolMessage(f"Submission complete. No further action is needed.", tool_call_id=tool_call_id)],
+        }
+    )
+
+
+@tool(description=submit_tool_docstring)
+async def submit_tool_no_state(
+    ans: str, tool_call_id: Annotated[str, InjectedToolCallId]
+) -> Command:
+    # makes http call to benchmark submission server
+    logging.info(f"submitting to benchmark, answer: {ans}")
+
+    exit_stack = AsyncExitStack()
+    logger.info("Using HTTP, connecting to server.")
+    server_url = langgraph_tool_config.submit_mcp_url
+    http_transport = await exit_stack.enter_async_context(sse_client(url=server_url))
+    session = await exit_stack.enter_async_context(ClientSession(*http_transport))
+
+    await session.initialize()
+
+    result = await session.call_tool(
+        "submit",
+        arguments={
+            "ans": ans,
+        },
+    )
+    result = result.content[0].text
+    result = ast.literal_eval(result)
+
+    await exit_stack.aclose()
+    if result["status"] != "200":
+        logger.info(f"HTTP submission failed: {result}")
+
+        # Check if the benchmark is in "done" status, which means we can't submit anymore
+        benchmark_status = get_benchmark_status()
+        logger.info(f"Benchmark status: {benchmark_status}")
+
+        if benchmark_status == "done":
+            logger.warning(
+                "Benchmark is in 'done' status. Cannot submit anymore. "
+                "Setting submitted=True to exit agent gracefully."
+            )
+            return Command(
+                update={
+                    "submitted": True,
+                    "messages": [
+                        ToolMessage(
+                            content=f"Submission failed because benchmark is already done. Agent exiting gracefully. Details: {result}",
+                            tool_call_id=tool_call_id,
+                        ),
+                    ],
+                }
+            )
+
+        return Command(
+            update={
+                "submitted": False,
+                "messages": [
+                    ToolMessage(
+                        content=f"HTTP submission failed: {result}", tool_call_id=tool_call_id),
                 ],
             }
         )
@@ -127,7 +198,8 @@ async def fake_submit_tool(ans: str, tool_call_id: Annotated[str, InjectedToolCa
     # makes http call to benchmark submission server
     logging.info(f"_NOT_ submitting to benchmark, answer: {ans}")
     logger.info(f"This method is to only change the state[submitted] value.")
-    logger.info(f"mitigation submission is done out side of agent logic, for retry")
+    logger.info(
+        f"mitigation submission is done out side of agent logic, for retry")
 
     return Command(
         update={
