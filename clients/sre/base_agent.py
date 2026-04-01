@@ -14,19 +14,19 @@ from clients.stratus.stratus_utils.str_to_tool import str_to_tool
 
 def llm_inference(model, messages, tools: list | None = None, **kwargs):
 
-    # llm = ChatGroq(
-    #     model="llama-3.3-70b-versatile",
-    #     **kwargs,
-    # )
+    llm = ChatGroq(
+        model="llama-3.3-70b-versatile",
+        **kwargs,
+    )
     # llm = ChatCerebras(
     #     model=model,
     #     **kwargs,
     # )
-    llm = ChatOpenAI(
-        base_url="http://localhost:8000/v1",
-        model="meta-llama/Llama-3.3-70B-Instruct",
-        **kwargs,
-    )
+    # llm = ChatOpenAI(
+    #     base_url="http://localhost:8000/v1",
+    #     model="meta-llama/Llama-3.3-70B-Instruct",
+    #     **kwargs,
+    # )
     if tools:
         llm = llm.bind_tools(tools)
 

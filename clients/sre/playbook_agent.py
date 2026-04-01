@@ -170,8 +170,9 @@ class PlaybookAgent(BaseAgent):
 
     def _generate_plan(self, messages: list, playbooks: list[dict]) -> dict:
         """
-        Use the LLM to produce a branching JSON diagnosis plan grounded in the
-        retrieved playbooks.
+        Use the LLM to produce a DAG-structured diagnosis plan grounded in the
+        retrieved playbooks.  The plan uses explicit nodes and edges so it can
+        represent parallel branches, fan-in convergence, and conditional routing.
         """
         playbook_text = ""
         for pb in playbooks:
@@ -184,44 +185,53 @@ class PlaybookAgent(BaseAgent):
 
         prompt = HumanMessage(content=f"""You are an SRE diagnosis planner for Kubernetes.
 Using the incident context and the SRE playbook excerpts below,
-generate a structured, branching diagnosis plan.
+generate a DAG-structured diagnosis plan.
 
 Relevant playbooks:
 {playbook_text}
 
 Rules:
-- Steps must use one of these tools: {tool_names}
-- Use next_if_positive / next_if_negative to branch; null means end.
-- Order steps from most likely / cheapest to most specific expensive.
+- Each node is a diagnosis step that uses exactly one tool.
+- Edges connect nodes. An edge has a "condition" field: "positive", "negative",
+  or "always" (unconditional, used for fan-out / fan-in).
+- A node with multiple outgoing "always" edges means PARALLEL fan-out:
+  all targets run concurrently.
+- A node whose incoming edges all originate from different parallel siblings
+  is a JOIN node: it waits for all parents to finish before executing.
+- "entry_node" is the id of the first node to execute.
+- Available tools: {tool_names}
+- Order from cheapest/most-likely to most-expensive/specific.
 
-Respond ONLY in JSON:
+Respond ONLY in JSON (no markdown, no code fences):
 {{
     "fault_hypotheses": [
         {{
-            "category": string, 
-            "description": string, 
+            "category": string,
+            "description": string,
             "confidence": float
         }}
     ],
     "playbook_references": [string],
-    "steps":
+    "entry_node": integer,
+    "nodes": [
         {{
             "id": integer,
             "description": string,
             "tool": string,
             "args": object,
             "expected_positive_signal": string,
-            "next_if_positive": integer or null,
-            "next_if_negative": integer or null,
             "uncertainty_note": string
+        }}
+    ],
+    "edges": [
+        {{
+            "from": integer,
+            "to": integer,
+            "condition": "positive" | "negative" | "always"
         }}
     ]
 }}
 Do not add extra keys.
-
-Respond in structured JSON.
-You NEVER output markdown.
-You NEVER output code fences.
 You ONLY output raw JSON.""")
 
         resp = llm_inference(model=self.model_name,
@@ -233,27 +243,44 @@ You ONLY output raw JSON.""")
             plan = json.loads(raw)
         except json.JSONDecodeError:
             cprint(
-                f"[PLAN] JSON parse failed; raw output:\n{resp.content}", "red")
+                f"[PLAN] JSON parse failed; raw output:\n{raw}", "red")
             raise
 
-        cprint(f"[PLAN] {len(plan['steps'])} steps, "
+        cprint(f"[PLAN] {len(plan['nodes'])} nodes, {len(plan['edges'])} edges, "
                f"{len(plan['fault_hypotheses'])} hypotheses", "green")
         return plan
 
+    @staticmethod
+    def _build_adjacency(plan: dict) -> tuple[dict, dict]:
+        """Return (children_map, parents_map) from the edge list."""
+        children: dict[int, list[dict]] = {}   # node_id -> [edge, ...]
+        parents: dict[int, list[dict]] = {}    # node_id -> [edge, ...]
+        for edge in plan.get("edges", []):
+            children.setdefault(edge["from"], []).append(edge)
+            parents.setdefault(edge["to"], []).append(edge)
+        return children, parents
+
     def _print_plan(self, plan: dict) -> None:
-        cprint("\n========== DIAGNOSIS PLAN ==========", "yellow")
+        children, _ = self._build_adjacency(plan)
+
+        cprint("\n========== DIAGNOSIS PLAN (DAG) ==========", "yellow")
         cprint("Hypotheses:", "yellow")
         for h in plan.get("fault_hypotheses", []):
             cprint(f"  [{h['confidence']:.0%}] {h['description']}", "yellow")
         cprint("\nPlaybooks referenced:", "yellow")
         for ref in plan.get("playbook_references", []):
             cprint(f"  - {ref}", "yellow")
-        cprint("\nSteps:", "yellow")
-        for s in plan.get("steps", []):
-            branch = f"pos→{s['next_if_positive']} | neg→{s['next_if_negative']}"
-            cprint(f"  [{s['id']}] {s['description']}", "yellow")
-            cprint(f"       tool={s['tool']}  {branch}", "white")
-        cprint("=====================================\n", "yellow")
+
+        cprint(f"\nEntry node: {plan.get('entry_node')}", "yellow")
+        cprint("Nodes:", "yellow")
+        for n in plan.get("nodes", []):
+            edges_out = children.get(n["id"], [])
+            edge_str = ", ".join(
+                f"--{e['condition']}--> {e['to']}" for e in edges_out
+            ) or "(terminal)"
+            cprint(f"  [{n['id']}] {n['description']}", "yellow")
+            cprint(f"       tool={n['tool']}  {edge_str}", "white")
+        cprint("==========================================\n", "yellow")
 
     # ------------------------------------------------------------------
     # Phase 3: Plan execution
@@ -349,50 +376,88 @@ You ONLY output raw JSON.""")
         return outcome
 
     async def _execute_plan(self, plan: dict, messages: list) -> None:
-        steps = plan.get("steps", [])
-        if not steps:
-            cprint("[PLAN] No steps to execute.", "yellow")
+        """
+        Walk the DAG, executing nodes.  Supports:
+          - conditional edges (positive / negative)
+          - parallel fan-out ("always" edges from one node to many)
+          - fan-in / join (a node waits until all parent outcomes arrive)
+        """
+        import asyncio
+
+        nodes = plan.get("nodes", [])
+        if not nodes:
+            cprint("[PLAN] No nodes to execute.", "yellow")
             return
 
-        step_map = {s["id"]: s for s in steps}
-        current_id: int | None = steps[0]["id"]
+        node_map = {n["id"]: n for n in nodes}
+        children, parents = self._build_adjacency(plan)
 
-        while current_id is not None and not self.submitted:
-            step = step_map.get(current_id)
-            if step is None:
-                cprint(f"[PLAN] Step {current_id} not found; stopping.", "red")
-                break
+        # Track per-node outcome and completion
+        outcomes: dict[int, str] = {}       # node_id -> "positive" | "negative" | "skipped"
+        completed: dict[int, asyncio.Event] = {
+            n["id"]: asyncio.Event() for n in nodes
+        }
 
-            cprint(f"\n[STEP {step['id']}] {step['description']}", "cyan")
+        async def _run_node(node_id: int) -> None:
+            if self.submitted:
+                return
+            node = node_map.get(node_id)
+            if node is None:
+                cprint(f"[PLAN] Node {node_id} not found; skipping.", "red")
+                return
 
-            # Decide whether a human checkpoint is needed
-            needs_human = step.get("human_checkpoint", False)
-            if not needs_human:
-                uncertainty = self._score_uncertainty(step)
-                color = "green" if uncertainty < self.AUTO_THRESHOLD else (
-                    "yellow" if uncertainty < self.HUMAN_THRESHOLD else "red"
-                )
-                cprint(f"  Uncertainty: {uncertainty:.2f}", color)
-                if uncertainty >= self.HUMAN_THRESHOLD:
-                    needs_human = True
+            # Wait for all parent nodes to finish (join semantics)
+            for parent_edge in parents.get(node_id, []):
+                await completed[parent_edge["from"]].wait()
+                # If a conditional parent didn't match, skip this node
+                parent_outcome = outcomes.get(parent_edge["from"])
+                if parent_edge["condition"] != "always" and parent_outcome != parent_edge["condition"]:
+                    outcomes[node_id] = "skipped"
+                    completed[node_id].set()
+                    return
+
+            cprint(f"\n[NODE {node['id']}] {node['description']}", "cyan")
+
+            # Uncertainty-gated human checkpoint
+            needs_human = False
+            uncertainty = self._score_uncertainty(node)
+            color = "green" if uncertainty < self.AUTO_THRESHOLD else (
+                "yellow" if uncertainty < self.HUMAN_THRESHOLD else "red"
+            )
+            cprint(f"  Uncertainty: {uncertainty:.2f}", color)
+            if uncertainty >= self.HUMAN_THRESHOLD:
+                needs_human = True
 
             if needs_human:
-                proceed = await self._human_checkpoint(step)
+                proceed = await self._human_checkpoint(node)
                 if not proceed:
                     cprint(
-                        "  [SKIPPED by operator — taking negative branch]", "yellow")
-                    current_id = step.get("next_if_negative")
-                    continue
+                        "  [SKIPPED by operator]", "yellow")
+                    outcomes[node_id] = "skipped"
+                    completed[node_id].set()
+                    return
 
-            outcome = await self._execute_step(step, messages)
+            outcome = await self._execute_step(node, messages)
             color = "green" if outcome == "positive" else "red"
             cprint(f"  Outcome: {outcome}", color)
+            outcomes[node_id] = outcome
+            completed[node_id].set()
 
-            current_id = (
-                step.get("next_if_positive")
-                if outcome == "positive"
-                else step.get("next_if_negative")
-            )
+            # Fan-out: schedule children
+            outgoing = children.get(node_id, [])
+            # Separate "always" edges (parallel) from conditional ones
+            always_targets = [e["to"] for e in outgoing if e["condition"] == "always"]
+            cond_targets = [e["to"] for e in outgoing if e["condition"] == outcome]
+
+            next_ids = always_targets + cond_targets
+            if len(next_ids) > 1:
+                # Parallel fan-out
+                await asyncio.gather(*[_run_node(nid) for nid in next_ids])
+            elif next_ids:
+                await _run_node(next_ids[0])
+
+        entry = plan.get("entry_node", nodes[0]["id"])
+        await _run_node(entry)
 
     async def _submit_diagnosis(self, messages: list) -> None:
         prompt = HumanMessage(content=(
