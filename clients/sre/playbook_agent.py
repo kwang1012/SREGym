@@ -10,13 +10,16 @@ Metric optimized: reliability gain / human involvement time.
 """
 
 import json
+import os
 from pathlib import Path
 
+import httpx
 import questionary
 from langchain_core.messages import HumanMessage
 
 from clients.sre.base_agent import BaseAgent, llm_inference
 from clients.sre.utils import cprint
+from clients.stratus.tools.submit_tool import submit_tool_no_state
 
 
 # ---------------------------------------------------------------------------
@@ -511,18 +514,18 @@ You ONLY output raw JSON.""")
         self._print_plan(self.plan)
 
         # # Phase 3: Execute plan
-        # cprint("\n[Phase 3] Executing diagnosis plan...", "blue")
-        # await self._execute_plan(self.plan, messages)
+        cprint("\n[Phase 3] Executing diagnosis plan...", "blue")
+        await self._execute_plan(self.plan, messages)
 
-        # # Final submission
-        # if not self.submitted:
-        #     await self._submit_diagnosis(messages)
+        # Final submission
+        if not self.submitted:
+            await self._submit_diagnosis(messages)
 
-        # cprint(
-        #     f"\n[DONE] {self.steps_executed} steps executed, "
-        #     f"{self.human_interventions} human interventions.",
-        #     "green",
-        # )
+        cprint(
+            f"\n[DONE] {self.steps_executed} steps executed, "
+            f"{self.human_interventions} human interventions.",
+            "green",
+        )
 
         with open("chat_history.txt", "w") as f:
             for message in messages:

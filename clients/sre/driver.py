@@ -1,3 +1,9 @@
+from logger import init_logger
+from clients.sre.playbook_agent import PlaybookAgent
+from clients.sre.inter_agent import InteractiveAgent
+from clients.sre.react_agent import ReactAgent
+from clients.sre.hypothesis_agent import HypoAgent
+from clients.sre.sre_agent import SREAgent
 import argparse
 import asyncio
 import json
@@ -7,6 +13,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+import httpx
 import requests
 import yaml
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -16,12 +23,6 @@ sregym_root = Path(__file__).resolve().parent
 if str(sregym_root) not in sys.path:
     sys.path.insert(0, str(sregym_root))
 
-from clients.sre.sre_agent import SREAgent
-from clients.sre.hypothesis_agent import HypoAgent
-from clients.sre.react_agent import ReactAgent
-from clients.sre.inter_agent import InteractiveAgent
-from clients.sre.playbook_agent import PlaybookAgent
-from logger import init_logger
 
 init_logger()
 
@@ -100,14 +101,16 @@ def wait_for_ready_stage(timeout: int = 300) -> str:
                 logger.info(f"Conductor ready at stage: {stage}")
                 return stage
             else:
-                logger.debug(f"Current stage: {stage}, waiting for {allowed_stages}...")
+                logger.debug(
+                    f"Current stage: {stage}, waiting for {allowed_stages}...")
                 time.sleep(1)
 
         except Exception as e:
             logger.debug(f"Error checking status: {e}, retrying...")
             time.sleep(1)
 
-    raise TimeoutError(f"Conductor did not reach ready stage within {timeout} seconds")
+    raise TimeoutError(
+        f"Conductor did not reach ready stage within {timeout} seconds")
 
 
 def save_results(
@@ -126,7 +129,8 @@ def save_results(
         usage_metrics: Token usage metrics
     """
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    results_file = logs_dir / f"claudecode_results_{problem_id}_{timestamp}.json"
+    results_file = logs_dir / \
+        f"claudecode_results_{problem_id}_{timestamp}.json"
 
     results = {
         "problem_id": problem_id,
@@ -144,7 +148,8 @@ def save_results(
 
 async def main():
     """Main entry point for SRE agent driver."""
-    parser = argparse.ArgumentParser(description="Run SRE agent on SREGym tasks")
+    parser = argparse.ArgumentParser(
+        description="Run SRE agent on SREGym tasks")
     parser.add_argument(
         "--model",
         type=str,
@@ -192,6 +197,11 @@ async def main():
         logger.error(f"Timeout waiting for conductor: {e}")
         sys.exit(1)
 
+    client = httpx.AsyncClient()  # warm up httpx to avoid latency on first tool call
+    server_url = "http://localhost:8123/submit"
+    await client.post(server_url, json={
+        "solution": "The deployment `frontend`, `geo`, `profile`, `rate`, `recommendation`, `reservation`, `user`, and `search` are configured to use a faulty image 'jackcuii/hotel-reservation:latest'."}, timeout=5)
+
     # Get problem information
     try:
         app_info = get_app_info()
@@ -201,7 +211,8 @@ async def main():
         sys.exit(1)
 
     # Build instruction
-    diagnosis_agent_prompts = yaml.safe_load(open("./clients/sre/agent_prompts.yaml"))
+    diagnosis_agent_prompts = yaml.safe_load(
+        open("./clients/sre/agent_mitigation_prompts.yaml"))
     messages = [
         SystemMessage(diagnosis_agent_prompts["system"]),
         HumanMessage(
@@ -209,6 +220,7 @@ async def main():
                 app_name=app_info["app_name"],
                 app_namespace=app_info["namespace"],
                 app_description=app_info["descriptions"],
+                faults_info="The deployment `frontend`, `geo`, `profile`, `rate`, `recommendation`, `reservation`, `user`, and `search` are configured to use a faulty image 'jackcuii/hotel-reservation:latest'."
             )
         ),
     ]

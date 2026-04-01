@@ -86,6 +86,7 @@ class BaseAgent:
             # print(f"[AGENT] AI Tool Calls: {tools_str}")
             if tool_call["name"] == "n_submit_tool":
                 self.submitted = True
+                print(tool_call["args"])
                 continue
             try:
                 if tool_call["name"] in self.sync_tools_by_name:

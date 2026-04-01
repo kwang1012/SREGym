@@ -84,6 +84,14 @@ async_tools:
               "kubectl config get",
               INTERACTIVE COMMANDS ARE NOT SUPPORTED, e.g. "kubectl edit"
               INTERACTIVE FLAGS ARE NOT SUPPORTED, e.g., "kubectl logs -f"
+  - name: exec_kubectl_cmd_safely
+    description: |
+      This is a tool used to safely execute kubectl commands.
+      
+          Args:
+              command (str): The kubectl command you would like to execute, must start with "kubectl"
+              INTERACTIVE COMMANDS ARE NOT SUPPORTED, e.g. "kubectl edit" 
+              INTERACTIVE FLAGS ARE NOT SUPPORTED, e.g., "kubectl logs -f"
   - name: n_submit_tool
     description: |
       The tool to submit the results
