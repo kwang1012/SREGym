@@ -127,7 +127,7 @@ async def submit_tool(
 
 
 @tool(description=submit_tool_docstring)
-async def submit_tool_no_state(
+async def n_submit_tool(
     ans: str, tool_call_id: Annotated[str, InjectedToolCallId]
 ) -> Command:
     # makes http call to benchmark submission server

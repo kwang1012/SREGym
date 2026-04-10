@@ -115,3 +115,9 @@
 "bedrock-claude-sonnet-4.5":
   provider: "litellm"
   model_name: "bedrock/us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+
+"llama-70b-instruct":
+  provider: "litellm"
+  model_name: "meta-llama/Llama-3.3-70B-Instruct"
+  api_key: "$LLAMA_API_KEY"
+  url: "http://localhost:8000"

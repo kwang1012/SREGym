@@ -1,21 +1,28 @@
-system: Monitor and diagnose an application consisting of **MANY** microservices. Some or none of the microservices have faults. Get all the pods and deployments to figure out what kind of services are running in the cluster.  Carefully identify the whether the faults are present and if they are, and identify what is the root cause of the fault.
-Stop diagnosis once you've found the root cause of the faults.
-Go as deep as you can into what is causing the issue.
-You should identify as many faults as possible, and for each fault, you should identify the root cause.
+system: Diagnosis and Mitigation of Identified Faults in an IT Incident Some or none of the microservices have faults.  You should carefully identify the whether the faults are present and if they are, what is the root cause of the fault. You can stop mitigation once you've fixed all the faults. 
+Go as deep as you can into what is causing the issue, and mitigate the fault.
+Your instructions to the tools must be clear and concise. Your queries to tools need to be single turn.
 Remember to check these, and remember this information: ## Workloads (Applications) - **Pod**: The smallest deployable unit in Kubernetes, representing a single instance of a running application. Can contain one or more tightly coupled containers. - **ReplicaSet**: Ensures that a specified number of pod replicas are running at all times. Often managed indirectly through Deployments. - **Deployment**: Manages the deployment and lifecycle of applications. Provides declarative updates for Pods and ReplicaSets. - **StatefulSet**: Manages stateful applications with unique pod identities and stable storage. Used for workloads like databases. - **DaemonSet**: Ensures that a copy of a specific pod runs on every node in the cluster. Useful for node monitoring agents, log collectors, etc. - **Job**: Manages batch processing tasks that are expected to complete successfully. Ensures pods run to completion. - **CronJob**: Schedules jobs to run at specified times or intervals (similar to cron in Linux).
 ## Networking - **Service**: Provides a stable network endpoint for accessing a group of pods. Types: ClusterIP, NodePort, LoadBalancer, and ExternalName. - **Ingress**: Manages external HTTP(S) access to services in the cluster. Supports routing and load balancing for HTTP(S) traffic. - **NetworkPolicy**: Defines rules for network communication between pods and other entities. Used for security and traffic control.
 ## Storage - **PersistentVolume (PV)**: Represents a piece of storage in the cluster, provisioned by an administrator or dynamically. - **PersistentVolumeClaim (PVC)**: Represents a request for storage by a user. Binds to a PersistentVolume. - **StorageClass**: Defines different storage tiers or backends for dynamic provisioning of PersistentVolumes. - **ConfigMap**: Stores configuration data as key-value pairs for applications. - **Secret**: Stores sensitive data like passwords, tokens, or keys in an encrypted format.
 ## Configuration and Metadata - **Namespace**: Logical partitioning of resources within the cluster for isolation and organization. - **ConfigMap**: Provides non-sensitive configuration data in key-value format. - **Secret**: Stores sensitive configuration data securely. - **ResourceQuota**: Restricts resource usage (e.g., CPU, memory) within a namespace. - **LimitRange**: Enforces minimum and maximum resource limits for containers in a namespace.
 ## Cluster Management - **Node**: Represents a worker machine in the cluster (virtual or physical). Runs pods and is managed by the control plane. - **ClusterRole and Role**: Define permissions for resources at the cluster or namespace level. - **ClusterRoleBinding and RoleBinding**: Bind roles to users or groups for authorization. - **ServiceAccount**: Associates processes in pods with permissions for accessing the Kubernetes API.
+An example procedure to remediate the faults: 1) Formulate a remediation plan with a list of actionable steps. 2) Execute the plan, one step at a time. 3) Check if the plan execution worked as you desired in the IT environment. 4) If not, you can either call wait_tool to wait for it to take effect or take other actions. 5) Otherwise, continue the plan and execution process until you call submit_tool as you believe the application has become healthy.
+The following is a detailed description of your tasks.
+1) mitigation: Mitigate the identified faults in an IT incident with the provided tools. You can submit an empty dict "ans" with the submit_tool as this task is not graded over your answer but the final result of the mitigation; therefore, you have to make sure the application has become healthy before you call submit_tool.
 
 human: You will be working this application:
-Hotel Reservation
-Here are some descriptions about the application:
-A hotel reservation application built with Go and gRPC, providing backend in-memory and persistent databases, a recommender system for hotel recommendations, and a functionality to place reservations.
-It belongs to this namespace:
-hotel-reservation
-Your job is to identify all the faults in this application using the tools. Don't submit until you are sure you have identified all the faults and their root causes. You should be as detailed as possible in your diagnosis, and you should identify as many faults as possible.
 
+Hotel Reservation
+
+Here are some descriptions about the application:
+
+A hotel reservation application built with Go and gRPC, providing backend in-memory and persistent databases, a recommender system for hotel recommendations, and a functionality to place reservations.
+
+It belongs to this namespace:
+
+hotel-reservation
+
+Your job is to identify all the faults in this application using the tools and fix all the faults.
 human: Here are all the tools you can use:
 tool name: wait_tool
 
@@ -78,6 +85,17 @@ tool description: Query real-time metrics data from the Prometheus instance.
         dict: The raw Prometheus response containing metric results, including timestamps, values, and labels.
 
 
+tool name: exec_kubectl_cmd_safely
+
+tool description: This is a tool used to safely execute kubectl commands. Whatever commands you executed will be stored in a rollback 
+mechanism which later is used to roll back the cluster state in case your current attempt fails.
+
+    Args:
+        command (str): The kubectl command you would like to execute, must start with "kubectl"
+        INTERACTIVE COMMANDS ARE NOT SUPPORTED, e.g. "kubectl edit" 
+        INTERACTIVE FLAGS ARE NOT SUPPORTED, e.g., "kubectl logs -f"
+
+
 tool name: exec_read_only_kubectl_cmd
 
 tool description: This is a tool used to execute read-only kubectl commands.
@@ -105,6 +123,16 @@ tool description: This is a tool used to execute read-only kubectl commands.
         INTERACTIVE FLAGS ARE NOT SUPPORTED, e.g., "kubectl logs -f"
 
 
+tool name: exec_kubectl_cmd_safely
+
+tool description: This is a tool used to safely execute kubectl commands.
+
+    Args:
+        command (str): The kubectl command you would like to execute, must start with "kubectl"
+        INTERACTIVE COMMANDS ARE NOT SUPPORTED, e.g. "kubectl edit" 
+        INTERACTIVE FLAGS ARE NOT SUPPORTED, e.g., "kubectl logs -f"
+
+
 tool name: n_submit_tool
 
 tool description: The tool to submit the results
@@ -116,38 +144,38 @@ tool description: The tool to submit the results
 
 human: Run an initial observation of the system state. Check pod statuses, recent events, and any obvious anomalies. Be concise — the output will inform plan generation.
 ai: 
-tool: NAME                                      READY   STATUS             RESTARTS       AGE
-consul-5c696cc4dc-spr8t                   1/1     Running            0              8m49s
-frontend-78986558db-x2dvt                 0/1     CrashLoopBackOff   6 (90s ago)    7m38s
-geo-7bf795c745-4pvpr                      0/1     CrashLoopBackOff   6 (95s ago)    7m37s
-jaeger-5b9775bd94-whndb                   1/1     Running            0              8m45s
-memcached-profile-6849578b8-8bqqx         1/1     Running            0              8m43s
-memcached-rate-948594dfd-jx6kv            1/1     Running            0              8m40s
-memcached-reserve-68dbb57476-x5x5g        1/1     Running            0              8m35s
-mongodb-geo-8cb7d9f5b-dsw99               1/1     Running            0              8m46s
-mongodb-profile-775dfd4bd7-jgtjx          1/1     Running            0              8m42s
-mongodb-rate-bfbcf4587-pkk9j              1/1     Running            0              8m39s
-mongodb-recommendation-674dddbcdf-gw975   1/1     Running            0              8m37s
-mongodb-reservation-6cdf69dcc-5xglm       1/1     Running            0              8m34s
-mongodb-user-6dcf4877-d4j8f               1/1     Running            0              8m31s
-profile-564d59fc59-72fz9                  0/1     CrashLoopBackOff   6 (89s ago)    7m36s
-rate-55d678488c-pktzw                     0/1     CrashLoopBackOff   6 (97s ago)    7m35s
-recommendation-dc9bc7d9c-gql2j            0/1     CrashLoopBackOff   6 (97s ago)    7m34s
-reservation-67695788bb-7nnnp              0/1     CrashLoopBackOff   6 (92s ago)    7m34s
-search-6584c568c9-m8krt                   0/1     CrashLoopBackOff   6 (100s ago)   7m32s
-user-76947c994b-8frgz                     0/1     CrashLoopBackOff   6 (99s ago)    7m33s
-wrk2-job-wmwr4                            1/1     Running            0              7m39s
+tool: NAME                                      READY   STATUS             RESTARTS         AGE
+consul-5c696cc4dc-czdw5                   1/1     Running            0                3h5m
+frontend-78986558db-hd8rl                 0/1     CrashLoopBackOff   40 (5m17s ago)   3h4m
+geo-7bf795c745-vdbdd                      0/1     CrashLoopBackOff   40 (4m1s ago)    3h4m
+jaeger-5b9775bd94-bwq5r                   1/1     Running            0                3h5m
+memcached-profile-6849578b8-v2x65         1/1     Running            0                3h5m
+memcached-rate-948594dfd-sfz48            1/1     Running            0                3h5m
+memcached-reserve-68dbb57476-cqtg8        1/1     Running            0                3h5m
+mongodb-geo-8cb7d9f5b-5nmc6               1/1     Running            0                3h5m
+mongodb-profile-775dfd4bd7-h5s62          1/1     Running            0                3h5m
+mongodb-rate-bfbcf4587-n8rn2              1/1     Running            0                3h5m
+mongodb-recommendation-674dddbcdf-rg7zg   1/1     Running            0                3h5m
+mongodb-reservation-6cdf69dcc-4z8qd       1/1     Running            0                3h5m
+mongodb-user-6dcf4877-rzxrh               1/1     Running            0                3h5m
+profile-564d59fc59-gffg9                  0/1     CrashLoopBackOff   40 (5m2s ago)    3h4m
+rate-55d678488c-4g5d6                     0/1     CrashLoopBackOff   41 (40s ago)     3h4m
+recommendation-dc9bc7d9c-rws2f            0/1     CrashLoopBackOff   40 (4m50s ago)   3h4m
+reservation-67695788bb-f58dg              0/1     CrashLoopBackOff   40 (4m40s ago)   3h4m
+search-6584c568c9-854jg                   0/1     CrashLoopBackOff   40 (5m7s ago)    3h4m
+user-76947c994b-f5778                     0/1     CrashLoopBackOff   40 (4m45s ago)   3h4m
+wrk2-job-2bqzq                            1/1     Running            0                3h4m
 
-human: Execute step 1: Check pod status, restart count, and events
-Use tool 'exec_read_only_kubectl_cmd' with arguments: {"command": "kubectl describe pod frontend-78986558db-x2dvt -n hotel-reservation"}
-Expected positive signal: CrashLoopBackOff state
+human: Diagnose step 0: Check pod status and events
+Use tool 'exec_read_only_kubectl_cmd' with arguments: {"command": "kubectl describe pod frontend-78986558db-hd8rl -n hotel-reservation"}
+Expected positive signal (confirms this hypothesis): Pod status and events indicate liveness or readiness probe failures
 ai: 
-tool: Name:             frontend-78986558db-x2dvt
+tool: Name:             frontend-78986558db-hd8rl
 Namespace:        hotel-reservation
 Priority:         0
 Service Account:  default
-Node:             node2.sreagent.iss.emulab.net/155.98.38.235
-Start Time:       Thu, 12 Mar 2026 20:26:33 +0000
+Node:             node1.sre-agent.iss.emulab.net/155.98.36.78
+Start Time:       Fri, 10 Apr 2026 15:38:38 +0000
 Labels:           io.kompose.service=frontend
                   pod-template-hash=78986558db
 Annotations:      kompose.cmd: kompose convert
@@ -156,13 +184,13 @@ Annotations:      kompose.cmd: kompose convert
                     cluster.outbound,cluster_manager,listener_manager,http_mixer_filter,tcp_mixer_filter,server,cluster.xds-grp,listener,connection_manager
                   sidecar.istio.io/statsInclusionRegexps: http.*
 Status:           Running
-IP:               10.244.2.86
+IP:               10.244.2.229
 IPs:
-  IP:           10.244.2.86
+  IP:           10.244.2.229
 Controlled By:  ReplicaSet/frontend-78986558db
 Containers:
   hotel-reserv-frontend:
-    Container ID:  docker://cdb972569fe3318e0f4f6276126e5529e98ee1983e3c7c1a3464da18a329e649
+    Container ID:  docker://d4cb4690b5e09020c04900e89af80acdfe758be976a3fe7287cab35e6d63ca92
     Image:         jackcuii/hotel-reservation:latest
     Image ID:      docker-pullable://jackcuii/hotel-reservation@sha256:b0ba6bd030c2579516ed03b67339cab8106577835f834cfe8acfb15189bdd6a2
     Port:          5000/TCP
@@ -175,10 +203,10 @@ Containers:
       Reason:       ContainerCannotRun
       Message:      failed to create task for container: failed to create shim task: OCI runtime create failed: runc create failed: unable to start container process: error during container init: exec: "frontend": executable file not found in $PATH
       Exit Code:    127
-      Started:      Thu, 12 Mar 2026 20:32:41 +0000
-      Finished:     Thu, 12 Mar 2026 20:32:41 +0000
+      Started:      Fri, 10 Apr 2026 18:43:03 +0000
+      Finished:     Fri, 10 Apr 2026 18:43:03 +0000
     Ready:          False
-    Restart Count:  6
+    Restart Count:  41
     Limits:
       cpu:  1
     Requests:
@@ -186,7 +214,7 @@ Containers:
     Environment:
       JAEGER_SAMPLE_RATIO:  1
     Mounts:
-      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-6n8hf (ro)
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-r485k (ro)
 Conditions:
   Type                        Status
   PodReadyToStartContainers   True 
@@ -195,7 +223,7 @@ Conditions:
   ContainersReady             False 
   PodScheduled                True 
 Volumes:
-  kube-api-access-6n8hf:
+  kube-api-access-r485k:
     Type:                    Projected (a volume that contains injected data from multiple sources)
     TokenExpirationSeconds:  3607
     ConfigMapName:           kube-root-ca.crt
@@ -206,39 +234,21 @@ Node-Selectors:              <none>
 Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
                              node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
 Events:
-  Type     Reason     Age                     From               Message
-  ----     ------     ----                    ----               -------
-  Normal   Scheduled  9m33s                   default-scheduler  Successfully assigned hotel-reservation/frontend-78986558db-x2dvt to node2.sreagent.iss.emulab.net
-  Normal   Pulled     7m40s (x5 over 9m23s)   kubelet            spec.containers{hotel-reserv-frontend}: Container image "jackcuii/hotel-reservation:latest" already present on machine
-  Normal   Created    7m38s (x5 over 9m18s)   kubelet            spec.containers{hotel-reserv-frontend}: Created container: hotel-reserv-frontend
-  Warning  Failed     7m38s (x5 over 9m16s)   kubelet            spec.containers{hotel-reserv-frontend}: Error: failed to start container "hotel-reserv-frontend": Error response from daemon: failed to create task for container: failed to create shim task: OCI runtime create failed: runc create failed: unable to start container process: error during container init: exec: "frontend": executable file not found in $PATH
-  Warning  BackOff    4m18s (x20 over 8m40s)  kubelet            spec.containers{hotel-reserv-frontend}: Back-off restarting failed container hotel-reserv-frontend in pod frontend-78986558db-x2dvt_hotel-reservation(d556fe19-ecf8-46a0-a68d-e8888392b92d)
+  Type     Reason   Age                  From     Message
+  ----     ------   ----                 ----     -------
+  Warning  BackOff  5s (x832 over 3h4m)  kubelet  spec.containers{hotel-reserv-frontend}: Back-off restarting failed container hotel-reserv-frontend in pod frontend-78986558db-hd8rl_hotel-reservation(2c2f3c7d-a439-410e-b089-d31287694908)
 
-human: Execute step 2: Retrieve events for the pod
-Use tool 'exec_read_only_kubectl_cmd' with arguments: {"command": "kubectl get events -n hotel-reservation --field-selector involvedObject.name=frontend-78986558db-x2dvt --sort-by='.lastTimestamp'"}
-Expected positive signal: Liveness probe failed events
+human: Diagnose step 1: Check liveness probe configuration
+Use tool 'exec_read_only_kubectl_cmd' with arguments: {"command": "kubectl get pod frontend-78986558db-hd8rl -n hotel-reservation -o jsonpath='{.spec.containers[0].livenessProbe}'"}
+Expected positive signal (confirms this hypothesis): Liveness probe configuration indicates potential issues
 ai: 
-tool: LAST SEEN   TYPE      REASON      OBJECT                          MESSAGE
-9m40s       Normal    Scheduled   pod/frontend-78986558db-x2dvt   Successfully assigned hotel-reservation/frontend-78986558db-x2dvt to node2.sreagent.iss.emulab.net
-7m47s       Normal    Pulled      pod/frontend-78986558db-x2dvt   Container image "jackcuii/hotel-reservation:latest" already present on machine
-7m45s       Normal    Created     pod/frontend-78986558db-x2dvt   Created container: hotel-reserv-frontend
-7m45s       Warning   Failed      pod/frontend-78986558db-x2dvt   Error: failed to start container "hotel-reserv-frontend": Error response from daemon: failed to create task for container: failed to create shim task: OCI runtime create failed: runc create failed: unable to start container process: error during container init: exec: "frontend": executable file not found in $PATH
-4m25s       Warning   BackOff     pod/frontend-78986558db-x2dvt   Back-off restarting failed container hotel-reserv-frontend in pod frontend-78986558db-x2dvt_hotel-reservation(d556fe19-ecf8-46a0-a68d-e8888392b92d)
-
-human: Execute step 5: Check container termination reason
-Use tool 'exec_read_only_kubectl_cmd' with arguments: {"command": "kubectl get pod frontend-78986558db-x2dvt -n hotel-reservation -o jsonpath='{.status.containerStatuses[*].lastState.terminated}'"}
-Expected positive signal: OOMKilled or Error
-ai: 
-tool: {"containerID":"docker://cdb972569fe3318e0f4f6276126e5529e98ee1983e3c7c1a3464da18a329e649","exitCode":127,"finishedAt":"2026-03-12T20:32:41Z","message":"failed to create task for container: failed to create shim task: OCI runtime create failed: runc create failed: unable to start container process: error during container init: exec: \"frontend\": executable file not found in $PATH","reason":"ContainerCannotRun","startedAt":"2026-03-12T20:32:41Z"}
-human: Execute step 11: Check for dependency failures
-Use tool 'get_dependency_graph' with arguments: {"last_n_minutes": 30}
-Expected positive signal: Dependency failures
-ai: 
-tool: meta=None content=[TextContent(type='text', text="{'data': [], 'total': 0, 'limit': 0, 'offset': 0, 'errors': None}", annotations=None)] isError=False
-human: Based on all evidence gathered during plan execution, submit a comprehensive diagnosis. Include:
+tool: 
+human: Based on all diagnosis, mitigation, and observation steps executed, submit a comprehensive incident summary. Include:
 - Root cause(s) identified
 - Evidence supporting each finding
-- Hypotheses that were ruled out and why
+- Mitigations applied and whether they succeeded
+- Hypotheses that were tried and ruled out
+- Final cluster state (healthy / degraded / partially fixed)
 
-Use the submit tool to finalize your diagnosis.
+Use the submit tool to finalize.
 ai: 

@@ -15,7 +15,7 @@ from clients.stratus.tools.kubectl_tools import (
     RollbackCommand,
 )
 from clients.stratus.tools.prometheus_tools import get_metrics
-from clients.stratus.tools.submit_tool import fake_submit_tool, rollback_submit_tool, submit_tool, submit_tool_no_state
+from clients.stratus.tools.submit_tool import fake_submit_tool, rollback_submit_tool, submit_tool, n_submit_tool
 from clients.stratus.tools.wait_tool import wait_tool
 
 logger = get_logger()
@@ -24,13 +24,15 @@ logger = get_logger()
 def get_client():
     session_id = str(uuid.uuid4())
     # Set SSE read timeout to None for unlimited, or a large value in seconds
-    sse_timeout = float(os.getenv("SSE_READ_TIMEOUT", "3600"))  # Default 1 hour
+    sse_timeout = float(
+        os.getenv("SSE_READ_TIMEOUT", "3600"))  # Default 1 hour
     if sse_timeout < 0:
         sse_timeout = None  # Unlimited
 
     api_hostname = os.getenv("API_HOSTNAME", "localhost")
     mcp_server_port = os.getenv("MCP_SERVER_PORT", "9954")
-    mcp_base_url = os.getenv("MCP_SERVER_URL", f"http://{api_hostname}:{mcp_server_port}")
+    mcp_base_url = os.getenv(
+        "MCP_SERVER_URL", f"http://{api_hostname}:{mcp_server_port}")
     transport = SSETransport(
         url=f"{mcp_base_url}/kubectl/sse",
         headers={"sregym_ssid": session_id},
@@ -54,7 +56,7 @@ def str_to_tool(tool_struct: dict[str, str]):
     elif tool_struct["name"] == "submit_tool":
         return submit_tool
     elif tool_struct["name"] == "n_submit_tool":
-        return submit_tool_no_state
+        return n_submit_tool
     elif tool_struct["name"] == "f_submit_tool":
         return fake_submit_tool
     elif tool_struct["name"] == "r_submit_tool":

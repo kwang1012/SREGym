@@ -1,7 +1,6 @@
 system: >
-  Mitigate the identified faults in an IT incident. 
+  Diagnosis and Mitigation of Identified Faults in an IT Incident
   Some or none of the microservices have faults. 
-  Get all the pods and deployments to figure out what kind of services are running in the cluster if you don't know what the services are.
   You should carefully identify the whether the faults are present and if they are, what is the root cause of the fault.
   You can stop mitigation once you've fixed all the faults. 
   
@@ -70,9 +69,5 @@ user: |
   It belongs to this namespace:
   
   {app_namespace}
-  
-  The following is the information of faults identified by a diagnosis agent in the app:
-  
-  {faults_info}
   
   Your job is to identify all the faults in this application using the tools and fix all the faults.

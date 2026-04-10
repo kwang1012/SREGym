@@ -197,10 +197,10 @@ async def main():
         logger.error(f"Timeout waiting for conductor: {e}")
         sys.exit(1)
 
-    client = httpx.AsyncClient()  # warm up httpx to avoid latency on first tool call
-    server_url = "http://localhost:8123/submit"
-    await client.post(server_url, json={
-        "solution": "The deployment `frontend`, `geo`, `profile`, `rate`, `recommendation`, `reservation`, `user`, and `search` are configured to use a faulty image 'jackcuii/hotel-reservation:latest'."}, timeout=5)
+    # client = httpx.AsyncClient()  # warm up httpx to avoid latency on first tool call
+    # server_url = "http://localhost:8123/submit"
+    # await client.post(server_url, json={
+    #     "solution": "The deployment `frontend`, `geo`, `profile`, `rate`, `recommendation`, `reservation`, `user`, and `search` are configured to use a faulty image 'jackcuii/hotel-reservation:latest'."}, timeout=5)
 
     # Get problem information
     try:
@@ -220,7 +220,6 @@ async def main():
                 app_name=app_info["app_name"],
                 app_namespace=app_info["namespace"],
                 app_description=app_info["descriptions"],
-                faults_info="The deployment `frontend`, `geo`, `profile`, `rate`, `recommendation`, `reservation`, `user`, and `search` are configured to use a faulty image 'jackcuii/hotel-reservation:latest'."
             )
         ),
     ]

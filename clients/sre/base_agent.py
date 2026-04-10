@@ -1,4 +1,5 @@
 import json
+import os
 import yaml
 
 from langchain_cerebras import ChatCerebras
@@ -12,27 +13,30 @@ from clients.sre.utils import cprint
 from clients.stratus.stratus_utils.str_to_tool import str_to_tool
 
 
-def llm_inference(model, messages, tools: list | None = None, **kwargs):
+_LOCAL_BASE_URL = os.getenv("LOCAL_LLM_BASE_URL", "http://localhost:8000/v1")
 
-    llm = ChatGroq(
-        model="llama-3.3-70b-versatile",
-        **kwargs,
-    )
-    # llm = ChatCerebras(
-    #     model=model,
-    #     **kwargs,
-    # )
-    # llm = ChatOpenAI(
-    #     base_url="http://localhost:8000/v1",
-    #     model="meta-llama/Llama-3.3-70B-Instruct",
-    #     **kwargs,
-    # )
+
+def _build_llm(model: str, **kwargs):
+    """
+    Route to the correct LangChain chat backend based on the model string prefix.
+
+    Supported prefixes:
+      groq/<model>      → ChatGroq
+      cerebras/<model>  → ChatCerebras
+      <anything else>   → ChatOpenAI pointed at LOCAL_LLM_BASE_URL
+    """
+    if model.startswith("groq/"):
+        return ChatGroq(model=model.removeprefix("groq/"), **kwargs)
+    if model.startswith("cerebras/"):
+        return ChatCerebras(model=model.removeprefix("cerebras/"), **kwargs)
+    return ChatOpenAI(base_url=_LOCAL_BASE_URL, model=model, **kwargs)
+
+
+def llm_inference(model, messages, tools: list | None = None, **kwargs):
+    llm = _build_llm(model, **kwargs)
     if tools:
         llm = llm.bind_tools(tools)
-
-    response = llm.invoke(input=messages)
-
-    return response
+    return llm.invoke(input=messages)
 
 
 def build_tools(file_path: str):
@@ -83,11 +87,10 @@ class BaseAgent:
             arg_list = [f"{key} = {value}" for key,
                         value in tool_call["args"].items()]
             tools_str = f"\n- {tool_call['name']}({', '.join(arg_list)})"
-            # print(f"[AGENT] AI Tool Calls: {tools_str}")
+            print(f"[AGENT] AI Tool Calls: {tools_str}")
             if tool_call["name"] == "n_submit_tool":
-                self.submitted = True
+                # self.submitted = True
                 print(tool_call["args"])
-                continue
             try:
                 if tool_call["name"] in self.sync_tools_by_name:
                     tool_result = self.sync_tools_by_name[tool_call["name"]].invoke(
@@ -124,16 +127,15 @@ class BaseAgent:
                 ), f"Tool {tool_call['name']} should return a Command object, but return {type(tool_result)}"
                 if not tool_result.update:
                     continue
-                # print(
-                #     f"[AGENT] Tool {tool_call['name']} returns: {tool_result.update['messages']}")
+                print(
+                    f"[AGENT] Tool {tool_call['name']} returns: {tool_result.update['messages']}")
                 new_messages += tool_result.update["messages"]
 
                 if tool_call["name"] == "n_submit_tool":
                     print(tool_result.update)
-                if "submitted" in tool_result.update and tool_result.update["submitted"]:
-                    self.submitted = True
             except Exception as e:
-                cprint(f"[AGENT] Error calling tool {tool_call['name']}: {e}", "red")
+                cprint(
+                    f"[AGENT] Error calling tool {tool_call['name']}: {e}", "red")
                 new_messages += [
                     ToolMessage(
                         content=f"Error: {e}; This happens usually because you are "
