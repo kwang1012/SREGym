@@ -118,6 +118,6 @@
 
 "llama-70b-instruct":
   provider: "litellm"
-  model_name: "meta-llama/Llama-3.3-70B-Instruct"
+  model_name: "openai/meta-llama/Llama-3.3-70B-Instruct"
   api_key: "$LLAMA_API_KEY"
-  url: "http://localhost:8000"
+  url: "http://localhost:8000/v1"

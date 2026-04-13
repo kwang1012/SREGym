@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import questionary
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, ToolMessage
 
 from clients.sre.base_agent import BaseAgent, llm_inference
 from clients.sre.utils import cprint
@@ -185,6 +185,9 @@ class PlaybookAgent(BaseAgent):
         self.hypothesis_posteriors: dict[int, float] = {}  # hypothesis index → P(H_i | evidence)
         self.evidence_log: list[dict] = []                 # per-step belief snapshots
         self.pruned_nodes: set[int] = set()                # nodes removed by plan revision
+        # Per-round execution tracking (reset before each round)
+        self.mitigations_applied: int = 0      # count of mitigate nodes actually executed
+        self.last_observe_outcome: str = ""    # outcome of the most recent observe node
 
     # ------------------------------------------------------------------
     # Phase 1: Initial observation + playbook retrieval
@@ -195,7 +198,8 @@ class PlaybookAgent(BaseAgent):
         content = (
             "Run an initial observation of the system state. "
             "Check pod statuses, recent events, and any obvious anomalies. "
-            "Be concise — the output will inform plan generation."
+            "If multiple components are failing, understand the full scope before concluding — "
+            "the root cause typically explains all failures, not just one."
         )
         messages.append(HumanMessage(content=content))
         resp = llm_inference(
@@ -206,12 +210,56 @@ class PlaybookAgent(BaseAgent):
         tool_results = await self._handle_tool_calls(resp)
         messages.extend(tool_results)
 
+        # If the LLM only did `kubectl get pods` without describing any failing pod,
+        # force a describe on the first failing pod to get the actual termination error.
+        # We need the specific Last State message — not just pod status strings.
+        tool_texts = " ".join(str(m.content) for m in tool_results)
+        has_specific_error = any(kw in tool_texts for kw in [
+            "executable file not found", "OOMKilled", "ContainerCannotRun",
+            "exec format error", "Last State", "Termination Reason",
+        ])
+        if "CrashLoopBackOff" in tool_texts and not has_specific_error:
+            messages.append(HumanMessage(content=(
+                "Multiple pods are in CrashLoopBackOff. "
+                "Describe one of the failing pods to get the exact termination reason, "
+                "then investigate the other failing pods to understand the full scope."
+            )))
+            resp2 = llm_inference(
+                model=self.model_name, messages=messages,
+                tools=self.sync_tools + self.async_tools,
+            )
+            messages.append(resp2)
+            tool_results2 = await self._handle_tool_calls(resp2)
+            messages.extend(tool_results2)
+
+        # If only one pod was described but many are failing, prompt scope investigation.
+        all_tool_texts = " ".join(
+            str(m.content) for m in messages if isinstance(m, ToolMessage)
+        )
+        failing_count = all_tool_texts.count("CrashLoopBackOff") + \
+                        all_tool_texts.count("RunContainerError")
+        pods_described = all_tool_texts.count("Last State:")
+        if failing_count >= 3 and pods_described < 2:
+            messages.append(HumanMessage(content=(
+                "Several pods are failing but you have only inspected one. "
+                "Investigate the other failing pods before planning."
+            )))
+            resp3 = llm_inference(
+                model=self.model_name, messages=messages,
+                tools=self.sync_tools + self.async_tools,
+            )
+            messages.append(resp3)
+            tool_results3 = await self._handle_tool_calls(resp3)
+            messages.extend(tool_results3)
+
     def _summarize_observations(self, messages: list) -> str:
         """Ask the LLM to summarize what was observed into a symptoms string."""
         prompt = HumanMessage(content=(
             "Summarize the current system observations as a concise symptom description "
             "for use in playbook retrieval. Focus on: pod states, error messages, "
-            "failing components, and any anomalous behaviour. Output plain text only."
+            "failing components, and any anomalous behaviour. "
+            "If multiple components are failing, describe the scope — how many and what "
+            "error pattern they show. Output plain text only."
         ))
         resp = llm_inference(model=self.model_name,
                              messages=messages + [prompt])
@@ -221,7 +269,8 @@ class PlaybookAgent(BaseAgent):
     # Phase 2: Plan generation
     # ------------------------------------------------------------------
 
-    def _generate_plan(self, messages: list, playbooks: list[dict]) -> dict:
+    def _generate_plan(self, messages: list, playbooks: list[dict],
+                       symptoms: str = "") -> dict:
         """
         Use the LLM to produce a DAG-structured diagnosis+mitigation plan grounded
         in the retrieved playbooks.  The plan interleaves diagnosis, mitigation, and
@@ -237,10 +286,20 @@ class PlaybookAgent(BaseAgent):
 
         tool_names = [t.name for t in self.sync_tools + self.async_tools]
 
+        incident_context = symptoms.strip() if symptoms else "(see tool outputs in conversation above)"
+
         prompt = HumanMessage(content=f"""You are an SRE planner for Kubernetes.
 Using the incident context and the SRE playbook excerpts below,
 generate a DAG-structured plan that mixes DIAGNOSIS, MITIGATION, and OBSERVATION
 steps — exactly how a human SRE would approach an unknown incident.
+
+=== INCIDENT SYMPTOMS ===
+{incident_context}
+
+Your fault_hypotheses and mitigation choices MUST be grounded in these specific
+symptoms. Do not propose a mitigation for a failure mode that is not described
+above. The playbooks below provide possible approaches — select the one that fits
+the observed symptoms, not the first one listed.
 
 Relevant playbooks:
 {playbook_text}
@@ -281,12 +340,25 @@ Pattern B — Resource exhaustion (OOMKilled):
   → (always)
   [observe]  Check pod restarts stop and Ready=True within 60s
 
-Pattern D — Faulty image / wrong command (executable not found):
-  [diagnose] Describe pod and check Last State message for "executable file not found" or "exec format error"
-  → (positive: executable not found)
-  [diagnose] Check what image tag is deployed and whether a previous stable tag exists (kubectl rollout history)
+Pattern D — Correlated image failure (multiple pods, same image, same error):
+  TRIGGER: 3+ pods in CrashLoopBackOff with the same container image and same termination error.
+  This pattern indicates the IMAGE ITSELF is broken — not a per-pod config issue.
+  Do NOT try to fix individual pods. Fix the image at the deployment level.
+  [diagnose] Describe one failing pod to confirm termination reason and image digest
+  → (positive: executable not found / exec format error / ContainerCannotRun)
+  [diagnose] List all deployments using that image (kubectl get deployments -n <ns> -o wide)
   → (always)
-  [mitigate] Roll back deployment to previous revision (kubectl rollout undo) OR patch image to known-good tag
+  [mitigate] For EACH affected deployment: kubectl rollout undo deployment/<name> -n <ns>
+             If rollout history is empty, patch all deployments to a known-good image tag
+  → (always)
+  [observe]  kubectl get pods -n <ns> — confirm all previously-failing pods reach Running/Ready
+
+Pattern E — Faulty image / wrong command (single deployment):
+  [diagnose] Describe pod and check Last State for "executable file not found" or "exec format error"
+  → (positive: executable not found)
+  [diagnose] kubectl rollout history deployment/<name> -n <ns> to find last good revision
+  → (always)
+  [mitigate] kubectl rollout undo deployment/<name> -n <ns>
   → (always)
   [observe]  Check pod is Running and Ready=True; verify no more CrashLoopBackOff
 
@@ -305,6 +377,9 @@ Pattern C — Dependency outage:
   name, metric query, patch JSON, etc. derived from the observations already made.
 - For mitigate nodes that set or patch an image, the image value MUST be a fully
   qualified tag (e.g. "nginx:1.25.3"). Never use empty strings or placeholders.
+- CORRELATED FAILURE RULE: If multiple components fail with the same error, the root
+  cause explains all of them. The plan MUST address all affected components, not just
+  the first one mentioned.
 - Edges: "positive" | "negative" | "always"
 - "always" edges = unconditional / parallel fan-out; multiple "always" from one
   node means execute all targets concurrently.
@@ -475,43 +550,338 @@ You ONLY output raw JSON.""")
             )
         return profile
 
-    async def _human_checkpoint(self, step: dict, risk: RiskProfile) -> bool:
+    # ------------------------------------------------------------------
+    # Human checkpoint helpers
+    # ------------------------------------------------------------------
+
+    def _build_context_summary(self, messages: list) -> str:
         """
-        Pause and ask the operator whether to proceed with this step.
-        Returns True to proceed, False to skip (take negative branch).
+        Build a concise context summary for a human who just joined.
+
+        Scans ToolMessage outputs (actual kubectl/metric output) for lines
+        containing known error keywords and de-duplicates them into a brief
+        evidence digest.  No LLM call — deterministic and fast.
+        """
+        _ERROR_KEYWORDS = [
+            "CrashLoopBackOff", "executable file not found", "exec format error",
+            "OOMKilled", "ContainerCannotRun", "ImagePullBackOff", "ErrImagePull",
+            "Pending", "Last State", "Termination Reason", "Reason:", "Exit Code",
+        ]
+
+        findings: list[str] = []
+        for m in messages:
+            if not isinstance(m, ToolMessage):
+                continue
+            content = getattr(m, "content", None)
+            if not isinstance(content, str):
+                continue
+            for line in content.split("\n"):
+                stripped = line.strip()
+                if stripped and any(kw.lower() in stripped.lower() for kw in _ERROR_KEYWORDS):
+                    findings.append(f"  • {stripped[:120]}")
+
+        # Deduplicate while preserving order (first occurrence), keep last 8 unique
+        seen: set[str] = set()
+        unique: list[str] = []
+        for f in reversed(findings):
+            key = f[:80]
+            if key not in seen:
+                seen.add(key)
+                unique.append(f)
+        unique = list(reversed(unique[-8:]))
+
+        parts: list[str] = []
+        if unique:
+            parts.append("Key findings from tool outputs:")
+            parts.extend(unique)
+
+        hypotheses = self.plan.get("fault_hypotheses", [])
+        if hypotheses and self.hypothesis_posteriors:
+            parts.append("\nCurrent hypothesis confidence:")
+            for i, p in sorted(self.hypothesis_posteriors.items(), key=lambda x: -x[1]):
+                bar = "█" * int(p * 12)
+                desc = hypotheses[i]["description"][:60] if i < len(hypotheses) else "?"
+                parts.append(f"  [{p:4.0%}] {bar} {desc}")
+
+        return "\n".join(parts)
+
+    def _extract_namespace(self, messages: list) -> str | None:
+        """Extract the most recently mentioned non-default namespace from tool outputs."""
+        import re
+        for m in reversed(messages):
+            content = getattr(m, "content", None)
+            if not isinstance(content, str):
+                continue
+            # Match: "namespace: foo", "-n foo", "Namespace: foo"
+            for pattern in [
+                r'[Nn]amespace[:\s]+([a-z0-9][a-z0-9-]{1,62})',
+                r'\s-n\s+([a-z0-9][a-z0-9-]{1,62})',
+            ]:
+                match = re.search(pattern, content)
+                if match:
+                    ns = match.group(1).strip()
+                    if ns not in ("kube-system", "default", "kubectl"):
+                        return ns
+        return None
+
+    def _extract_failing_deployments(self, messages: list) -> list[str]:
+        """
+        Extract deployment names from pods currently in CrashLoopBackOff.
+
+        Pod name format: <deployment>-<rs-hash>-<pod-hash>
+        Strip the two trailing segments to recover the deployment name.
+        """
+        import re
+        crash_deps: dict[str, int] = {}  # name → occurrence count
+        for m in messages:
+            content = getattr(m, "content", None)
+            if not isinstance(content, str):
+                continue
+            if "CrashLoopBackOff" not in content:
+                continue
+            for line in content.split("\n"):
+                if "CrashLoopBackOff" not in line:
+                    continue
+                # First token on the line should be the pod name
+                pod_name = line.strip().split()[0] if line.strip() else ""
+                if not pod_name:
+                    continue
+                # Strip two trailing hash-like segments (RS hash + pod hash)
+                match = re.match(r'^(.+)-[0-9a-f]{6,10}-[0-9a-z]{5}$', pod_name)
+                if match:
+                    dep = match.group(1)
+                else:
+                    segments = pod_name.split("-")
+                    dep = "-".join(segments[:-2]) if len(segments) > 2 else pod_name
+                if dep:
+                    crash_deps[dep] = crash_deps.get(dep, 0) + 1
+
+        # Return sorted by frequency (most-crashed first)
+        return [d for d, _ in sorted(crash_deps.items(), key=lambda x: -x[1])]
+
+    def _suggest_action_for_hypothesis(self, hyp_idx: int, messages: list) -> str:
+        """
+        Return a concrete, pre-filled kubectl command for the chosen hypothesis.
+
+        Uses extracted namespace and failing deployment names so the human only
+        needs to confirm or make minor edits rather than type from scratch.
+        """
+        hypotheses = self.plan.get("fault_hypotheses", [])
+        hyp_desc = (hypotheses[hyp_idx]["description"] if hyp_idx < len(hypotheses) else "").lower()
+
+        ns = self._extract_namespace(messages)
+        ns_flag = f"-n {ns}" if ns else "-n <namespace>"
+        deps = self._extract_failing_deployments(messages)
+
+        # Faulty image / wrong binary / exec error → rollout undo
+        if any(kw in hyp_desc for kw in ["image", "executable", "binary", "exec", "command", "entrypoint"]):
+            if deps:
+                targets = " ".join(f"deployment/{d}" for d in deps[:8])
+                return f"kubectl rollout undo {targets} {ns_flag}"
+            return f"kubectl rollout undo deployment/<name> {ns_flag}"
+
+        # OOMKilled / memory → patch memory limit
+        if any(kw in hyp_desc for kw in ["memory", "oom", "resource", "limit"]):
+            dep = deps[0] if deps else "<name>"
+            return (
+                f"kubectl patch deployment/{dep} {ns_flag} "
+                f"--patch '{{\"spec\":{{\"template\":{{\"spec\":{{\"containers\":"
+                f"[{{\"name\":\"{dep}\",\"resources\":{{\"limits\":{{\"memory\":\"512Mi\"}}}}}}]}}}}}}}}'"
+            )
+
+        # ConfigMap / env misconfiguration
+        if any(kw in hyp_desc for kw in ["config", "configmap", "env", "variable"]):
+            return f"kubectl get configmap {ns_flag} -o yaml"
+
+        # Network / service connectivity
+        if any(kw in hyp_desc for kw in ["network", "service", "connect", "dns", "endpoint"]):
+            return f"kubectl get service {ns_flag} -o wide"
+
+        # Generic fallback
+        if deps:
+            return f"kubectl describe deployment/{deps[0]} {ns_flag}"
+        return f"kubectl get pods {ns_flag} -o wide"
+
+    async def _guide_human_override(self, step: dict, messages: list) -> tuple[bool, str | None]:
+        """
+        Guide the human through a structured root-cause → corrective action flow.
+
+        Step 1: Pick the root cause from the hypothesis list (with confidence %).
+        Step 2: Accept / edit the auto-suggested kubectl command for that cause.
+
+        This minimises typing while keeping the human in control.
+        """
+        hypotheses = self.plan.get("fault_hypotheses", [])
+
+        choices = []
+        for i, h in enumerate(hypotheses):
+            p = self.hypothesis_posteriors.get(i, 1.0 / max(len(hypotheses), 1))
+            choices.append(questionary.Choice(
+                title=f"[{p:.0%}] {h['description']}",
+                value=i,
+            ))
+        choices.append(questionary.Choice(
+            title="Other — type a custom command",
+            value="custom",
+        ))
+
+        selected = await questionary.select(
+            "What do you believe is the root cause?",
+            choices=choices,
+        ).ask_async()
+
+        if selected == "custom":
+            cmd = await questionary.text(
+                "Enter exact kubectl command to execute:",
+                instruction="e.g. kubectl rollout undo deployment/frontend -n hotel-reservation",
+            ).ask_async()
+            if not cmd or not cmd.strip():
+                cprint("  [OVERRIDE] No command entered — step will be skipped.", "yellow")
+                return False, None
+            return True, cmd.strip()
+
+        suggested = self._suggest_action_for_hypothesis(selected, messages)
+        cprint(f"\n  Suggested command: {suggested}", "cyan")
+
+        cmd = await questionary.text(
+            "Confirm or edit the command — press Enter to accept as-is:",
+            default=suggested,
+        ).ask_async()
+
+        if not cmd or not cmd.strip():
+            cprint("  [OVERRIDE] No command entered — step will be skipped.", "yellow")
+            return False, None
+        return True, cmd.strip()
+
+    async def _human_checkpoint(
+        self,
+        trigger: str,
+        messages: list,
+        step: dict | None = None,
+        mismatch_hint: str = "",
+    ) -> tuple[bool, str | None]:
+        """
+        Consult the human operator when a trigger condition fires.
+
+        The trigger determines the reason for consultation, the context shown,
+        and the options available.  No human input is ever solicited based on
+        generic risk scores — only when a specific, measurable condition indicates
+        the LLM has produced or is about to produce an incorrect action.
+
+        Returns (proceed: bool, override_command: str | None).
+          - proceed=False, override_command=None  → skip / defer
+          - proceed=True,  override_command=None  → execute the planned action
+          - proceed=True,  override_command=str   → execute this command instead
         """
         self.human_interventions += 1
 
+        # ── Header ────────────────────────────────────────────────────────────
+        cprint("\n" + "═" * 64, "yellow")
+        trigger_labels = {
+            self.TRIGGER_MISMATCH: "⚠  PLAN MISMATCH DETECTED",
+            self.TRIGGER_STAGNANT: "⟳  INVESTIGATION NOT CONVERGING",
+            self.TRIGGER_FAILED:   "✗  MITIGATION FAILED",
+        }
+        cprint(f"  {trigger_labels.get(trigger, '⚑  HUMAN INPUT NEEDED')}", "yellow")
+        cprint("═" * 64, "yellow")
+
+        # ── Evidence digest — same for all triggers ────────────────────────
+        context_summary = self._build_context_summary(messages)
+        if context_summary:
+            print(context_summary)
+
+        # ── Trigger-specific explanation ───────────────────────────────────
+        if trigger == self.TRIGGER_MISMATCH:
+            cprint(f"\n  The planned action contradicts the diagnostic evidence:", "red")
+            cprint(f"  {mismatch_hint}", "red")
+            if step:
+                cprint(f"\n  Planned: [{step.get('action_type','').upper()}] {step['description']}", "magenta")
+                cprint(f"    Tool : {step['tool']}({json.dumps(step['args'])})", "white")
+
+        elif trigger == self.TRIGGER_STAGNANT:
+            entropy = self._compute_entropy()
+            initial_entropy = math.log2(max(len(self.plan.get("fault_hypotheses", [])), 2))
+            reduction_pct = (1 - entropy / initial_entropy) * 100 if initial_entropy > 0 else 0
+            cprint(
+                f"\n  After {len(self.evidence_log)} diagnostic steps, belief entropy has only "
+                f"decreased {reduction_pct:.0f}% (threshold: 30%).", "yellow"
+            )
+            cprint("  The LLM cannot narrow down the root cause from available evidence.", "yellow")
+
+        elif trigger == self.TRIGGER_FAILED:
+            cprint(
+                f"\n  A mitigation was applied ({self.mitigations_applied} so far this round) "
+                f"but the subsequent observation returned negative — the fix did not work.", "red"
+            )
+
+        cprint("═" * 64 + "\n", "yellow")
+
+        # ── Options — differ by trigger ────────────────────────────────────
         style = questionary.Style([
-            ("proceed", "fg:#00cd00 bold"),
-            ("skip", "fg:#cd0000"),
+            ("act",     "fg:#ffaa00 bold"),
+            ("defer",   "fg:#00cd00"),
+            ("skip",    "fg:#cd0000"),
             ("comment", "fg:#808080 italic"),
         ])
 
-        choice = await questionary.select(
-            (
-                f"[Step {step['id']}] [{step.get('action_type', 'diagnose').upper()}] "
-                f"{step['description']}\n"
-                f"  Tool : {step['tool']}({json.dumps(step['args'])})\n"
-                f"  Risk : {risk.summary()}\n"
-                "Proceed with this step?"
-            ),
-            choices=[
+        if trigger == self.TRIGGER_MISMATCH:
+            choices = [
                 questionary.Choice(
-                    title=[("class:proceed", "Proceed")], value="proceed"
+                    title=[("class:act",  "Override"),
+                           ("class:comment", " — identify root cause and get a corrective command")],
+                    value="override",
                 ),
                 questionary.Choice(
-                    title=[
-                        ("class:skip", "Skip"),
-                        ("class:comment", " (take negative branch)"),
-                    ],
+                    title=[("class:skip", "Skip this step"),
+                           ("class:comment", " — take the negative branch instead")],
                     value="skip",
                 ),
-            ],
-            style=style,
-        ).ask_async()
+                questionary.Choice(
+                    title=[("class:defer", "Proceed anyway"),
+                           ("class:comment", " — I believe this action is correct")],
+                    value="proceed",
+                ),
+            ]
+            question = "The planned action looks wrong. What would you like to do?"
 
-        return choice == "proceed"
+        elif trigger == self.TRIGGER_STAGNANT:
+            choices = [
+                questionary.Choice(
+                    title=[("class:act",  "I know the root cause"),
+                           ("class:comment", " — select it and get a suggested command")],
+                    value="override",
+                ),
+                questionary.Choice(
+                    title=[("class:defer", "Continue investigating"),
+                           ("class:comment", " — let the agent try more diagnostic steps")],
+                    value="defer",
+                ),
+            ]
+            question = "Investigation is stuck. Can you identify the root cause?"
+
+        else:  # TRIGGER_FAILED
+            choices = [
+                questionary.Choice(
+                    title=[("class:act",  "Try a different approach"),
+                           ("class:comment", " — select a new root cause and get a command")],
+                    value="override",
+                ),
+                questionary.Choice(
+                    title=[("class:defer", "Let the agent continue"),
+                           ("class:comment", " — follow the next plan branch")],
+                    value="defer",
+                ),
+            ]
+            question = "The fix did not work. What should we try next?"
+
+        choice = await questionary.select(question, choices=choices, style=style).ask_async()
+
+        if choice == "override":
+            return await self._guide_human_override(step or {}, messages)
+        if choice in ("proceed",):
+            return True, None
+        # "skip" or "defer" — do not execute; let the plan branch naturally
+        return False, None
 
     # ------------------------------------------------------------------
     # Bayesian belief tracking
@@ -749,58 +1119,65 @@ You ONLY output raw JSON.""")
     # Step execution
     # ------------------------------------------------------------------
 
-    def _replan_mitigation(self, step: dict, messages: list) -> dict:
+    # Rules: (evidence_keywords, bad_mitigation_keywords, human_hint)
+    # If ANY evidence keyword appears in the conversation AND ANY bad mitigation keyword
+    # appears in the planned step → flag as mismatch → require human checkpoint.
+    _MISMATCH_RULES: list[tuple[list[str], list[str], str]] = [
+        (
+            ["executable file not found", "exec:", "ContainerCannotRun", "exec format error"],
+            ["memory", "limit", "request", "resource", "imagePullSecret", "pull secret"],
+            "Diagnosis shows a missing executable in the image (wrong binary/entrypoint). "
+            "Memory limits and pull secrets do not fix this. "
+            "The image itself needs to be rolled back or the command corrected.",
+        ),
+        (
+            ["OOMKilled"],
+            ["rollout undo", "rollback", "image"],
+            "Diagnosis shows OOMKilled (memory exhaustion). "
+            "Rolling back the image won't help — increase the memory limit instead.",
+        ),
+    ]
+
+    def _check_mitigation_mismatch(self, messages: list, node: dict) -> tuple[bool, str]:
         """
-        Before executing a mitigate node, ask the LLM (without tools) to:
-          1. State the actual root cause based on diagnostic evidence.
-          2. Decide whether the pre-planned mitigation addresses it.
-          3. If not, produce a corrected tool + args JSON.
+        Deterministic rule-based check: does the planned mitigation contradict
+        the diagnostic evidence collected so far?
 
-        Returns the (possibly corrected) step dict.
+        Uses simple keyword matching — no LLM call, fully reliable.
+
+        Returns (mismatch: bool, hint: str) where hint explains the mismatch to
+        the human operator shown at the checkpoint.
         """
-        tool_names = [t.name for t in self.sync_tools + self.async_tools]
-        prompt = HumanMessage(content=(
-            f"You are about to execute a mitigation step. First reason about whether it is correct.\n\n"
-            f"Pre-planned mitigation:\n"
-            f"  Description : {step['description']}\n"
-            f"  Tool        : {step['tool']}\n"
-            f"  Args        : {json.dumps(step['args'])}\n\n"
-            f"Based on ALL diagnostic findings in this conversation so far, answer:\n"
-            f"1. What is the actual root cause? (one sentence)\n"
-            f"2. Does the pre-planned mitigation fix that root cause? Answer YES or NO.\n"
-            f"3. If NO, provide the corrected mitigation as JSON:\n"
-            f'   {{"tool": "<tool_name>", "args": {{...}}}}\n'
-            f"   Available tools: {tool_names}\n\n"
-            f"If YES, respond with exactly: CONFIRMED\n"
-            f"If NO, respond with the corrected JSON only (no markdown, no extra text)."
-        ))
-        resp = llm_inference(model=self.model_name, messages=messages + [prompt])
-        raw = resp.content.strip()
+        evidence = " ".join(
+            str(m.content) for m in messages if getattr(m, "content", None)
+        ).lower()
+        mitigation = (
+            node.get("description", "") + " " + json.dumps(node.get("args", {}))
+        ).lower()
 
-        if raw.upper().startswith("CONFIRMED"):
-            return step  # pre-planned mitigation is correct
+        for diag_kws, bad_mit_kws, hint in self._MISMATCH_RULES:
+            if any(kw.lower() in evidence for kw in diag_kws) and \
+               any(kw.lower() in mitigation for kw in bad_mit_kws):
+                return True, hint
 
-        # Try to parse a corrected tool + args
-        try:
-            if raw.startswith("```"):
-                raw = raw.split("\n", 1)[1].rsplit("```", 1)[0].strip()
-            corrected = json.loads(raw)
-            if "tool" in corrected and "args" in corrected:
-                cprint(
-                    f"  [REPLAN] Pre-planned mitigation overridden.\n"
-                    f"    Was : {step['tool']}({step['args']})\n"
-                    f"    Now : {corrected['tool']}({corrected['args']})",
-                    "yellow",
-                )
-                return {**step, "tool": corrected["tool"], "args": corrected["args"]}
-        except (json.JSONDecodeError, ValueError, KeyError):
-            cprint("  [REPLAN] Could not parse corrected mitigation; using pre-planned.", "yellow")
+        return False, ""
 
-        return step
+    # Keep for reference but no longer called — replaced by _check_mitigation_mismatch
+    def _replan_mitigation_UNUSED(self, step: dict, messages: list) -> tuple[str, dict]:  # noqa
+        """
+        (Retired) LLM-based self-correction. Unreliable: the same model that
+        generated the wrong plan cannot reliably judge whether its correction is
+        correct either. Replaced by deterministic _check_mitigation_mismatch.
+        """
+        return "uncertain", step
 
-    async def _execute_step(self, step: dict, messages: list) -> tuple[str, str]:
+    async def _execute_step(self, step: dict, messages: list, override_command: str | None = None) -> tuple[str, str]:
         """
         Execute a single plan step.
+
+        Args:
+          override_command: When set (human override), the agent executes this exact
+                            kubectl command instead of the pre-planned action.
 
         Returns (outcome, tool_output) where:
           outcome     = 'positive' | 'negative'
@@ -808,8 +1185,17 @@ You ONLY output raw JSON.""")
         """
         action_type = step.get("action_type", "diagnose")
 
-        if action_type == "mitigate":
-            step = self._replan_mitigation(step, messages)
+        if override_command:
+            # Human has provided an explicit command — execute it directly,
+            # ignoring the pre-planned description and args entirely.
+            instruction = (
+                f"A human SRE operator has overridden step {step['id']}.\n"
+                f"Execute this exact command using exec_kubectl_cmd_safely:\n\n"
+                f"  {override_command}\n\n"
+                f"Do NOT use the pre-planned action ('{step['description']}'). "
+                f"Run the human's command exactly as written."
+            )
+        elif action_type == "mitigate":
             instruction = (
                 f"Apply mitigation for step {step['id']}: {step['description']}\n"
                 f"Use tool '{step['tool']}' with arguments: {json.dumps(step['args'])}\n"
@@ -881,6 +1267,33 @@ You ONLY output raw JSON.""")
         outcome = "positive" if "positive" in observe_resp.content.lower() else "negative"
         return outcome, tool_output
 
+    # ------------------------------------------------------------------
+    # Human consultation triggers
+    #
+    # Human involvement is restricted to three precisely-defined conditions,
+    # each with a quantifiable metric.  No human input is solicited before
+    # investigation begins — the human cannot evaluate a plan with no evidence.
+    # ------------------------------------------------------------------
+
+    # TRIGGER_MISMATCH — fires before a mitigate node.
+    # Metric: deterministic keyword overlap between accumulated evidence text and
+    #         the planned action's description + args.  Binary signal, no LLM.
+    TRIGGER_MISMATCH = "mismatch"
+
+    # TRIGGER_STAGNANT — fires after every STAGNATION_CHECK_INTERVAL belief updates.
+    # Metric: H(t) / H(0) > STAGNATION_THRESHOLD
+    #         i.e. posterior entropy has decreased by less than 30% from its initial
+    #         value after at least MIN_STEPS_FOR_STAGNATION executed nodes.
+    TRIGGER_STAGNANT = "stagnant"
+    STAGNATION_THRESHOLD    = 0.70   # entropy reduction < 30% → stuck
+    MIN_STEPS_FOR_STAGNATION = 3     # need at least this many steps before checking
+    STAGNATION_CHECK_INTERVAL = 3    # re-check every N executed steps
+
+    # TRIGGER_FAILED — fires immediately after an observe node returns negative
+    # when at least one mitigation has already been applied this round.
+    # Metric: action_type == "observe" AND outcome == "negative" AND mitigations_applied > 0.
+    TRIGGER_FAILED = "failed"
+
     async def _execute_plan(self, plan: dict, messages: list) -> None:
         """
         Walk the DAG, executing nodes.  Supports:
@@ -938,27 +1351,87 @@ You ONLY output raw JSON.""")
                 node_colors.get(action_type, "cyan"),
             )
 
-            # Risk-gated human checkpoint
-            risk = self._assess_risk(node)
-            risk_color = "green" if not risk.needs_human else "red"
-            cprint(f"  Risk: {risk.summary()}", risk_color)
-            if risk.needs_human:
-                proceed = await self._human_checkpoint(node, risk)
-                if not proceed:
-                    cprint("  [SKIPPED by operator]", "yellow")
-                    outcomes[node_id] = "skipped"
-                    completed[node_id].set()
-                    return
+            # ── TRIGGER_MISMATCH ──────────────────────────────────────────────
+            # Before a mitigate node: deterministically check whether the planned
+            # action contradicts the diagnostic evidence accumulated so far.
+            # This is the only pre-execution trigger — no generic risk gating.
+            override_command = None
+            if action_type == "mitigate":
+                mismatch, mismatch_hint = self._check_mitigation_mismatch(messages, node)
+                if mismatch:
+                    cprint(f"  [TRIGGER: MISMATCH] {mismatch_hint}", "red")
+                    proceed, override_command = await self._human_checkpoint(
+                        self.TRIGGER_MISMATCH, messages, step=node, mismatch_hint=mismatch_hint
+                    )
+                    if not proceed:
+                        cprint("  [SKIPPED by operator]", "yellow")
+                        outcomes[node_id] = "skipped"
+                        completed[node_id].set()
+                        return
+                    if override_command:
+                        cprint(f"  [HUMAN OVERRIDE] Will execute: {override_command[:120]}", "yellow")
 
-            outcome, tool_output = await self._execute_step(node, messages)
+            outcome, tool_output = await self._execute_step(node, messages, override_command)
             cprint(f"  Outcome: {outcome}", "green" if outcome == "positive" else "red")
             outcomes[node_id] = outcome
             executed_ids.add(node_id)
             completed[node_id].set()
 
+            # Track round-level mitigation and observation outcomes
+            if action_type == "mitigate":
+                self.mitigations_applied += 1
+            elif action_type == "observe":
+                self.last_observe_outcome = outcome
+
             # Belief update + plan revision after every executed node
             self._update_beliefs(node, outcome, tool_output)
             self._revise_plan(plan, executed_ids, messages, node_map, children, parents, completed)
+
+            # ── TRIGGER_FAILED ────────────────────────────────────────────────
+            # After an observe node returns negative following a mitigation:
+            # metric = action_type=="observe" AND outcome=="negative" AND mitigations_applied>0
+            if action_type == "observe" and outcome == "negative" and self.mitigations_applied > 0:
+                cprint(f"  [TRIGGER: FAILED] Mitigation did not resolve the incident.", "red")
+                _, override_command = await self._human_checkpoint(
+                    self.TRIGGER_FAILED, messages
+                )
+                if override_command:
+                    cprint(f"  [HUMAN OVERRIDE] Executing human-directed action...", "yellow")
+                    await self._execute_step(
+                        {"id": -1, "action_type": "mitigate",
+                         "description": "Human-directed corrective action",
+                         "expected_positive_signal": "pods reach Running/Ready state"},
+                        messages, override_command,
+                    )
+
+            # ── TRIGGER_STAGNANT ──────────────────────────────────────────────
+            # After every STAGNATION_CHECK_INTERVAL executed steps: check whether
+            # the posterior entropy H(t) has decreased by less than 30% from H(0).
+            # metric = H(t) / H(0) > STAGNATION_THRESHOLD  (where H = Shannon entropy)
+            hypotheses = self.plan.get("fault_hypotheses", [])
+            if (
+                len(hypotheses) > 1
+                and len(self.evidence_log) >= self.MIN_STEPS_FOR_STAGNATION
+                and len(self.evidence_log) % self.STAGNATION_CHECK_INTERVAL == 0
+            ):
+                initial_entropy = math.log2(len(hypotheses))
+                current_entropy = self._compute_entropy()
+                if initial_entropy > 0 and current_entropy / initial_entropy > self.STAGNATION_THRESHOLD:
+                    cprint(
+                        f"  [TRIGGER: STAGNANT] Entropy {current_entropy:.2f}b / {initial_entropy:.2f}b "
+                        f"({current_entropy/initial_entropy:.0%} of initial) — LLM is stuck.", "yellow"
+                    )
+                    _, override_command = await self._human_checkpoint(
+                        self.TRIGGER_STAGNANT, messages
+                    )
+                    if override_command:
+                        cprint(f"  [HUMAN OVERRIDE] Executing human-directed action...", "yellow")
+                        await self._execute_step(
+                            {"id": -1, "action_type": "mitigate",
+                             "description": "Human-directed action after stagnation",
+                             "expected_positive_signal": "pods reach Running/Ready state"},
+                            messages, override_command,
+                        )
 
             # Fan-out
             outgoing = children.get(node_id, [])
@@ -1022,15 +1495,50 @@ You ONLY output raw JSON.""")
             cprint(
                 "[Phase 1] No playbooks retrieved; continuing without them.", "yellow")
 
-        # Phase 2: Generate plan
-        cprint("\n[Phase 2] Generating plan...", "blue")
-        self.plan = self._generate_plan(messages, playbooks)
-        self._print_plan(self.plan)
-        self._init_posteriors(self.plan)
+        # Phase 2 + 3: Plan → execute loop.
+        # If a round applies no mitigation or the final observe returns negative,
+        # symptoms are refreshed and a new plan is generated for the next round.
+        MAX_ROUNDS = 2
+        for round_num in range(1, MAX_ROUNDS + 1):
+            if round_num > 1:
+                cprint(
+                    f"\n[RETRY] Round {round_num}/{MAX_ROUNDS} — "
+                    "refreshing symptoms and replanning with accumulated evidence.",
+                    "yellow",
+                )
+                symptoms = self._summarize_observations(messages)
+                playbooks = self.retriever.retrieve(symptoms, self.model_name, top_k=3)
+                self.pruned_nodes = set()
+                self.hypothesis_posteriors = {}
+                self.evidence_log = []
 
-        # Phase 3: Execute plan
-        cprint("\n[Phase 3] Executing plan...", "blue")
-        await self._execute_plan(self.plan, messages)
+            # Reset per-round tracking
+            self.mitigations_applied = 0
+            self.last_observe_outcome = ""
+
+            cprint(f"\n[Phase 2] Generating plan (round {round_num}/{MAX_ROUNDS})...", "blue")
+            self.plan = self._generate_plan(messages, playbooks, symptoms)
+            self._print_plan(self.plan)
+            self._init_posteriors(self.plan)
+
+            cprint(f"\n[Phase 3] Executing plan (round {round_num}/{MAX_ROUNDS})...", "blue")
+            await self._execute_plan(self.plan, messages)
+
+            # Decide whether to continue to the next round
+            incident_resolved = (
+                self.mitigations_applied > 0
+                and self.last_observe_outcome == "positive"
+            )
+            if incident_resolved:
+                cprint("\n[RETRY] Incident appears resolved — stopping.", "green")
+                break
+            if round_num < MAX_ROUNDS:
+                reason = (
+                    "no mitigation was applied"
+                    if self.mitigations_applied == 0
+                    else "applied mitigation did not resolve the incident"
+                )
+                cprint(f"\n[RETRY] Round {round_num} ended: {reason}.", "yellow")
 
         # Final submission
         if not self.submitted:
